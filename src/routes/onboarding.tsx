@@ -1,17 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
 });
+
+const ROLES = ["Consultor", "Founder", "Freelance", "Manager"] as const;
+const GOALS = [
+  "Organización",
+  "Prioridades",
+  "Claridad mental",
+  "Gestión del tiempo",
+] as const;
+
+const FINAL_TEXT = (name: string) =>
+  `Perfecto, ${name}.\nYa tengo tu contexto.\nEstoy listo para ayudarte a organizar tu semana.`;
 
 function Onboarding() {
   const navigate = useNavigate();
@@ -19,101 +26,372 @@ function Onboarding() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
-  const [goals, setGoals] = useState("");
+  const [roleOther, setRoleOther] = useState("");
+  const [goals, setGoals] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
-  const next = () => setStep((s) => s + 1);
+  const firstName = name.trim().split(" ")[0] || "tú";
+
+  const canNext =
+    (step === 0 && name.trim().length > 0) ||
+    (step === 1 && (role.trim() || roleOther.trim()).length > 0) ||
+    (step === 2 && goals.length > 0);
 
   const finish = async () => {
     if (!user) return;
     setBusy(true);
+    const finalRole = (role || roleOther).trim();
     const { error } = await supabase
       .from("profiles")
-      .update({ name, role, goals, onboarding_completed: true })
+      .update({
+        name: name.trim(),
+        role: finalRole,
+        goals: goals.join(", "),
+        onboarding_completed: true,
+      })
       .eq("id", user.id);
+    setBusy(false);
     if (error) {
       toast.error(error.message);
-      setBusy(false);
       return;
     }
-    navigate({ to: "/dashboard" });
+    setDone(true);
   };
 
-  const steps = [
-    {
-      title: "Hola. Soy Alfred.",
-      sub: "Tu asistente ejecutivo. Antes de empezar, dime cómo te llamas.",
-      content: (
-        <div className="space-y-2">
-          <Label htmlFor="name">¿Cómo te llamas?</Label>
-          <Input id="name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" />
-        </div>
-      ),
-      canNext: name.trim().length > 0,
-    },
-    {
-      title: `Encantado, ${name.split(" ")[0] || "tú"}.`,
-      sub: "¿A qué te dedicas? Esto me ayuda a entender tu contexto.",
-      content: (
-        <div className="space-y-2">
-          <Label htmlFor="role">Tu rol</Label>
-          <Input id="role" autoFocus value={role} onChange={(e) => setRole(e.target.value)} placeholder="Ej: Fundadora, ingeniera, médico…" />
-        </div>
-      ),
-      canNext: role.trim().length > 0,
-    },
-    {
-      title: "Última cosa.",
-      sub: "¿En qué te puedo ayudar estas próximas semanas? Sé tan específico como quieras.",
-      content: (
-        <div className="space-y-2">
-          <Label htmlFor="goals">Tus prioridades</Label>
-          <Textarea id="goals" autoFocus value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="Cerrar ronda, lanzar producto, ordenar mi semana…" rows={5} />
-        </div>
-      ),
-      canNext: goals.trim().length > 0,
-    },
-  ];
+  const handleNext = () => {
+    if (!canNext) return;
+    if (step === 2) finish();
+    else setStep((s) => s + 1);
+  };
 
-  const current = steps[step];
-  const isLast = step === steps.length - 1;
+  if (done) return <Completion name={firstName} onDone={() => navigate({ to: "/dashboard" })} />;
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <div className="flex gap-1.5 mb-10">
-          {steps.map((_, i) => (
-            <div
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <div className="w-full max-w-xl">
+        <StepShell key={step}>
+          {step === 0 && (
+            <Step
+              title="Hola. Soy Alfred."
+              subtitle="Tu asistente ejecutivo personal. ¿Cómo te llamas?"
+            >
+              <BareInput
+                value={name}
+                onChange={setName}
+                placeholder="Tu nombre..."
+                onEnter={handleNext}
+              />
+            </Step>
+          )}
+
+          {step === 1 && (
+            <Step
+              title={`¿A qué te dedicas, ${firstName}?`}
+              subtitle="Esto me ayuda a entender tu contexto."
+            >
+              <div className="flex flex-wrap justify-center gap-2 mb-5">
+                {ROLES.map((r) => (
+                  <Chip
+                    key={r}
+                    active={role === r}
+                    onClick={() => {
+                      setRole(r);
+                      setRoleOther("");
+                    }}
+                  >
+                    {r}
+                  </Chip>
+                ))}
+              </div>
+              <BareInput
+                value={roleOther}
+                onChange={(v) => {
+                  setRoleOther(v);
+                  if (v) setRole("");
+                }}
+                placeholder="o escríbelo aquí"
+                onEnter={handleNext}
+              />
+            </Step>
+          )}
+
+          {step === 2 && (
+            <Step
+              title="¿Qué quieres mejorar?"
+              subtitle="Puedes elegir más de uno."
+            >
+              <div className="flex flex-wrap justify-center gap-2">
+                {GOALS.map((g) => (
+                  <Chip
+                    key={g}
+                    active={goals.includes(g)}
+                    onClick={() =>
+                      setGoals((prev) =>
+                        prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g],
+                      )
+                    }
+                  >
+                    {g}
+                  </Chip>
+                ))}
+              </div>
+            </Step>
+          )}
+
+          {/* Actions */}
+          <div className="mt-10 flex items-center justify-center gap-4">
+            {step > 0 && (
+              <button
+                onClick={() => setStep((s) => s - 1)}
+                className="transition-colors"
+                style={{
+                  fontSize: 13,
+                  color: "var(--text-tertiary)",
+                  background: "transparent",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.color = "var(--text-primary)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.color = "var(--text-tertiary)")
+                }
+              >
+                Atrás
+              </button>
+            )}
+            <button
+              onClick={handleNext}
+              disabled={!canNext || busy}
+              style={{
+                background: "var(--accent-color)",
+                color: "white",
+                borderRadius: "var(--radius-pill)",
+                padding: "9px 22px",
+                fontSize: 13,
+                fontWeight: 500,
+                width: 120,
+                opacity: !canNext || busy ? 0.4 : 1,
+                transition: "opacity 0.15s",
+              }}
+            >
+              {busy ? "Guardando…" : "Continuar →"}
+            </button>
+          </div>
+        </StepShell>
+
+        {/* Dots */}
+        <div className="mt-12 flex items-center justify-center gap-2">
+          {[0, 1, 2].map((i) => (
+            <span
               key={i}
-              className={`h-0.5 flex-1 rounded-full transition ${i <= step ? "bg-primary" : "bg-border"}`}
+              className="rounded-full transition-colors"
+              style={{
+                width: 6,
+                height: 6,
+                background:
+                  i === step ? "var(--accent-color)" : "var(--border)",
+              }}
             />
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
 
-        <h1 className="text-3xl font-semibold tracking-tight">{current.title}</h1>
-        <p className="mt-2 text-muted-foreground">{current.sub}</p>
+function StepShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        animation: "alfredStepIn 200ms ease both",
+      }}
+    >
+      <style>{`
+        @keyframes alfredStepIn {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      {children}
+    </div>
+  );
+}
 
-        <div className="mt-8">{current.content}</div>
+function Step({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="text-center">
+      <h1
+        style={{
+          fontSize: 28,
+          fontWeight: 500,
+          letterSpacing: "-0.03em",
+          color: "var(--text-primary)",
+        }}
+      >
+        {title}
+      </h1>
+      <p
+        style={{
+          marginTop: 8,
+          fontSize: 15,
+          color: "var(--text-secondary)",
+        }}
+      >
+        {subtitle}
+      </p>
+      <div className="mt-10">{children}</div>
+    </div>
+  );
+}
 
-        <div className="mt-8 flex items-center justify-between">
-          {step > 0 ? (
-            <button onClick={() => setStep((s) => s - 1)} className="text-sm text-muted-foreground hover:text-foreground transition">
-              Atrás
-            </button>
-          ) : <span />}
-          <Button
-            disabled={!current.canNext || busy}
-            onClick={isLast ? finish : next}
-            className="rounded-[20px] h-11 px-6"
+function BareInput({
+  value,
+  onChange,
+  placeholder,
+  onEnter,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  onEnter: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+  return (
+    <input
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onEnter();
+      }}
+      placeholder={placeholder}
+      className="w-full text-center bg-transparent focus:outline-none"
+      style={{
+        height: 40,
+        fontSize: 20,
+        color: "var(--text-primary)",
+        borderBottom: "1px solid var(--border)",
+      }}
+    />
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn("transition-colors")}
+      style={{
+        border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+        background: active ? "var(--accent-subtle)" : "transparent",
+        color: active ? "var(--accent-color)" : "var(--text-secondary)",
+        borderRadius: "var(--radius-pill)",
+        padding: "8px 20px",
+        fontSize: 13,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Completion({ name, onDone }: { name: string; onDone: () => void }) {
+  const full = FINAL_TEXT(name);
+  const [shown, setShown] = useState("");
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setShown(full.slice(0, i));
+      if (i >= full.length) {
+        clearInterval(id);
+        if (!doneRef.current) {
+          doneRef.current = true;
+          setTimeout(onDone, 1500);
+        }
+      }
+    }, 40);
+    return () => clearInterval(id);
+  }, [full, onDone]);
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <div className="max-w-xl w-full">
+        <div className="flex items-center gap-2 mb-6 justify-center">
+          <div
+            className="h-4 w-4 rounded-[4px]"
+            style={{ background: "var(--accent-color)" }}
+          />
+          <span
+            style={{
+              fontWeight: 500,
+              letterSpacing: "-0.02em",
+              color: "var(--text-primary)",
+              fontSize: 15,
+            }}
           >
-            {busy ? "Guardando…" : isLast ? "Empezar" : "Continuar"}
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
+            alfred
+          </span>
         </div>
+        <p
+          className="whitespace-pre-line text-center"
+          style={{
+            fontSize: 22,
+            lineHeight: 1.5,
+            color: "var(--text-primary)",
+            fontWeight: 400,
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {shown}
+          <span
+            className="inline-block ml-0.5"
+            style={{
+              width: 8,
+              height: 22,
+              background: "var(--accent-color)",
+              verticalAlign: "-4px",
+              animation: "alfredBlink 1s step-end infinite",
+            }}
+          />
+        </p>
+        <style>{`
+          @keyframes alfredBlink {
+            50% { opacity: 0; }
+          }
+        `}</style>
       </div>
     </div>
   );
