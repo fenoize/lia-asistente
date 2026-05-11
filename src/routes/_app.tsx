@@ -28,9 +28,12 @@ function AppLayout() {
   }, [session, loading, navigate]);
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
       <AppSidebar />
-      <main className="flex-1 min-w-0">
+      <main
+        className="flex-1 min-w-0 overflow-y-auto h-screen"
+        style={{ background: "var(--bg-base)" }}
+      >
         <Outlet />
       </main>
       <QuickCapture />
