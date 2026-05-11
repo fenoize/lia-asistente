@@ -73,37 +73,15 @@ function ProjectsPage() {
   }, [projects]);
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 880, padding: "40px 24px" }}>
+    <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1
-            style={{
-              fontSize: 22,
-              fontWeight: 500,
-              letterSpacing: "-0.02em",
-              color: "var(--text-primary)",
-            }}
-          >
-            Proyectos
-          </h1>
-          <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 2 }}>
+          <h1 className="alfred-h1">Proyectos</h1>
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
             Tu trabajo, organizado por cliente.
           </p>
         </div>
-        <button
-          onClick={() => setShowNew(true)}
-          style={{
-            border: "1px solid var(--accent-color)",
-            color: "var(--accent-color)",
-            background: "transparent",
-            borderRadius: "var(--radius-pill)",
-            padding: "7px 14px",
-            fontSize: 13,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
+        <button onClick={() => setShowNew(true)} className="alfred-new-btn">
           <IconPlus size={14} stroke={2} /> Nuevo proyecto
         </button>
       </div>
