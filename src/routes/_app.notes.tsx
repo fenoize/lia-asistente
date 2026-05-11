@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCheck, IconX, IconPencil } from "@tabler/icons-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/notes")({
