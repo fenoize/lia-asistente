@@ -369,24 +369,22 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
     <div
       className="flex items-center gap-4 transition-colors"
       style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
+        background: "#111111",
+        border: "1px solid #1e1e1e",
+        borderRadius: 10,
         padding: "12px 16px",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--bg-elevated)";
         e.currentTarget.style.borderColor = "var(--accent-subtle)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = "var(--bg-surface)";
-        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.borderColor = "#1e1e1e";
       }}
     >
       <span
         style={{
-          fontSize: 12,
-          color: "var(--accent-color)",
+          fontSize: 13,
+          color: "#6366f1",
           fontWeight: 600,
           fontVariantNumeric: "tabular-nums",
         }}
@@ -394,15 +392,8 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
         {time}
       </span>
       <span
-        style={{
-          width: 1,
-          height: 32,
-          background: "var(--border)",
-        }}
-      />
-      <span
         className="flex-1 truncate"
-        style={{ fontSize: 14, color: "var(--text-primary)" }}
+        style={{ fontSize: 14, color: "#e0e0e0" }}
       >
         {meeting.title}
       </span>
@@ -410,10 +401,11 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
         <span
           style={{
             fontSize: 11,
-            background: "var(--bg-hover)",
-            color: "var(--text-secondary)",
-            borderRadius: "var(--radius-pill)",
-            padding: "3px 10px",
+            background: "#1a1a1a",
+            border: "1px solid #222",
+            color: "#666",
+            borderRadius: 100,
+            padding: "2px 10px",
           }}
         >
           {meeting.duration_minutes}m
