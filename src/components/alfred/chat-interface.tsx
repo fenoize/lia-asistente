@@ -352,7 +352,7 @@ function UserBubble({ text }: { text: string }) {
           lineHeight: 1.5,
         }}
       >
-        {text}
+        <MentionText text={text} />
       </div>
     </div>
   );
