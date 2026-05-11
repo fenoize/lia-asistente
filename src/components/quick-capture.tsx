@@ -167,12 +167,6 @@ export function QuickCapture() {
     }
   }
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      save();
-    }
-  }
 
   if (!open) return null;
 
