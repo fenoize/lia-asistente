@@ -212,3 +212,7 @@
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+.alfred-chat-input::placeholder {
+  color: #444;
+}
