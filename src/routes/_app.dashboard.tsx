@@ -29,6 +29,9 @@ type Meeting = {
   title: string;
   datetime: string;
   duration_minutes: number | null;
+  location: string | null;
+  notes: string | null;
+  preparation_needed: boolean | null;
 };
 type Reminder = { id: string; title: string; datetime: string; done: boolean };
 type BirthdayContact = {
