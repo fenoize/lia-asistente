@@ -48,22 +48,10 @@ function RemindersPage() {
   const completed = items.filter((r) => !!r.done);
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
+    <div>
       <header className="flex items-center justify-between mb-8">
-        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-          Recordatorios
-        </h1>
-        <button
-          onClick={openCapture}
-          className="flex items-center gap-1.5"
-          style={{
-            fontSize: 12, padding: "6px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "1px solid var(--accent-color)",
-            color: "var(--accent-color)",
-            background: "transparent",
-          }}
-        >
+        <h1 className="alfred-h1">Recordatorios</h1>
+        <button onClick={openCapture} className="alfred-new-btn">
           <IconPlus size={14} /> Nuevo
         </button>
       </header>
@@ -101,14 +89,7 @@ function Section({
 }) {
   return (
     <section>
-      <div
-        style={{
-          fontSize: 10, letterSpacing: "0.12em",
-          color: "var(--text-tertiary)", marginBottom: 10,
-        }}
-      >
-        {label}
-      </div>
+      <div className="alfred-section-label">{label}</div>
       {items.length === 0 && empty ? (
         <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{empty}</p>
       ) : (

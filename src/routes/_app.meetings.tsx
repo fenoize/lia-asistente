@@ -74,22 +74,10 @@ function MeetingsPage() {
   );
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
+    <div>
       <header className="flex items-center justify-between mb-6">
-        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-          Reuniones
-        </h1>
-        <button
-          onClick={openCapture}
-          className="flex items-center gap-1.5"
-          style={{
-            fontSize: 12, padding: "6px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "1px solid var(--accent-color)",
-            color: "var(--accent-color)",
-            background: "transparent",
-          }}
-        >
+        <h1 className="alfred-h1">Reuniones</h1>
+        <button onClick={openCapture} className="alfred-new-btn">
           <IconPlus size={14} /> Nueva reunión
         </button>
       </header>
