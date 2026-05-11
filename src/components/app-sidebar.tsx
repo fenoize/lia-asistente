@@ -11,8 +11,10 @@ import {
   IconLogout,
   IconMenu2,
   IconX,
+  IconSettings,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useAssistant } from "@/hooks/use-assistant";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -31,6 +33,7 @@ function openQuickCapture() {
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { user, signOut } = useAuth();
+  const assistant = useAssistant();
   const initials = (user?.email ?? "?").slice(0, 1).toUpperCase();
 
   return (
@@ -56,7 +59,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               color: "var(--text-primary)",
             }}
           >
-            alfred
+            {assistant.name.toLowerCase()}
           </span>
         </div>
       </div>
@@ -182,6 +185,17 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
           >
             {user?.email ?? "—"}
           </span>
+          <Link
+            to="/settings"
+            onClick={onNavigate}
+            aria-label="Ajustes"
+            className="p-1 rounded transition-colors"
+            style={{ color: "var(--text-tertiary)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-primary)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-tertiary)")}
+          >
+            <IconSettings size={14} stroke={1.75} />
+          </Link>
           <button
             onClick={() => signOut()}
             aria-label="Cerrar sesión"

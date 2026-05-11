@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { IconVenus, IconMars } from "@tabler/icons-react";
 
 export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
@@ -17,8 +18,10 @@ const GOALS = [
   "Gestión del tiempo",
 ] as const;
 
-const FINAL_TEXT = (name: string) =>
-  `Perfecto, ${name}.\nYa tengo tu contexto.\nEstoy listo para ayudarte a organizar tu semana.`;
+const FINAL_TEXT = (userName: string, assistantName: string, gender: "feminine" | "masculine") =>
+  gender === "feminine"
+    ? `Hola ${userName}.\nSoy ${assistantName} y estoy lista\npara ayudarte a organizar tu semana.`
+    : `Hola ${userName}.\nSoy ${assistantName} y estoy listo\npara ayudarte a organizar tu semana.`;
 
 function Onboarding() {
   const navigate = useNavigate();
@@ -27,20 +30,25 @@ function Onboarding() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [roleOther, setRoleOther] = useState("");
+  const [assistantName, setAssistantName] = useState("");
+  const [assistantGender, setAssistantGender] = useState<"feminine" | "masculine" | "">("");
   const [goals, setGoals] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
   const firstName = name.trim().split(" ")[0] || "tú";
+  const finalAssistantName = assistantName.trim() || "Alfred";
 
   const canNext =
     (step === 0 && name.trim().length > 0) ||
     (step === 1 && (role.trim() || roleOther.trim()).length > 0) ||
-    (step === 2 && goals.length > 0);
+    (step === 2 && assistantName.trim().length > 0 && assistantGender !== "") ||
+    (step === 3 && goals.length > 0);
 
   const finish = async () => {
     if (!user) return;
@@ -52,6 +60,8 @@ function Onboarding() {
         name: name.trim(),
         role: finalRole,
         goals: goals.join(", "),
+        assistant_name: finalAssistantName,
+        assistant_gender: assistantGender || "masculine",
         onboarding_completed: true,
       })
       .eq("id", user.id);
@@ -65,11 +75,37 @@ function Onboarding() {
 
   const handleNext = () => {
     if (!canNext) return;
-    if (step === 2) finish();
-    else setStep((s) => s + 1);
+    if (step === 3) {
+      finish();
+    } else if (step === 2) {
+      setTransitioning(true);
+    } else {
+      setStep((s) => s + 1);
+    }
   };
 
-  if (done) return <Completion name={firstName} onDone={() => navigate({ to: "/dashboard" })} />;
+  if (done)
+    return (
+      <Completion
+        userName={firstName}
+        assistantName={finalAssistantName}
+        gender={(assistantGender || "masculine") as "feminine" | "masculine"}
+        onDone={() => navigate({ to: "/dashboard" })}
+      />
+    );
+
+  if (transitioning)
+    return (
+      <AssistantIntro
+        assistantName={finalAssistantName}
+        gender={(assistantGender || "masculine") as "feminine" | "masculine"}
+        onDone={() => {
+          setTransitioning(false);
+          setStep(3);
+        }}
+      />
+    );
+
 
   return (
     <div
@@ -124,6 +160,47 @@ function Onboarding() {
           )}
 
           {step === 2 && (
+            <Step
+              title="¿Cómo quieres llamar a tu asistente?"
+              subtitle="Puedes ponerle el nombre que quieras."
+            >
+              <BareInput
+                value={assistantName}
+                onChange={(v) => setAssistantName(v.slice(0, 20))}
+                placeholder="Ej: Lia, Max, Nova, Alex..."
+                onEnter={() => {}}
+              />
+              <p
+                style={{
+                  marginTop: 28,
+                  fontSize: 12,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                ¿Qué personalidad tiene?
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <PersonaCard
+                  active={assistantGender === "feminine"}
+                  onClick={() => setAssistantGender("feminine")}
+                  Icon={IconVenus}
+                  label="Femenina"
+                  caption="Cercana, cálida, estratégica"
+                />
+                <PersonaCard
+                  active={assistantGender === "masculine"}
+                  onClick={() => setAssistantGender("masculine")}
+                  Icon={IconMars}
+                  label="Masculina"
+                  caption="Directo, sólido, estratégico"
+                />
+              </div>
+            </Step>
+          )}
+
+          {step === 3 && (
             <Step
               title="¿Qué quieres mejorar?"
               subtitle="Puedes elegir más de uno."
@@ -189,7 +266,7 @@ function Onboarding() {
 
         {/* Dots */}
         <div className="mt-12 flex items-center justify-center gap-2">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <span
               key={i}
               className="rounded-full transition-colors"
@@ -322,8 +399,135 @@ function Chip({
   );
 }
 
-function Completion({ name, onDone }: { name: string; onDone: () => void }) {
-  const full = FINAL_TEXT(name);
+function PersonaCard({
+  active,
+  onClick,
+  Icon,
+  label,
+  caption,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: React.ComponentType<{ size?: number; stroke?: number; color?: string }>;
+  label: string;
+  caption: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-center transition-colors"
+      style={{
+        border: `${active ? 2 : 1}px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+        background: active ? "var(--accent-subtle)" : "transparent",
+        borderRadius: "var(--radius-lg)",
+        padding: active ? "23px" : "24px",
+      }}
+    >
+      <div className="flex items-center justify-center mb-3">
+        <Icon
+          size={28}
+          stroke={1.5}
+          color={active ? "var(--accent-color)" : "var(--text-secondary)"}
+        />
+      </div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          color: active ? "var(--accent-color)" : "var(--text-primary)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 12,
+          color: "var(--text-tertiary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {caption}
+      </div>
+    </button>
+  );
+}
+
+function AssistantIntro({
+  assistantName,
+  gender,
+  onDone,
+}: {
+  assistantName: string;
+  gender: "feminine" | "masculine";
+  onDone: () => void;
+}) {
+  const full =
+    gender === "feminine"
+      ? `${assistantName} está lista para conocerte.`
+      : `${assistantName} está listo para conocerte.`;
+  const [shown, setShown] = useState("");
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setShown(full.slice(0, i));
+      if (i >= full.length) {
+        clearInterval(id);
+        if (!doneRef.current) {
+          doneRef.current = true;
+          setTimeout(onDone, 1500);
+        }
+      }
+    }, 35);
+    return () => clearInterval(id);
+  }, [full, onDone]);
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <p
+        className="text-center"
+        style={{
+          fontSize: 24,
+          color: "var(--text-primary)",
+          fontWeight: 400,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {shown}
+        <span
+          className="inline-block ml-0.5"
+          style={{
+            width: 8,
+            height: 22,
+            background: "var(--accent-color)",
+            verticalAlign: "-4px",
+            animation: "alfredBlink 1s step-end infinite",
+          }}
+        />
+      </p>
+      <style>{`@keyframes alfredBlink { 50% { opacity: 0; } }`}</style>
+    </div>
+  );
+}
+
+function Completion({
+  userName,
+  assistantName,
+  gender,
+  onDone,
+}: {
+  userName: string;
+  assistantName: string;
+  gender: "feminine" | "masculine";
+  onDone: () => void;
+}) {
+  const full = FINAL_TEXT(userName, assistantName, gender);
   const [shown, setShown] = useState("");
   const doneRef = useRef(false);
 
@@ -362,7 +566,7 @@ function Completion({ name, onDone }: { name: string; onDone: () => void }) {
               fontSize: 15,
             }}
           >
-            alfred
+            {assistantName.toLowerCase()}
           </span>
         </div>
         <p

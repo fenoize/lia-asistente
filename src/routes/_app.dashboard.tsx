@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import {
   IconRefresh,
@@ -31,6 +32,7 @@ type Reminder = { id: string; title: string; datetime: string; done: boolean };
 
 function Dashboard() {
   const { user } = useAuth();
+  const assistant = useAssistant();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -184,7 +186,7 @@ function Dashboard() {
             color: "var(--text-primary)",
           }}
         >
-          {greeting}{name ? `, ${name}` : ""}.
+          {greeting}{name ? `, ${name}` : ""}. Soy {assistant.name}.
         </h1>
         <p
           style={{
@@ -218,7 +220,7 @@ function Dashboard() {
                 fontWeight: 600,
               }}
             >
-              ALFRED
+              {assistant.name.toUpperCase()}
             </span>
             <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               Resumen del día
