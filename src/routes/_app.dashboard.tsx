@@ -55,7 +55,11 @@ function Dashboard() {
     setBriefLoading(true);
     setBrief("");
     try {
-      const res = await fetch("/api/daily-brief", { method: "POST" });
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/daily-brief", {
+        method: "POST",
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
       if (!res.ok) throw new Error(await res.text());
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
