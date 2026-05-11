@@ -7,7 +7,7 @@ const SYSTEM = `Eres un clasificador. Recibes texto crudo del usuario en españo
 Devuelve EXCLUSIVAMENTE un JSON válido con esta forma exacta:
 {
   "type": "task" | "meeting" | "reminder" | "note",
-  "title": string (corto, claro),
+  "title": string (corto, claro, máx 80 chars),
   "description": string | null,
   "datetime": ISO8601 string | null,
   "priority": "low" | "medium" | "high" | null,
@@ -15,12 +15,14 @@ Devuelve EXCLUSIVAMENTE un JSON válido con esta forma exacta:
 }
 Reglas:
 - "task" si es algo que hay que hacer (con o sin fecha).
-- "meeting" si menciona una reunión, cita, llamada con alguien a una hora específica.
+- "meeting" si menciona reunión, cita, llamada, junta o "call" con alguien.
 - "reminder" si dice "recuérdame" o es una alerta puntual sin acción compleja.
 - "note" si es una idea, observación o pensamiento sin acción.
-- datetime: parsea fechas en español ("mañana 3pm", "el viernes", "en 2 horas") a ISO. Asume zona America/Santiago. Si no hay fecha, null.
+- title: resumen MUY breve y específico. Para reuniones usa formato "Reunión con <persona/empresa>". NO incluyas la fecha/hora ni la descripción de lo que se hará en el título.
+- description: redacta en una frase clara lo que se hará o se tratará. Reformula el texto del usuario en tercera persona o impersonal (ej: "Se revisará la configuración..."). NO repitas el título ni incluyas la fecha. Si no hay nada que describir, null.
+- datetime: parsea fechas y horas en español ("hoy a las 16:00", "mañana 3pm", "el viernes", "en 2 horas") a ISO8601 con offset de America/Santiago. "hoy a las HH:MM" SIEMPRE significa hoy en esa hora exacta, nunca la hora actual. Si no hay fecha/hora explícita, null.
 - priority solo aplica a "task". Default "medium".
-- Sin texto extra. Solo JSON.`;
+- Sin texto extra. Solo JSON, sin code fences.`;
 
 const Schema = z.object({
   type: z.enum(["task", "meeting", "reminder", "note"]),
