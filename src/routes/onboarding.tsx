@@ -42,7 +42,7 @@ function Onboarding() {
   }, [user, loading, navigate]);
 
   const firstName = name.trim().split(" ")[0] || "tú";
-  const finalAssistantName = assistantName.trim() || "Alfred";
+  const finalAssistantName = assistantName.trim() || "Lia";
 
   const canNext =
     (step === 0 && name.trim().length > 0) ||
