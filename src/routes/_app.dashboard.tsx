@@ -294,6 +294,58 @@ function Dashboard() {
         )}
       </section>
 
+      {/* Birthday alerts */}
+      {birthdays.map((b) => {
+        const when =
+          b.daysUntil === 0
+            ? `Hoy es el cumpleaños de ${b.name}.`
+            : b.daysUntil === 1
+              ? `Mañana es el cumpleaños de ${b.name}.`
+              : `En ${b.daysUntil} días es el cumpleaños de ${b.name}.`;
+        const firstLine = (b.context ?? "").split("\n")[0]?.trim();
+        return (
+          <div
+            key={b.id}
+            className="flex items-start gap-3"
+            style={{
+              background: "rgba(217,119,6,0.05)",
+              border: "1px solid rgba(217,119,6,0.15)",
+              borderRadius: 12,
+              padding: "14px 18px",
+              marginTop: 12,
+            }}
+          >
+            <IconCake size={16} stroke={1.75} color="#fbbf24" style={{ marginTop: 2 }} />
+            <div className="flex-1">
+              <div style={{ fontSize: 14, color: "#e0e0e0" }}>{when}</div>
+              {firstLine && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#666",
+                    marginTop: 4,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {firstLine}
+                </div>
+              )}
+            </div>
+            <Link
+              to="/meetings"
+              style={{
+                fontSize: 12,
+                color: "#fbbf24",
+                whiteSpace: "nowrap",
+                alignSelf: "center",
+              }}
+            >
+              Agendar algo →
+            </Link>
+          </div>
+        );
+      })}
+
       {/* Meetings */}
       <Block label="HOY">
         {meetings.length === 0 ? (
