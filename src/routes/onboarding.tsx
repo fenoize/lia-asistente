@@ -161,6 +161,47 @@ function Onboarding() {
 
           {step === 2 && (
             <Step
+              title="¿Cómo quieres llamar a tu asistente?"
+              subtitle="Puedes ponerle el nombre que quieras."
+            >
+              <BareInput
+                value={assistantName}
+                onChange={(v) => setAssistantName(v.slice(0, 20))}
+                placeholder="Ej: Lia, Max, Nova, Alex..."
+                onEnter={() => {}}
+              />
+              <p
+                style={{
+                  marginTop: 28,
+                  fontSize: 12,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                ¿Qué personalidad tiene?
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <PersonaCard
+                  active={assistantGender === "feminine"}
+                  onClick={() => setAssistantGender("feminine")}
+                  Icon={IconVenus}
+                  label="Femenina"
+                  caption="Cercana, cálida, estratégica"
+                />
+                <PersonaCard
+                  active={assistantGender === "masculine"}
+                  onClick={() => setAssistantGender("masculine")}
+                  Icon={IconMars}
+                  label="Masculina"
+                  caption="Directo, sólido, estratégico"
+                />
+              </div>
+            </Step>
+          )}
+
+          {step === 3 && (
+            <Step
               title="¿Qué quieres mejorar?"
               subtitle="Puedes elegir más de uno."
             >
@@ -225,7 +266,7 @@ function Onboarding() {
 
         {/* Dots */}
         <div className="mt-12 flex items-center justify-center gap-2">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <span
               key={i}
               className="rounded-full transition-colors"
