@@ -129,15 +129,23 @@ export function ChatInterface() {
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", createdAt: Date.now() }]);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/ai", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           messages: next.slice(-20).map((m) => ({ role: m.role, content: m.content })),
-          context: contextRef.current,
         }),
       });
-      if (!res.ok || !res.body) throw new Error("AI error");
+      if (!res.ok || !res.body) {
+        const errText = await res.text().catch(() => "");
+        let msg = "AI error";
+        try { msg = JSON.parse(errText).error ?? msg; } catch {}
+        throw new Error(msg);
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
