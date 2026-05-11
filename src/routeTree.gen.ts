@@ -16,10 +16,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiQuickCaptureRouteImport } from './routes/api/quick-capture'
 import { Route as ApiDailyBriefRouteImport } from './routes/api/daily-brief'
 import { Route as ApiAiRouteImport } from './routes/api/ai'
-import { Route as AppTareasRouteImport } from './routes/_app.tareas'
-import { Route as AppReunionesRouteImport } from './routes/_app.reuniones'
-import { Route as AppRecordatoriosRouteImport } from './routes/_app.recordatorios'
-import { Route as AppNotasRouteImport } from './routes/_app.notas'
+import { Route as AppTasksRouteImport } from './routes/_app.tasks'
+import { Route as AppRemindersRouteImport } from './routes/_app.reminders'
+import { Route as AppNotesRouteImport } from './routes/_app.notes'
+import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 
@@ -57,24 +57,24 @@ const ApiAiRoute = ApiAiRouteImport.update({
   path: '/api/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppTareasRoute = AppTareasRouteImport.update({
-  id: '/tareas',
-  path: '/tareas',
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => AppRoute,
 } as any)
-const AppReunionesRoute = AppReunionesRouteImport.update({
-  id: '/reuniones',
-  path: '/reuniones',
+const AppRemindersRoute = AppRemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
   getParentRoute: () => AppRoute,
 } as any)
-const AppRecordatoriosRoute = AppRecordatoriosRouteImport.update({
-  id: '/recordatorios',
-  path: '/recordatorios',
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
   getParentRoute: () => AppRoute,
 } as any)
-const AppNotasRoute = AppNotasRouteImport.update({
-  id: '/notas',
-  path: '/notas',
+const AppMeetingsRoute = AppMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -94,10 +94,10 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
-  '/notas': typeof AppNotasRoute
-  '/recordatorios': typeof AppRecordatoriosRoute
-  '/reuniones': typeof AppReunionesRoute
-  '/tareas': typeof AppTareasRoute
+  '/meetings': typeof AppMeetingsRoute
+  '/notes': typeof AppNotesRoute
+  '/reminders': typeof AppRemindersRoute
+  '/tasks': typeof AppTasksRoute
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
@@ -108,10 +108,10 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
-  '/notas': typeof AppNotasRoute
-  '/recordatorios': typeof AppRecordatoriosRoute
-  '/reuniones': typeof AppReunionesRoute
-  '/tareas': typeof AppTareasRoute
+  '/meetings': typeof AppMeetingsRoute
+  '/notes': typeof AppNotesRoute
+  '/reminders': typeof AppRemindersRoute
+  '/tasks': typeof AppTasksRoute
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
@@ -124,10 +124,10 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/_app/chat': typeof AppChatRoute
   '/_app/dashboard': typeof AppDashboardRoute
-  '/_app/notas': typeof AppNotasRoute
-  '/_app/recordatorios': typeof AppRecordatoriosRoute
-  '/_app/reuniones': typeof AppReunionesRoute
-  '/_app/tareas': typeof AppTareasRoute
+  '/_app/meetings': typeof AppMeetingsRoute
+  '/_app/notes': typeof AppNotesRoute
+  '/_app/reminders': typeof AppRemindersRoute
+  '/_app/tasks': typeof AppTasksRoute
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
@@ -140,10 +140,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/chat'
     | '/dashboard'
-    | '/notas'
-    | '/recordatorios'
-    | '/reuniones'
-    | '/tareas'
+    | '/meetings'
+    | '/notes'
+    | '/reminders'
+    | '/tasks'
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
@@ -154,10 +154,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/chat'
     | '/dashboard'
-    | '/notas'
-    | '/recordatorios'
-    | '/reuniones'
-    | '/tareas'
+    | '/meetings'
+    | '/notes'
+    | '/reminders'
+    | '/tasks'
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
@@ -169,10 +169,10 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/_app/chat'
     | '/_app/dashboard'
-    | '/_app/notas'
-    | '/_app/recordatorios'
-    | '/_app/reuniones'
-    | '/_app/tareas'
+    | '/_app/meetings'
+    | '/_app/notes'
+    | '/_app/reminders'
+    | '/_app/tasks'
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
@@ -239,32 +239,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/tareas': {
-      id: '/_app/tareas'
-      path: '/tareas'
-      fullPath: '/tareas'
-      preLoaderRoute: typeof AppTareasRouteImport
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/reuniones': {
-      id: '/_app/reuniones'
-      path: '/reuniones'
-      fullPath: '/reuniones'
-      preLoaderRoute: typeof AppReunionesRouteImport
+    '/_app/reminders': {
+      id: '/_app/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof AppRemindersRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/recordatorios': {
-      id: '/_app/recordatorios'
-      path: '/recordatorios'
-      fullPath: '/recordatorios'
-      preLoaderRoute: typeof AppRecordatoriosRouteImport
+    '/_app/notes': {
+      id: '/_app/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/notas': {
-      id: '/_app/notas'
-      path: '/notas'
-      fullPath: '/notas'
-      preLoaderRoute: typeof AppNotasRouteImport
+    '/_app/meetings': {
+      id: '/_app/meetings'
+      path: '/meetings'
+      fullPath: '/meetings'
+      preLoaderRoute: typeof AppMeetingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dashboard': {
@@ -287,19 +287,19 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
   AppDashboardRoute: typeof AppDashboardRoute
-  AppNotasRoute: typeof AppNotasRoute
-  AppRecordatoriosRoute: typeof AppRecordatoriosRoute
-  AppReunionesRoute: typeof AppReunionesRoute
-  AppTareasRoute: typeof AppTareasRoute
+  AppMeetingsRoute: typeof AppMeetingsRoute
+  AppNotesRoute: typeof AppNotesRoute
+  AppRemindersRoute: typeof AppRemindersRoute
+  AppTasksRoute: typeof AppTasksRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
   AppDashboardRoute: AppDashboardRoute,
-  AppNotasRoute: AppNotasRoute,
-  AppRecordatoriosRoute: AppRecordatoriosRoute,
-  AppReunionesRoute: AppReunionesRoute,
-  AppTareasRoute: AppTareasRoute,
+  AppMeetingsRoute: AppMeetingsRoute,
+  AppNotesRoute: AppNotesRoute,
+  AppRemindersRoute: AppRemindersRoute,
+  AppTasksRoute: AppTasksRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -316,3 +316,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
