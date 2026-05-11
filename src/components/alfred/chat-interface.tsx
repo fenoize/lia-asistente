@@ -574,15 +574,31 @@ function InputBar({
   const hasText = value.trim().length > 0;
   return (
     <div
-      className="flex items-end gap-2"
+      className="flex items-end gap-2.5"
       style={{
-        background: "var(--bg-elevated)",
-        border: `1px solid ${focused ? "var(--accent-color)" : "var(--border)"}`,
-        borderRadius: "var(--radius-lg)",
-        padding: "8px 8px 8px 14px",
+        background: "#111111",
+        border: `1px solid ${focused ? "rgba(99,102,241,0.5)" : "#222"}`,
+        borderRadius: 14,
+        padding: "14px 16px",
         transition: "border-color 0.15s",
       }}
     >
+      <div
+        className="shrink-0 flex items-center justify-center"
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: "rgba(99,102,241,0.15)",
+          color: "#818cf8",
+          fontSize: 11,
+          fontWeight: 600,
+          marginBottom: 6,
+        }}
+        aria-hidden
+      >
+        A
+      </div>
       <textarea
         ref={taRef}
         value={value}
@@ -597,14 +613,12 @@ function InputBar({
         }}
         rows={1}
         placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
-        className="flex-1 bg-transparent resize-none focus:outline-none"
+        className="flex-1 bg-transparent resize-none focus:outline-none alfred-chat-input"
         style={{
           fontSize: 14,
           lineHeight: "22px",
           color: "var(--text-primary)",
           minHeight: 22,
-          paddingTop: 6,
-          paddingBottom: 6,
         }}
       />
       <button
@@ -615,8 +629,8 @@ function InputBar({
           width: 32,
           height: 32,
           borderRadius: "50%",
-          background: hasText ? "var(--accent-color)" : "var(--bg-hover)",
-          color: hasText ? "white" : "var(--text-tertiary)",
+          background: hasText ? "#6366f1" : "#1a1a1a",
+          color: hasText ? "white" : "#555",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
