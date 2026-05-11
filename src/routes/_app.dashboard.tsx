@@ -317,6 +317,19 @@ function Dashboard() {
           </div>
         )}
       </Block>
+
+      {/* Finanzas */}
+      <Block label="FINANZAS">
+        <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
+          Este mes: sin datos aún — configura tus cuentas{" "}
+          <Link
+            to="/finanzas"
+            style={{ color: "#6366f1", fontStyle: "normal" }}
+          >
+            configurar →
+          </Link>
+        </p>
+      </Block>
     </div>
   );
 }
