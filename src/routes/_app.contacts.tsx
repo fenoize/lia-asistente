@@ -128,43 +128,61 @@ function ContactsPage() {
       {/* Tabs + search */}
       <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          {(["client", "collaborator"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                background: tab === t ? "var(--accent-subtle)" : "transparent",
-                color: tab === t ? "var(--accent-color)" : "var(--text-secondary)",
-                fontWeight: tab === t ? 500 : 400,
-                borderRadius: "var(--radius-pill)",
-                padding: "6px 14px",
-                fontSize: 13,
-              }}
-            >
-              {t === "client" ? "Clientes" : "Colaboradores"}
-              <span style={{ marginLeft: 6, color: "var(--text-tertiary)", fontSize: 11 }}>
-                {contacts.filter((c) => c.type === t).length}
-              </span>
-            </button>
-          ))}
+          {(["client", "collaborator"] as const).map((t) => {
+            const active = tab === t;
+            const count = contacts.filter((c) => c.type === t).length;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                  border: `1px solid ${active ? "rgba(99,102,241,0.3)" : "#222"}`,
+                  color: active ? "#818cf8" : "#555",
+                  borderRadius: 100,
+                  padding: "6px 16px",
+                  fontSize: 12,
+                }}
+              >
+                {t === "client" ? "Clientes" : "Colaboradores"}
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: active ? "rgba(99,102,241,0.2)" : "#1a1a1a",
+                    color: active ? "#818cf8" : "#666",
+                    borderRadius: 100,
+                    padding: "1px 7px",
+                    minWidth: 18,
+                    textAlign: "center",
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
         <div
           className="flex items-center gap-2"
           style={{
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-pill)",
-            padding: "6px 12px",
-            minWidth: 220,
+            background: "#111",
+            border: "1px solid #1e1e1e",
+            borderRadius: 100,
+            padding: "8px 16px",
+            minWidth: 240,
           }}
         >
-          <IconSearch size={14} stroke={1.75} color="var(--text-tertiary)" />
+          <IconSearch size={14} stroke={1.75} color="#444" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar..."
             className="flex-1 bg-transparent focus:outline-none"
-            style={{ fontSize: 13, color: "var(--text-primary)" }}
+            style={{ fontSize: 13, color: "#888" }}
           />
         </div>
       </div>
