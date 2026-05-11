@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -28,6 +29,9 @@ type Meeting = {
   title: string;
   datetime: string;
   duration_minutes: number | null;
+  location: string | null;
+  notes: string | null;
+  preparation_needed: boolean | null;
 };
 type Reminder = { id: string; title: string; datetime: string; done: boolean };
 type BirthdayContact = {
@@ -59,7 +63,21 @@ function Dashboard() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const fetchedBriefRef = useRef(false);
+
+  const reloadMeetings = async () => {
+    if (!user) return;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const { data } = await supabase
+      .from("meetings")
+      .select("*")
+      .gte("datetime", start.toISOString())
+      .lte("datetime", end.toISOString())
+      .order("datetime");
+    setMeetings((data as Meeting[]) ?? []);
+  };
 
   const today = new Date();
   const hour = today.getHours();
@@ -353,7 +371,7 @@ function Dashboard() {
         ) : (
           <div className="space-y-2">
             {meetings.slice(0, 3).map((m) => (
-              <MeetingRow key={m.id} meeting={m} />
+              <MeetingRow key={m.id} meeting={m} onClick={() => setEditingMeeting(m)} />
             ))}
           </div>
         )}
@@ -416,6 +434,14 @@ function Dashboard() {
           </Link>
         </p>
       </Block>
+
+      {editingMeeting && (
+        <EditMeetingModal
+          meeting={editingMeeting}
+          onClose={() => setEditingMeeting(null)}
+          onSaved={async () => { setEditingMeeting(null); await reloadMeetings(); }}
+        />
+      )}
     </div>
   );
 }
@@ -445,20 +471,23 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MeetingRow({ meeting }: { meeting: Meeting }) {
+function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => void }) {
   const time = new Date(meeting.datetime).toLocaleTimeString("es-CL", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
   return (
-    <div
-      className="flex items-center gap-4 transition-colors"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-4 transition-colors w-full text-left"
       style={{
         background: "#111111",
         border: "1px solid #1e1e1e",
         borderRadius: 10,
         padding: "12px 16px",
+        cursor: onClick ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "var(--accent-subtle)";
@@ -497,7 +526,7 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
           {meeting.duration_minutes}m
         </span>
       )}
-    </div>
+    </button>
   );
 }
 
