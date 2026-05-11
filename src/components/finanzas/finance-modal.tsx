@@ -140,10 +140,15 @@ export function FinanceModal({
       };
     }
 
+    const tbl = supabase.from(TABLE[kind] as never) as unknown as {
+      update: (p: Record<string, unknown>) => { eq: (c: string, v: string) => Promise<unknown> };
+      insert: (p: Record<string, unknown>) => Promise<unknown>;
+      delete: () => { eq: (c: string, v: string) => Promise<unknown> };
+    };
     if (editing && record?.id) {
-      await supabase.from(TABLE[kind]).update(payload).eq("id", record.id);
+      await tbl.update(payload).eq("id", record.id);
     } else {
-      await supabase.from(TABLE[kind]).insert({ ...payload, user_id: u.user.id });
+      await tbl.insert({ ...payload, user_id: u.user.id });
     }
     setSaving(false);
     onSaved();
