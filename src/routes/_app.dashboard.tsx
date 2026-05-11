@@ -175,10 +175,18 @@ function Dashboard() {
     <div>
       {/* Greeting */}
       <header style={{ marginBottom: 32 }}>
-        <h1 className="alfred-h1">
-          {greeting}{name ? `, ${name}` : ""}. Soy {assistant.name}.
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            color: "#f2f2f2",
+            lineHeight: 1.15,
+          }}
+        >
+          {greeting}{name ? `, ${name}` : ""}.
         </h1>
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
+        <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
           {dateLabel}
         </p>
       </header>
@@ -186,27 +194,28 @@ function Dashboard() {
       {/* Daily Brief */}
       <section
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderLeft: "2px solid var(--accent-color)",
-          borderRadius: "var(--radius-lg)",
+          background: "#111111",
+          border: "1px solid #1e1e1e",
+          borderLeft: "3px solid #6366f1",
+          borderRadius: 12,
           padding: "20px 24px",
-          marginBottom: 32,
+          marginBottom: 8,
+          position: "relative",
         }}
       >
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-3">
             <span
               style={{
                 fontSize: 10,
-                color: "var(--accent-color)",
+                color: "#6366f1",
                 letterSpacing: "0.1em",
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
               {assistant.name.toUpperCase()}
             </span>
-            <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            <span style={{ fontSize: 13, color: "#555" }}>
               Resumen del día
             </span>
           </div>
@@ -214,8 +223,8 @@ function Dashboard() {
             onClick={generateBrief}
             disabled={briefLoading}
             aria-label="Regenerar resumen"
-            style={{ color: "var(--text-tertiary)" }}
-            className="hover:opacity-100 opacity-70 transition"
+            style={{ color: "#444" }}
+            className="hover:opacity-100 opacity-80 transition"
           >
             <IconRefresh
               size={14}
@@ -235,7 +244,9 @@ function Dashboard() {
             style={{
               opacity: briefLoading ? 0.5 : 1,
               transition: "opacity 0.2s",
-              color: "var(--text-primary)",
+              color: "#ccc",
+              fontSize: 14,
+              lineHeight: 1.7,
             }}
           >
             <ReactMarkdown>{brief}</ReactMarkdown>
@@ -243,7 +254,7 @@ function Dashboard() {
         ) : briefLoading ? (
           <Skeleton />
         ) : (
-          <p style={{ fontSize: 14, color: "var(--text-tertiary)" }}>
+          <p style={{ fontSize: 14, color: "#555", lineHeight: 1.7 }}>
             Sin resumen aún. Toca el ícono para generarlo.
           </p>
         )}
