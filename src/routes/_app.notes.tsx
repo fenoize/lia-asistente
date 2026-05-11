@@ -58,6 +58,16 @@ function NotesPage() {
     if (error) toast.error(error.message);
   };
 
+  const updateNote = async (id: string, patch: { content?: string; type?: string }) => {
+    const prev = notes;
+    setNotes((curr) => curr.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+    const { error } = await supabase.from("notes").update(patch).eq("id", id);
+    if (error) {
+      setNotes(prev);
+      toast.error(error.message);
+    }
+  };
+
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
