@@ -38,7 +38,7 @@ function SettingsPage() {
 
   const save = async () => {
     if (!user) return;
-    const finalName = name.trim() || "Alfred";
+    const finalName = name.trim() || "Lia";
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
