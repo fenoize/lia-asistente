@@ -84,15 +84,15 @@ function TasksPage() {
   }, [tasks, filter]);
 
   const groups = useMemo(() => {
-    const today: Task[] = [], week: Task[] = [], later: Task[] = [];
+    const urgent: Task[] = [], week: Task[] = [], later: Task[] = [];
     for (const t of filtered) {
+      if (t.priority === "high" || t.priority === "urgent") { urgent.push(t); continue; }
       if (!t.due_date) { later.push(t); continue; }
       const d = new Date(t.due_date);
-      if (d <= endOfToday()) today.push(t);
-      else if (d <= endOfWeek()) week.push(t);
+      if (d <= endOfWeek()) week.push(t);
       else later.push(t);
     }
-    return { today, week, later };
+    return { urgent, week, later };
   }, [filtered]);
 
   const toggle = async (t: Task) => {
