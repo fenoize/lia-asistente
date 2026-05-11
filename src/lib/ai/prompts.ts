@@ -11,6 +11,10 @@ export type AlfredContext = {
   activeReminders: string;
   assistantName: string;
   assistantGender: "feminine" | "masculine";
+  activeClients: number;
+  overdueProjects: string;
+  unassignedTasks: string;
+  inactiveClients: string;
 };
 
 function personalityBlock(c: AlfredContext): string {
