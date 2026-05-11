@@ -30,6 +30,7 @@ const SUGGESTIONS = [
   "¿Qué tareas están atrasadas?",
   "Estoy colapsado, ayúdame",
   "Reorganiza mi tarde",
+  "¿Cómo voy financieramente?",
 ];
 
 const ACTION_RE = /```action\s*([\s\S]*?)```/i;
