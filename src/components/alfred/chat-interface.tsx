@@ -172,7 +172,7 @@ export function ChatInterface() {
         metadata: action ? { actionStatus: "pending" } : null,
       } as any);
     } catch {
-      toast.error("Alfred no pudo responder.");
+      toast.error(`${assistant.name} no pudo responder.`);
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
     } finally {
       setStreaming(false);
@@ -274,13 +274,14 @@ export function ChatInterface() {
                       actionStatus={m.actionStatus}
                       onConfirm={() => m.action && confirmAction(m.id, m.action)}
                       onDecline={() => declineAction(m.id)}
+                      assistantInitial={assistant.name.charAt(0).toUpperCase()}
                     />
                   )}
                 </div>
               );
             })}
             {streaming && messages[messages.length - 1]?.role === "user" && (
-              <AlfredBubble text="" streaming action={null} />
+              <AlfredBubble text="" streaming action={null} assistantInitial={assistant.name.charAt(0).toUpperCase()} />
             )}
           </div>
         </div>
@@ -328,6 +329,7 @@ export function ChatInterface() {
             onChange={setInput}
             onSend={() => sendText(input)}
             disabled={streaming}
+            placeholder={`Pregúntale algo a ${assistant.name}...`}
           />
         </div>
       </div>
@@ -364,6 +366,7 @@ function AlfredBubble({
   actionStatus,
   onConfirm,
   onDecline,
+  assistantInitial,
 }: {
   text: string;
   streaming: boolean;
@@ -371,6 +374,7 @@ function AlfredBubble({
   actionStatus?: "pending" | "accepted" | "declined";
   onConfirm?: () => void;
   onDecline?: () => void;
+  assistantInitial?: string;
 }) {
   return (
     <div className="flex items-start gap-2.5">
@@ -387,7 +391,7 @@ function AlfredBubble({
           marginTop: 2,
         }}
       >
-        A
+        {assistantInitial ?? "A"}
       </div>
       <div className="flex-1 min-w-0">
         <div
@@ -552,12 +556,14 @@ function InputBar({
   onSend,
   disabled,
   taRef,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
   taRef: React.RefObject<HTMLTextAreaElement | null>;
+  placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
   const hasText = value.trim().length > 0;
@@ -585,7 +591,7 @@ function InputBar({
           }
         }}
         rows={1}
-        placeholder="Pregunta algo a Alfred..."
+        placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
         className="flex-1 bg-transparent resize-none focus:outline-none"
         style={{
           fontSize: 14,
