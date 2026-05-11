@@ -460,20 +460,23 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MeetingRow({ meeting }: { meeting: Meeting }) {
+function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => void }) {
   const time = new Date(meeting.datetime).toLocaleTimeString("es-CL", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
   return (
-    <div
-      className="flex items-center gap-4 transition-colors"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-4 transition-colors w-full text-left"
       style={{
         background: "#111111",
         border: "1px solid #1e1e1e",
         borderRadius: 10,
         padding: "12px 16px",
+        cursor: onClick ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "var(--accent-subtle)";
