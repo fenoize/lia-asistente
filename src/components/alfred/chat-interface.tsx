@@ -537,92 +537,77 @@ function ActionCard({
 }
 
 const InputBar = (
-  function InputBarFn({
-    value,
-    onChange,
-    onSend,
-    disabled,
-    forwardedRef,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    onSend: () => void;
-    disabled?: boolean;
-    forwardedRef: React.RefObject<HTMLTextAreaElement | null>;
-  }) {
-    const [focused, setFocused] = useState(false);
-    const hasText = value.trim().length > 0;
-    return (
-      <div
-        className="flex items-end gap-2"
-        style={{
-          background: "var(--bg-elevated)",
-          border: `1px solid ${focused ? "var(--accent-color)" : "var(--border)"}`,
-          borderRadius: "var(--radius-lg)",
-          padding: "8px 8px 8px 14px",
-          transition: "border-color 0.15s",
-        }}
-      >
-        <textarea
-          ref={forwardedRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              if (hasText && !disabled) onSend();
-            }
-          }}
-          rows={1}
-          placeholder="Pregunta algo a Alfred..."
-          className="flex-1 bg-transparent resize-none focus:outline-none"
-          style={{
-            fontSize: 14,
-            lineHeight: "22px",
-            color: "var(--text-primary)",
-            minHeight: 22,
-            paddingTop: 6,
-            paddingBottom: 6,
-          }}
-        />
-        <button
-          onClick={onSend}
-          disabled={!hasText || disabled}
-          aria-label="Enviar"
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            background: hasText ? "var(--accent-color)" : "var(--bg-hover)",
-            color: hasText ? "white" : "var(--text-tertiary)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s",
-            opacity: disabled ? 0.5 : 1,
-            flexShrink: 0,
-          }}
-        >
-          <IconArrowUp size={16} stroke={2.25} />
-        </button>
-      </div>
-    );
-  }
-) as unknown as React.FC<{
+function InputBar({
+  value,
+  onChange,
+  onSend,
+  disabled,
+  taRef,
+}: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
-  ref: React.RefObject<HTMLTextAreaElement | null>;
-}>;
+  taRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const [focused, setFocused] = useState(false);
+  const hasText = value.trim().length > 0;
+  return (
+    <div
+      className="flex items-end gap-2"
+      style={{
+        background: "var(--bg-elevated)",
+        border: `1px solid ${focused ? "var(--accent-color)" : "var(--border)"}`,
+        borderRadius: "var(--radius-lg)",
+        padding: "8px 8px 8px 14px",
+        transition: "border-color 0.15s",
+      }}
+    >
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (hasText && !disabled) onSend();
+          }
+        }}
+        rows={1}
+        placeholder="Pregunta algo a Alfred..."
+        className="flex-1 bg-transparent resize-none focus:outline-none"
+        style={{
+          fontSize: 14,
+          lineHeight: "22px",
+          color: "var(--text-primary)",
+          minHeight: 22,
+          paddingTop: 6,
+          paddingBottom: 6,
+        }}
+      />
+      <button
+        onClick={onSend}
+        disabled={!hasText || disabled}
+        aria-label="Enviar"
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          background: hasText ? "var(--accent-color)" : "var(--bg-hover)",
+          color: hasText ? "white" : "var(--text-tertiary)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "background 0.15s",
+          opacity: disabled ? 0.5 : 1,
+          flexShrink: 0,
+        }}
+      >
+        <IconArrowUp size={16} stroke={2.25} />
+      </button>
+    </div>
+  );
+}
 
-// Wrapper that adapts ref → forwardedRef without React.forwardRef boilerplate
-function _ChatInterfaceTypeFix() {} // keep TS happy
-
-// Re-export with proper ref handling
-export default ChatInterface;
-
-// ts-helper: route file uses { ref } prop above. Provide a tiny adapter.
-(InputBar as any).displayName = "InputBar";
