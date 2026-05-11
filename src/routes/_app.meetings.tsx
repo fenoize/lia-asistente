@@ -129,11 +129,13 @@ function MeetingsPage() {
         <Skeletons />
       ) : dayMeetings.length === 0 ? (
         <div className="text-center" style={{ padding: "80px 0" }}>
-          <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Sin reuniones este día.</p>
-          <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 6 }}>Buen momento para ejecutar.</p>
+          <p style={{ fontSize: 14, color: "#333" }}>Sin reuniones este día.</p>
+          <p style={{ fontSize: 13, color: "#2a2a2a", marginTop: 6 }}>
+            Buen momento para ejecutar.
+          </p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        <ul style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {dayMeetings.map((m) => <MeetingCard key={m.id} meeting={m} />)}
         </ul>
       )}
@@ -143,47 +145,69 @@ function MeetingsPage() {
 
 function MeetingCard({ meeting: m }: { meeting: Meeting }) {
   const t = new Date(m.datetime);
-  const time = t.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+  const time = t.toLocaleTimeString("es-CL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
   const isLink = !!m.location && /^https?:\/\//.test(m.location);
 
   return (
     <li
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: "14px 16px",
+        background: "#111111",
+        border: "1px solid #1e1e1e",
+        borderLeft: "3px solid #6366f1",
+        borderRadius: 12,
+        padding: "16px 20px",
       }}
     >
       <div className="flex items-center gap-3 mb-1">
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent-color)" }}>{time}</span>
-        <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>{m.title}</span>
+        <span
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: "#6366f1",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {time}
+        </span>
+        <span
+          style={{
+            flex: 1,
+            fontSize: 15,
+            fontWeight: 500,
+            color: "#e0e0e0",
+          }}
+        >
+          {m.title}
+        </span>
         {m.duration_minutes && (
           <span
             style={{
-              fontSize: 11, padding: "2px 8px",
-              borderRadius: "var(--radius-pill)",
-              background: "var(--bg-hover, rgba(255,255,255,0.05))",
-              color: "var(--text-secondary)",
+              fontSize: 11,
+              padding: "2px 10px",
+              borderRadius: 100,
+              background: "#1a1a1a",
+              border: "1px solid #222",
+              color: "#666",
             }}
           >
-            {m.duration_minutes} min
+            {m.duration_minutes}m
           </span>
         )}
       </div>
 
       {m.location && (
-        <div className="flex items-center gap-1.5 mt-1" style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+        <div className="flex items-center gap-1.5 mt-1" style={{ fontSize: 12, color: "#555" }}>
           {isLink ? <IconVideo size={12} /> : <IconMapPin size={12} />}
           <span className="truncate">{m.location}</span>
         </div>
       )}
 
       {m.notes && (
-        <p
-          className="mt-2 truncate"
-          style={{ fontSize: 12, color: "var(--text-tertiary)" }}
-        >
+        <p className="mt-2 truncate" style={{ fontSize: 12, color: "#555" }}>
           {m.notes}
         </p>
       )}
@@ -192,8 +216,9 @@ function MeetingCard({ meeting: m }: { meeting: Meeting }) {
         <span
           className="inline-flex items-center gap-1 mt-2"
           style={{
-            fontSize: 11, padding: "2px 8px",
-            borderRadius: "var(--radius-pill)",
+            fontSize: 11,
+            padding: "2px 10px",
+            borderRadius: 100,
             background: "rgba(251,146,60,0.14)",
             color: "#fdba74",
           }}
@@ -212,8 +237,10 @@ function Skeletons() {
         <div
           key={i}
           style={{
-            height: 64, borderRadius: "var(--radius-md)",
-            background: "var(--bg-elevated)", opacity: 0.5,
+            height: 72,
+            borderRadius: 12,
+            background: "#111",
+            opacity: 0.5,
             animation: "alfredShimmer 1.4s infinite",
           }}
         />
