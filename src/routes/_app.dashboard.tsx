@@ -310,23 +310,36 @@ function Dashboard() {
               Resumen del día
             </span>
           </div>
-          <button
-            onClick={generateBrief}
-            disabled={briefLoading}
-            aria-label="Regenerar resumen"
-            style={{ color: "#444" }}
-            className="hover:opacity-100 opacity-80 transition"
-          >
-            <IconRefresh
-              size={14}
-              stroke={1.75}
-              style={
-                briefLoading
-                  ? { animation: "alfredSpin 0.9s linear infinite" }
-                  : undefined
-              }
-            />
-          </button>
+          {(briefStaleness.hasChanges || !briefStaleness.hasBrief || briefLoading) && (
+            <button
+              onClick={generateBrief}
+              disabled={briefLoading}
+              aria-label="Actualizar resumen"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                color: "#6366f1",
+                background: "rgba(99,102,241,0.1)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                borderRadius: 999,
+                padding: "4px 10px",
+                cursor: briefLoading ? "not-allowed" : "pointer",
+                opacity: briefLoading ? 0.7 : 1,
+                transition: "background 0.15s",
+              }}
+              className="hover:bg-[rgba(99,102,241,0.18)]"
+            >
+              {briefLoading ? "Actualizando…" : "Actualizar"}
+              <IconRefresh
+                size={12}
+                stroke={2}
+                style={briefLoading ? { animation: "alfredSpin 0.9s linear infinite" } : undefined}
+              />
+            </button>
+          )}
         </div>
 
         {brief ? (
