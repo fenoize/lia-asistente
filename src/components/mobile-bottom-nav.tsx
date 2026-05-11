@@ -217,7 +217,7 @@ export function MobileBottomNav() {
             return (
               <button
                 key="center"
-                onClick={() => setCaptureOpen(true)}
+                onClick={() => window.dispatchEvent(new CustomEvent("alfred:quick-capture"))}
                 aria-label="Capturar"
                 style={{
                   width: 52,
@@ -294,7 +294,7 @@ export function MobileBottomNav() {
         })}
       </nav>
 
-      <QuickCaptureSheet open={captureOpen} onClose={() => setCaptureOpen(false)} />
+      
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
