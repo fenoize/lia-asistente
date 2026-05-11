@@ -22,6 +22,7 @@ import { Route as AppRemindersRouteImport } from './routes/_app.reminders'
 import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppNotesRouteImport } from './routes/_app.notes'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
+import { Route as AppFinanzasRouteImport } from './routes/_app.finanzas'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppContactsRouteImport } from './routes/_app.contacts'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
@@ -90,6 +91,11 @@ const AppMeetingsRoute = AppMeetingsRouteImport.update({
   path: '/meetings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFinanzasRoute = AppFinanzasRouteImport.update({
+  id: '/finanzas',
+  path: '/finanzas',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AppChatRoute
   '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/finanzas': typeof AppFinanzasRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
   '/projects': typeof AppProjectsRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AppChatRoute
   '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
+  '/finanzas': typeof AppFinanzasRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
   '/projects': typeof AppProjectsRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/_app/chat': typeof AppChatRoute
   '/_app/contacts': typeof AppContactsRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/finanzas': typeof AppFinanzasRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/notes': typeof AppNotesRoute
   '/_app/projects': typeof AppProjectsRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/contacts'
     | '/dashboard'
+    | '/finanzas'
     | '/meetings'
     | '/notes'
     | '/projects'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/contacts'
     | '/dashboard'
+    | '/finanzas'
     | '/meetings'
     | '/notes'
     | '/projects'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/_app/chat'
     | '/_app/contacts'
     | '/_app/dashboard'
+    | '/_app/finanzas'
     | '/_app/meetings'
     | '/_app/notes'
     | '/_app/projects'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMeetingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/finanzas': {
+      id: '/_app/finanzas'
+      path: '/finanzas'
+      fullPath: '/finanzas'
+      preLoaderRoute: typeof AppFinanzasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -345,6 +364,7 @@ interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
   AppContactsRoute: typeof AppContactsRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppFinanzasRoute: typeof AppFinanzasRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppNotesRoute: typeof AppNotesRoute
   AppProjectsRoute: typeof AppProjectsRoute
@@ -357,6 +377,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
   AppContactsRoute: AppContactsRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppFinanzasRoute: AppFinanzasRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppNotesRoute: AppNotesRoute,
   AppProjectsRoute: AppProjectsRoute,
@@ -379,3 +400,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
