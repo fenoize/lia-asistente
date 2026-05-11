@@ -1,219 +1,366 @@
-import { useEffect, useState } from "react";
-import { Plus, Sparkles, CheckSquare, Calendar, Bell, NotebookPen, ArrowRight } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
-type Classification = {
-  type: "task" | "meeting" | "reminder" | "note";
-  title: string;
-  description?: string | null;
-  datetime?: string | null;
-  priority?: "low" | "medium" | "high" | null;
-  duration_minutes?: number | null;
+type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea";
+
+const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
+  task: { label: "Tarea", emoji: "📋" },
+  meeting: { label: "Reunión", emoji: "📅" },
+  reminder: { label: "Recordatorio", emoji: "🔔" },
+  note: { label: "Nota", emoji: "📝" },
+  idea: { label: "Idea", emoji: "💡" },
 };
 
-const typeMeta = {
-  task: { label: "Tarea", icon: CheckSquare },
-  meeting: { label: "Reunión", icon: Calendar },
-  reminder: { label: "Recordatorio", icon: Bell },
-  note: { label: "Nota", icon: NotebookPen },
-} as const;
+const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
+
+function detectType(raw: string): CaptureType {
+  const t = raw.toLowerCase().trim();
+  if (!t) return "task";
+  if (/(reuni[oó]n|llama|llamada|\bcall\b|meeting|junta)/.test(t)) return "meeting";
+  if (/(recu[eé]rdame|recordar|recordatorio|ma[ñn]ana a las|hoy a las)/.test(t)) return "reminder";
+  if (TIME_RE.test(t)) return "reminder";
+  if (/(idea[: ]|💡|brainstorm)/.test(t)) return "idea";
+  if (t.length > 90) return "note";
+  return "task";
+}
+
+function nextDateAt(hour: number, minute: number, daysAhead = 0): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
+
+function parseDateTime(raw: string): string | null {
+  const t = raw.toLowerCase();
+  const m = t.match(TIME_RE);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3];
+  if (ap) {
+    if (ap === "pm" && h < 12) h += 12;
+    if (ap === "am" && h === 12) h = 0;
+  }
+  const days = /ma[ñn]ana/.test(t) ? 1 : 0;
+  return nextDateAt(h, min, days).toISOString();
+}
+
+function toDateInputs(iso: string | null): { date: string; time: string } {
+  const d = iso ? new Date(iso) : new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
+function fromDateInputs(date: string, time: string): string {
+  return new Date(`${date}T${time || "09:00"}`).toISOString();
+}
 
 export function QuickCapture() {
   const [open, setOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState<Classification | null>(null);
+  const [priority, setPriority] = useState<"urgent" | "high" | "medium" | "low">("medium");
+  const [noteKind, setNoteKind] = useState<"note" | "idea" | "highlight">("note");
+  const [dt, setDt] = useState<{ date: string; time: string }>(toDateInputs(null));
+  const [dtTouched, setDtTouched] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
+  const detected = useMemo(() => detectType(text), [text]);
+
+  // Open via custom event or ⌘K / Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((o) => !o);
+        setClosing(false);
+        setOpen(true);
+      }
+      if (e.key === "Escape" && open) {
+        e.preventDefault();
+        close();
       }
     };
+    const opener = () => { setClosing(false); setOpen(true); };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+    window.addEventListener("alfred:quick-capture", opener);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.removeEventListener("alfred:quick-capture", opener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  const reset = () => {
-    setText("");
-    setDraft(null);
-  };
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 30);
+  }, [open]);
 
-  const classify = async () => {
-    if (!text.trim()) return;
-    setBusy(true);
-    try {
-      const res = await fetch("/api/quick-capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = (await res.json()) as Classification;
-      setDraft(data);
-    } catch (e: any) {
-      toast.error("Alfred no pudo entender eso. Inténtalo otra vez.");
-    } finally {
+  // Auto-fill datetime from text when not manually edited
+  useEffect(() => {
+    if (dtTouched) return;
+    const iso = parseDateTime(text);
+    if (iso) setDt(toDateInputs(iso));
+  }, [text, dtTouched]);
+
+  function close() {
+    setClosing(true);
+    setTimeout(() => {
+      setOpen(false);
+      setClosing(false);
+      setText("");
       setBusy(false);
-    }
-  };
+      setPriority("medium");
+      setNoteKind("note");
+      setDt(toDateInputs(null));
+      setDtTouched(false);
+    }, 160);
+  }
 
-  const confirm = async () => {
-    if (!draft || !user) return;
+  async function save() {
+    if (!user || !text.trim()) return;
     setBusy(true);
     try {
-      if (draft.type === "task") {
+      const title = text.trim().split("\n")[0].slice(0, 140);
+      const priorityMap = { urgent: "high", high: "high", medium: "medium", low: "low" } as const;
+
+      if (detected === "task") {
         await supabase.from("tasks").insert({
           user_id: user.id,
-          title: draft.title,
-          description: draft.description ?? null,
-          priority: draft.priority ?? "medium",
-          due_date: draft.datetime ?? null,
+          title,
+          description: text.length > title.length ? text : null,
+          priority: priorityMap[priority],
+          due_date: dtTouched ? fromDateInputs(dt.date, dt.time) : null,
         });
-      } else if (draft.type === "meeting") {
+      } else if (detected === "meeting") {
         await supabase.from("meetings").insert({
           user_id: user.id,
-          title: draft.title,
-          datetime: draft.datetime ?? new Date().toISOString(),
-          duration_minutes: draft.duration_minutes ?? 60,
-          notes: draft.description ?? null,
+          title,
+          datetime: fromDateInputs(dt.date, dt.time),
         });
-      } else if (draft.type === "reminder") {
+      } else if (detected === "reminder") {
         await supabase.from("reminders").insert({
           user_id: user.id,
-          title: draft.title,
-          datetime: draft.datetime ?? new Date().toISOString(),
+          title,
+          datetime: fromDateInputs(dt.date, dt.time),
         });
       } else {
         await supabase.from("notes").insert({
           user_id: user.id,
-          content: draft.description || draft.title,
-          type: "note",
+          content: text,
+          type: detected === "idea" ? "idea" : noteKind,
         });
       }
-      toast.success("Listo.");
-      setOpen(false);
-      reset();
+
+      toast.success("Guardado", { description: title });
+      close();
     } catch (e: any) {
-      toast.error(e.message);
-    } finally {
+      toast.error(e.message ?? "No se pudo guardar");
       setBusy(false);
     }
-  };
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      save();
+    }
+  }
+
+  if (!open) return null;
+
+  const meta = typeMeta[detected];
+  const showDateTime = detected === "meeting" || detected === "reminder";
 
   return (
-    <>
-      <button
-        onClick={() => setOpen(true)}
-        className={cn(
-          "fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground",
-          "flex items-center justify-center transition hover:scale-105 glow-purple"
-        )}
-        aria-label="Captura rápida"
+    <div
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[18vh]"
+      style={{
+        background: "rgba(0,0,0,0.6)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        animation: closing ? "alfredQcOut 160ms ease forwards" : "alfredQcIn 180ms ease",
+      }}
+    >
+      <div
+        className="w-[520px] max-w-[92vw] flex flex-col"
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
+          transform: closing ? "scale(0.96)" : "scale(1)",
+          opacity: closing ? 0 : 1,
+          transition: "transform 160ms ease, opacity 160ms ease",
+        }}
       >
-        <Plus className="h-6 w-6" />
-      </button>
+        {/* Input */}
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="¿Qué quieres capturar?"
+          className="bg-transparent border-0 outline-none w-full"
+          style={{
+            padding: "20px 24px",
+            fontSize: 18,
+            color: "var(--text-primary)",
+          }}
+        />
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-        <DialogContent className="surface-1 border-border max-w-xl rounded-2xl p-0 gap-0">
-          {!draft ? (
-            <div className="p-5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                <Sparkles className="h-3.5 w-3.5" />
-                Captura rápida
-                <kbd className="ml-auto rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">⌘K</kbd>
+        {/* Type chip */}
+        {text.trim() && (
+          <div style={{ padding: "0 24px 12px" }}>
+            <span
+              className="inline-flex items-center gap-1.5"
+              style={{
+                background: "var(--accent-subtle)",
+                color: "var(--accent-color)",
+                border: "1px solid rgba(99,102,241,0.3)",
+                borderRadius: "var(--radius-pill)",
+                padding: "4px 10px",
+                fontSize: 13,
+              }}
+            >
+              <span>{meta.emoji}</span> {meta.label}
+            </span>
+          </div>
+        )}
+
+        <div style={{ borderTop: "1px solid var(--border-subtle)" }} />
+
+        {/* Smart fields */}
+        <div style={{ padding: "14px 24px", display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          {detected === "task" && (
+            <>
+              <div className="flex items-center gap-1.5">
+                {(["urgent", "high", "medium", "low"] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPriority(p)}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: 12,
+                      borderRadius: "var(--radius-pill)",
+                      border: "1px solid var(--border)",
+                      background: priority === p ? "var(--accent-subtle)" : "transparent",
+                      color: priority === p ? "var(--accent-color)" : "var(--text-secondary)",
+                    }}
+                  >
+                    {p === "urgent" ? "Urgente" : p === "high" ? "Alta" : p === "medium" ? "Media" : "Baja"}
+                  </button>
+                ))}
               </div>
-              <Textarea
-                autoFocus
-                placeholder="Escribe lo que sea. Yo decido si es tarea, reunión, recordatorio o nota."
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => {
-                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") classify();
+              <input
+                type="date"
+                value={dt.date}
+                onChange={(e) => { setDt({ ...dt, date: e.target.value }); setDtTouched(true); }}
+                style={{
+                  marginLeft: "auto",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "4px 8px",
+                  fontSize: 12,
+                  color: "var(--text-secondary)",
+                  colorScheme: "dark",
                 }}
-                rows={4}
-                className="border-0 bg-transparent text-base resize-none focus-visible:ring-0 px-0"
               />
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                <span className="text-xs text-muted-foreground">⌘ + Enter para procesar</span>
-                <Button onClick={classify} disabled={busy || !text.trim()} className="rounded-[20px] h-9">
-                  {busy ? "Pensando…" : "Procesar"}
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <DraftPreview
-              draft={draft}
-              busy={busy}
-              onCancel={reset}
-              onConfirm={confirm}
-              onEdit={(d) => setDraft(d)}
-            />
+            </>
           )}
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
 
-function DraftPreview({
-  draft, busy, onCancel, onConfirm, onEdit,
-}: {
-  draft: Classification;
-  busy: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-  onEdit: (d: Classification) => void;
-}) {
-  const meta = typeMeta[draft.type];
-  const Icon = meta.icon;
-  return (
-    <div className="p-5">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
-        <Sparkles className="h-3.5 w-3.5" />
-        Alfred lo clasificó como
-        <span className="inline-flex items-center gap-1 ml-1 rounded-full bg-primary/15 text-primary px-2 py-0.5">
-          <Icon className="h-3 w-3" />
-          {meta.label}
-        </span>
-      </div>
+          {showDateTime && (
+            <>
+              <input
+                type="date"
+                value={dt.date}
+                onChange={(e) => { setDt({ ...dt, date: e.target.value }); setDtTouched(true); }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "6px 10px",
+                  fontSize: 13,
+                  color: "var(--text-primary)",
+                  colorScheme: "dark",
+                }}
+              />
+              <input
+                type="time"
+                value={dt.time}
+                onChange={(e) => { setDt({ ...dt, time: e.target.value }); setDtTouched(true); }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "6px 10px",
+                  fontSize: 13,
+                  color: "var(--text-primary)",
+                  colorScheme: "dark",
+                }}
+              />
+            </>
+          )}
 
-      <input
-        value={draft.title}
-        onChange={(e) => onEdit({ ...draft, title: e.target.value })}
-        className="w-full bg-transparent text-lg font-medium focus:outline-none"
-      />
+          {(detected === "note" || detected === "idea") && (
+            <div className="flex items-center gap-1.5">
+              {(["note", "idea", "highlight"] as const).map((k) => (
+                <button
+                  key={k}
+                  onClick={() => setNoteKind(k)}
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: 12,
+                    borderRadius: "var(--radius-pill)",
+                    border: "1px solid var(--border)",
+                    background: noteKind === k ? "var(--accent-subtle)" : "transparent",
+                    color: noteKind === k ? "var(--accent-color)" : "var(--text-secondary)",
+                  }}
+                >
+                  {k === "note" ? "Nota" : k === "idea" ? "Idea" : "Highlight"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-      {draft.datetime && (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {new Date(draft.datetime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
-        </p>
-      )}
-      {draft.description && (
-        <p className="mt-3 text-sm text-muted-foreground whitespace-pre-wrap">{draft.description}</p>
-      )}
-      {draft.priority && draft.type === "task" && (
-        <span className="inline-block mt-3 text-xs text-muted-foreground">
-          Prioridad: <span className="text-foreground capitalize">{draft.priority}</span>
-        </span>
-      )}
+        <div style={{ borderTop: "1px solid var(--border-subtle)" }} />
 
-      <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-border">
-        <Button variant="ghost" onClick={onCancel} className="rounded-[20px] h-9">
-          Volver
-        </Button>
-        <Button onClick={onConfirm} disabled={busy} className="rounded-[20px] h-9">
-          {busy ? "Guardando…" : "Guardar"}
-        </Button>
+        {/* Footer */}
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: "12px 24px" }}
+        >
+          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
+            ↵ Guardar  ·  esc Cerrar
+          </span>
+          <button
+            onClick={save}
+            disabled={busy || !text.trim()}
+            style={{
+              fontSize: 12,
+              padding: "6px 14px",
+              borderRadius: "var(--radius-pill)",
+              background: "var(--accent-color)",
+              color: "white",
+              border: "none",
+              opacity: busy || !text.trim() ? 0.5 : 1,
+              cursor: busy || !text.trim() ? "not-allowed" : "pointer",
+            }}
+          >
+            {busy ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
       </div>
     </div>
   );
