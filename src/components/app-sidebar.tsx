@@ -101,19 +101,15 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 to={item.to}
                 onClick={onNavigate}
                 className={cn(
-                  "flex items-center w-full transition-colors",
-                  "no-underline",
+                  "inline-flex items-center transition-colors no-underline w-fit",
                 )}
                 style={{
-                  borderRadius: "var(--radius-pill)",
-                  padding: "7px 12px",
+                  borderRadius: "100px",
+                  padding: "7px 14px",
                   fontSize: 13,
                   fontWeight: active ? 500 : 400,
                   color: active ? "var(--accent-color)" : "var(--text-secondary)",
                   background: active ? "var(--accent-subtle)" : "transparent",
-                  border: active
-                    ? "1px solid var(--accent-subtle)"
-                    : "1px solid transparent",
                 }}
                 onMouseEnter={(e) => {
                   if (!active) {
