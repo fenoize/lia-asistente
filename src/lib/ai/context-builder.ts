@@ -44,7 +44,7 @@ export async function buildContext(
   const fourteenDaysAgo = new Date(now);
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-  const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes] = await Promise.all([
+  const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes, relationsRes] = await Promise.all([
     supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
       .select("title, priority, due_date, status, assigned_to, project_id")
@@ -62,9 +62,12 @@ export async function buildContext(
       .order("datetime", { ascending: true })
       .limit(20),
     supabase.from("contacts")
-      .select("id, name, type, status, last_activity_at, company"),
+      .select("id, name, type, relationship_type, status, last_activity_at, company, context, birthday, custom_fields")
+      .limit(50),
     supabase.from("projects")
       .select("id, name, status, due_date, client_id"),
+    supabase.from("contact_relations")
+      .select("contact_a, contact_b, relation_label, shared_context"),
   ]);
 
   const profile = profileRes.data ?? {};
@@ -74,6 +77,7 @@ export async function buildContext(
   const reminders = remindersRes.data ?? [];
   const contacts = contactsRes.data ?? [];
   const projects = projectsRes.data ?? [];
+  const relations = relationsRes.data ?? [];
 
   const overdue = tasks.filter(
     (t: any) => t.due_date && new Date(t.due_date) < startOfToday,
@@ -151,6 +155,30 @@ export async function buildContext(
         )
         .map((c: any) => `- ${c.name}${c.company ? ` (${c.company})` : ""}`),
       "(ninguno)",
+    ),
+    contactMemory: bullets(
+      contacts.map((c: any) => {
+        const rt = c.relationship_type ?? c.type ?? "contacto";
+        const ctx = c.context ? c.context.replace(/\s+/g, " ").trim().slice(0, 240) : "sin contexto";
+        const bday = c.birthday ? ` · cumpleaños ${c.birthday}` : "";
+        const cf = c.custom_fields && typeof c.custom_fields === "object"
+          ? Object.entries(c.custom_fields)
+              .filter(([k, v]) => k && v)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")
+          : "";
+        return `- ${c.name} (${rt}): ${ctx}${bday}${cf ? ` · ${cf}` : ""}`;
+      }),
+      "(sin contactos guardados)",
+    ),
+    contactLinks: bullets(
+      relations.map((r: any) => {
+        const a = contacts.find((c: any) => c.id === r.contact_a)?.name ?? "?";
+        const b = contacts.find((c: any) => c.id === r.contact_b)?.name ?? "?";
+        const sc = r.shared_context ? ` Contexto: ${r.shared_context}` : "";
+        return `- ${a} y ${b} son ${r.relation_label}.${sc}`;
+      }),
+      "(sin vínculos)",
     ),
   };
 }

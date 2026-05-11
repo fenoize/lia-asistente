@@ -7,6 +7,7 @@ import {
   IconRefresh,
   IconBell,
   IconCheck,
+  IconCake,
 } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -29,6 +30,23 @@ type Meeting = {
   duration_minutes: number | null;
 };
 type Reminder = { id: string; title: string; datetime: string; done: boolean };
+type BirthdayContact = {
+  id: string;
+  name: string;
+  birthday: string;
+  context: string | null;
+  daysUntil: number;
+};
+
+function daysUntil(birthdayIso: string): number {
+  const [, m, d] = birthdayIso.split("-").map(Number);
+  if (!m || !d) return 999;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), m - 1, d);
+  if (next < today) next = new Date(now.getFullYear() + 1, m - 1, d);
+  return Math.round((next.getTime() - today.getTime()) / 86_400_000);
+}
 
 function Dashboard() {
   const { user } = useAuth();
@@ -39,6 +57,7 @@ function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const fetchedBriefRef = useRef(false);
 
@@ -55,7 +74,7 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [profile, t, m, r] = await Promise.all([
+      const [profile, t, m, r, c] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase
           .from("tasks")
@@ -76,11 +95,26 @@ function Dashboard() {
           .gte("datetime", startOfDay.toISOString())
           .lte("datetime", endOfDay.toISOString())
           .order("datetime"),
+        supabase
+          .from("contacts")
+          .select("id,name,birthday,context")
+          .not("birthday", "is", null),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       setTasks((t.data as Task[]) ?? []);
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
+      const upcoming = ((c.data as any[]) ?? [])
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          birthday: row.birthday as string,
+          context: row.context as string | null,
+          daysUntil: daysUntil(row.birthday),
+        }))
+        .filter((b) => b.daysUntil <= 3)
+        .sort((a, b) => a.daysUntil - b.daysUntil);
+      setBirthdays(upcoming);
 
       const todayStr = today.toISOString().slice(0, 10);
       const { data: existing } = await supabase
@@ -259,6 +293,58 @@ function Dashboard() {
           </p>
         )}
       </section>
+
+      {/* Birthday alerts */}
+      {birthdays.map((b) => {
+        const when =
+          b.daysUntil === 0
+            ? `Hoy es el cumpleaños de ${b.name}.`
+            : b.daysUntil === 1
+              ? `Mañana es el cumpleaños de ${b.name}.`
+              : `En ${b.daysUntil} días es el cumpleaños de ${b.name}.`;
+        const firstLine = (b.context ?? "").split("\n")[0]?.trim();
+        return (
+          <div
+            key={b.id}
+            className="flex items-start gap-3"
+            style={{
+              background: "rgba(217,119,6,0.05)",
+              border: "1px solid rgba(217,119,6,0.15)",
+              borderRadius: 12,
+              padding: "14px 18px",
+              marginTop: 12,
+            }}
+          >
+            <IconCake size={16} stroke={1.75} color="#fbbf24" style={{ marginTop: 2 }} />
+            <div className="flex-1">
+              <div style={{ fontSize: 14, color: "#e0e0e0" }}>{when}</div>
+              {firstLine && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#666",
+                    marginTop: 4,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {firstLine}
+                </div>
+              )}
+            </div>
+            <Link
+              to="/meetings"
+              style={{
+                fontSize: 12,
+                color: "#fbbf24",
+                whiteSpace: "nowrap",
+                alignSelf: "center",
+              }}
+            >
+              Agendar algo →
+            </Link>
+          </div>
+        );
+      })}
 
       {/* Meetings */}
       <Block label="HOY">

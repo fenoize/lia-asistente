@@ -7,7 +7,11 @@ import {
   IconTrash,
   IconX,
   IconAddressBook,
-  IconChevronRight,
+  IconChevronDown,
+  IconChevronUp,
+  IconCake,
+  IconLink,
+  IconMapPin,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -18,9 +22,26 @@ export const Route = createFileRoute("/_app/contacts")({
   component: ContactsPage,
 });
 
+type RelType = "client" | "collaborator" | "friend" | "family" | "partner" | "other";
+
+const REL_TYPES: { id: RelType; label: string }[] = [
+  { id: "client", label: "Cliente" },
+  { id: "collaborator", label: "Colaborador" },
+  { id: "friend", label: "Amigo" },
+  { id: "family", label: "Familiar" },
+  { id: "partner", label: "Pareja" },
+  { id: "other", label: "Otro" },
+];
+const REL_LABEL: Record<RelType, string> = Object.fromEntries(
+  REL_TYPES.map((r) => [r.id, r.label]),
+) as Record<RelType, string>;
+
+const WORK_TYPES: RelType[] = ["client", "collaborator"];
+
 type Contact = {
   id: string;
   type: "client" | "collaborator";
+  relationship_type: RelType;
   name: string;
   email: string | null;
   phone: string | null;
@@ -28,6 +49,10 @@ type Contact = {
   role: string | null;
   status: "lead" | "active" | "inactive" | null;
   notes: string | null;
+  context: string | null;
+  birthday: string | null;
+  address: string | null;
+  custom_fields: Record<string, string> | null;
   last_activity_at: string | null;
 };
 
@@ -48,11 +73,69 @@ type TaskRow = {
   assigned_to: string | null;
 };
 
+type Meeting = {
+  id: string;
+  title: string;
+  datetime: string;
+};
+
+type Relation = {
+  id: string;
+  contact_a: string;
+  contact_b: string;
+  relation_label: string;
+  shared_context: string | null;
+};
+
 const STATUS_LABEL = { lead: "Lead", active: "Activo", inactive: "Inactivo" } as const;
+
+const CUSTOM_FIELD_SUGGESTIONS = ["Hijos", "Mascotas", "Pareja", "Trabajo", "Intereses"];
+const RELATION_SUGGESTIONS = [
+  "esposo/a",
+  "pareja",
+  "amigo/a",
+  "hermano/a",
+  "socio/a",
+  "colega",
+  "familiar",
+];
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function formatBirthday(iso: string | null): string | null {
+  if (!iso) return null;
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return null;
+  const months = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
+  return `${d} de ${months[m - 1]}`;
+}
+
+function daysUntilBirthday(iso: string | null): number | null {
+  if (!iso) return null;
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return null;
+  const now = new Date();
+  const year = now.getFullYear();
+  let next = new Date(year, m - 1, d);
+  const today = new Date(year, now.getMonth(), now.getDate());
+  if (next < today) next = new Date(year + 1, m - 1, d);
+  return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
 function ContactsPage() {
@@ -62,21 +145,28 @@ function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Contact | null>(null);
   const [showNew, setShowNew] = useState(false);
 
   const reload = async () => {
     if (!user) return;
-    const [c, p, t] = await Promise.all([
+    const [c, p, t, m, r] = await Promise.all([
       supabase.from("contacts").select("*").order("name"),
       supabase.from("projects").select("id,client_id,name,status,due_date"),
       supabase.from("tasks").select("id,title,status,due_date,project_id,assigned_to"),
+      supabase.from("meetings").select("id,title,datetime"),
+      supabase.from("contact_relations").select("*"),
     ]);
     setContacts((c.data as Contact[]) ?? []);
     setProjects((p.data as Project[]) ?? []);
     setTasks((t.data as TaskRow[]) ?? []);
+    setMeetings((m.data as Meeting[]) ?? []);
+    setRelations((r.data as Relation[]) ?? []);
     setLoading(false);
   };
 
@@ -89,7 +179,13 @@ function ContactsPage() {
   const filtered = useMemo(
     () =>
       contacts
-        .filter((c) => c.type === tab)
+        .filter((c) => {
+          const rt = c.relationship_type ?? c.type;
+          if (tab === "client") return rt === "client";
+          if (tab === "collaborator")
+            return rt !== "client";
+          return true;
+        })
         .filter((c) =>
           search.trim()
             ? (c.name + " " + (c.company ?? "") + " " + (c.email ?? ""))
@@ -109,6 +205,17 @@ function ContactsPage() {
     tasks.filter((t) => t.assigned_to === id);
 
   const openContact = contacts.find((c) => c.id === openId) ?? null;
+
+  const tabCounts = useMemo(() => {
+    let clients = 0;
+    let others = 0;
+    for (const c of contacts) {
+      const rt = c.relationship_type ?? c.type;
+      if (rt === "client") clients++;
+      else others++;
+    }
+    return { client: clients, collaborator: others };
+  }, [contacts]);
 
   return (
     <div>
@@ -130,7 +237,8 @@ function ContactsPage() {
         <div className="flex items-center gap-2">
           {(["client", "collaborator"] as const).map((t) => {
             const active = tab === t;
-            const count = contacts.filter((c) => c.type === t).length;
+            const count = tabCounts[t];
+            const label = t === "client" ? "Clientes" : "Personas";
             return (
               <button
                 key={t}
@@ -147,7 +255,7 @@ function ContactsPage() {
                   fontSize: 12,
                 }}
               >
-                {t === "client" ? "Clientes" : "Colaboradores"}
+                {label}
                 <span
                   style={{
                     fontSize: 10,
@@ -187,17 +295,13 @@ function ContactsPage() {
         </div>
       </div>
 
-      {/* Cards */}
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
               className="alfred-skeleton"
-              style={{
-                height: 96,
-                borderRadius: "var(--radius-md)",
-              }}
+              style={{ height: 96, borderRadius: 12 }}
             />
           ))}
         </div>
@@ -205,35 +309,38 @@ function ContactsPage() {
         <EmptyState type={tab} assistantName={assistant.name} onAdd={() => setShowNew(true)} />
       ) : (
         <div className="space-y-3">
-          {filtered.map((c) => (
-            <ContactCard
-              key={c.id}
-              contact={c}
-              projectCount={c.type === "client" ? projectsForClient(c.id).length : 0}
-              taskCount={
-                c.type === "client"
-                  ? tasksForClient(c.id).filter((t) => t.status !== "done").length
-                  : tasksForCollaborator(c.id).filter((t) => t.status !== "done").length
-              }
-              onOpen={() => setOpenId(c.id)}
-              onEdit={() => setOpenId(c.id)}
-              onDelete={async () => {
-                if (!confirm(`¿Borrar a ${c.name}?`)) return;
-                setContacts((prev) => prev.filter((x) => x.id !== c.id));
-                const { error } = await supabase.from("contacts").delete().eq("id", c.id);
-                if (error) {
-                  toast.error("No pude borrar.");
-                  reload();
-                } else toast.success("Borrado.");
-              }}
-            />
-          ))}
+          {filtered.map((c) => {
+            const rt = c.relationship_type ?? c.type;
+            const isClient = rt === "client";
+            return (
+              <ContactCard
+                key={c.id}
+                contact={c}
+                projectCount={isClient ? projectsForClient(c.id).length : 0}
+                taskCount={
+                  isClient
+                    ? tasksForClient(c.id).filter((t) => t.status !== "done").length
+                    : tasksForCollaborator(c.id).filter((t) => t.status !== "done").length
+                }
+                onOpen={() => setOpenId(c.id)}
+                onEdit={() => setEditing(c)}
+                onDelete={async () => {
+                  if (!confirm(`¿Borrar a ${c.name}?`)) return;
+                  setContacts((prev) => prev.filter((x) => x.id !== c.id));
+                  const { error } = await supabase.from("contacts").delete().eq("id", c.id);
+                  if (error) {
+                    toast.error("No pude borrar.");
+                    reload();
+                  } else toast.success("Borrado.");
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
-      {/* New contact modal */}
       {showNew && (
-        <NewContactModal
+        <ContactModal
           onClose={() => setShowNew(false)}
           onSaved={() => {
             setShowNew(false);
@@ -242,20 +349,35 @@ function ContactsPage() {
           userId={user?.id ?? ""}
         />
       )}
+      {editing && (
+        <ContactModal
+          contact={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            reload();
+          }}
+          userId={user?.id ?? ""}
+        />
+      )}
 
-      {/* Detail panel */}
       {openContact && (
         <ContactPanel
           contact={openContact}
+          allContacts={contacts}
           projects={projectsForClient(openContact.id)}
           tasks={
-            openContact.type === "client"
+            (openContact.relationship_type ?? openContact.type) === "client"
               ? tasksForClient(openContact.id)
               : tasksForCollaborator(openContact.id)
           }
-          allContacts={contacts}
+          meetings={meetings}
+          relations={relations}
+          onNavigate={(id) => setOpenId(id)}
           onClose={() => setOpenId(null)}
+          onEdit={() => setEditing(openContact)}
           onChange={reload}
+          userId={user?.id ?? ""}
         />
       )}
     </div>
@@ -278,12 +400,8 @@ function ContactCard({
   onDelete: () => void;
 }) {
   const [hover, setHover] = useState(false);
-  const statusColor =
-    contact.status === "active"
-      ? { bg: "oklch(0.5 0.15 145 / 18%)", color: "oklch(0.78 0.16 145)" }
-      : contact.status === "lead"
-        ? { bg: "oklch(0.55 0.15 75 / 18%)", color: "oklch(0.82 0.15 80)" }
-        : { bg: "transparent", color: "var(--text-tertiary)" };
+  const rt = contact.relationship_type ?? contact.type;
+  const isClient = rt === "client";
 
   return (
     <div
@@ -316,7 +434,7 @@ function ContactCard({
         <div style={{ fontSize: 15, fontWeight: 500, color: "#f2f2f2" }}>
           {contact.name}
         </div>
-        {contact.type === "client" && contact.status === "active" && (
+        {isClient && contact.status === "active" && (
           <span
             style={{
               fontSize: 11,
@@ -331,37 +449,39 @@ function ContactCard({
             Activo
           </span>
         )}
-        {contact.type === "client" && contact.status && contact.status !== "active" && (
+        {!isClient && (
           <span
             style={{
               fontSize: 11,
               padding: "2px 10px",
               borderRadius: 100,
-              background: statusColor.bg,
-              color: statusColor.color,
-              border: contact.status === "inactive" ? "1px solid #222" : "none",
+              background: "rgba(99,102,241,0.1)",
+              color: "#818cf8",
+              border: "1px solid rgba(99,102,241,0.2)",
               fontWeight: 500,
             }}
           >
-            {STATUS_LABEL[contact.status]}
+            {REL_LABEL[rt]}
           </span>
         )}
       </div>
       <div style={{ fontSize: 12, color: "#555", marginLeft: 48 }}>
-        {[
-          contact.type === "client" ? contact.company : contact.role,
-          contact.email,
-        ]
+        {[isClient ? contact.company : contact.role, contact.email]
           .filter(Boolean)
           .join(" · ") || "—"}
       </div>
       <div className="flex items-center justify-between mt-2" style={{ marginLeft: 48 }}>
         <div style={{ fontSize: 11, color: "#333" }}>
-          {contact.type === "client"
+          {isClient
             ? `${projectCount} proyecto${projectCount === 1 ? "" : "s"} · ${taskCount} tarea${taskCount === 1 ? "" : "s"} pendiente${taskCount === 1 ? "" : "s"}`
-            : `${taskCount} tarea${taskCount === 1 ? "" : "s"} asignada${taskCount === 1 ? "" : "s"}`}
+            : taskCount > 0
+              ? `${taskCount} tarea${taskCount === 1 ? "" : "s"} asignada${taskCount === 1 ? "" : "s"}`
+              : ""}
         </div>
-        <div className="flex items-center gap-2" style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s" }}>
+        <div
+          className="flex items-center gap-2"
+          style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s" }}
+        >
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -402,196 +522,360 @@ function EmptyState({
       className="text-center"
       style={{
         padding: "60px 24px",
-        border: "1px dashed var(--border)",
-        borderRadius: "var(--radius-lg)",
+        border: "1px dashed #1e1e1e",
+        borderRadius: 14,
       }}
     >
       <IconAddressBook
         size={28}
         stroke={1.5}
-        color="var(--text-tertiary)"
+        color="#444"
         style={{ margin: "0 auto 12px" }}
       />
       <p
         style={{
           fontSize: 14,
-          color: "var(--text-secondary)",
-          maxWidth: 360,
+          color: "#666",
+          maxWidth: 380,
           margin: "0 auto 16px",
           lineHeight: 1.5,
         }}
       >
         {type === "client"
           ? `Aún no tienes clientes registrados. Agrega tu primer cliente para que ${assistantName} tenga contexto de tus proyectos.`
-          : "Sin colaboradores aún. Agrega a quienes te ayudan a ejecutar."}
+          : `Sin personas aún. Agrega a quienes te rodean para que ${assistantName} las recuerde.`}
       </p>
       <button
         onClick={onAdd}
         style={{
-          background: "var(--accent-color)",
-          color: "white",
-          borderRadius: "var(--radius-pill)",
-          padding: "8px 18px",
+          background: "rgba(99,102,241,0.15)",
+          border: "1px solid rgba(99,102,241,0.3)",
+          color: "#818cf8",
+          borderRadius: 100,
+          padding: "7px 16px",
           fontSize: 13,
           fontWeight: 500,
         }}
       >
-        Agregar {type === "client" ? "cliente" : "colaborador"}
+        Agregar contacto
       </button>
     </div>
   );
 }
 
-function NewContactModal({
+/* ───────────── ContactModal (create + edit) ───────────── */
+
+function ContactModal({
+  contact,
   onClose,
   onSaved,
   userId,
 }: {
+  contact?: Contact;
   onClose: () => void;
   onSaved: () => void;
   userId: string;
 }) {
-  const [type, setType] = useState<"client" | "collaborator">("client");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [companyOrRole, setCompanyOrRole] = useState("");
-  const [status, setStatus] = useState<"lead" | "active" | "inactive">("active");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!contact;
+  const [relType, setRelType] = useState<RelType>(
+    (contact?.relationship_type as RelType) ?? "client",
+  );
+  const [name, setName] = useState(contact?.name ?? "");
+  const [email, setEmail] = useState(contact?.email ?? "");
+  const [phone, setPhone] = useState(contact?.phone ?? "");
+  const [company, setCompany] = useState(contact?.company ?? "");
+  const [role, setRole] = useState(contact?.role ?? "");
+  const [status, setStatus] = useState<"lead" | "active" | "inactive">(
+    (contact?.status as any) ?? "active",
+  );
+  const [context, setContext] = useState(contact?.context ?? "");
+  const [birthday, setBirthday] = useState(contact?.birthday ?? "");
+  const [address, setAddress] = useState(contact?.address ?? "");
+  const [customFields, setCustomFields] = useState<{ k: string; v: string }[]>(
+    Object.entries(contact?.custom_fields ?? {}).map(([k, v]) => ({
+      k,
+      v: String(v),
+    })),
+  );
+  const [personalOpen, setPersonalOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const isWork = WORK_TYPES.includes(relType);
 
   const save = async () => {
     if (!name.trim() || !userId) return;
     setBusy(true);
+    const cf: Record<string, string> = {};
+    for (const { k, v } of customFields) {
+      const key = k.trim();
+      if (key) cf[key] = v.trim();
+    }
     const payload: any = {
       user_id: userId,
-      type,
       name: name.trim(),
       email: email.trim() || null,
-      notes: notes.trim() || null,
+      phone: phone.trim() || null,
+      relationship_type: relType,
+      type: isWork ? relType : "collaborator", // legacy column
+      context: context.trim() || null,
+      birthday: birthday || null,
+      address: address.trim() || null,
+      custom_fields: cf,
     };
-    if (type === "client") {
-      payload.company = companyOrRole.trim() || null;
-      payload.status = status;
+    if (isWork) {
+      payload.company = company.trim() || null;
+      payload.role = role.trim() || null;
+      if (relType === "client") payload.status = status;
     } else {
-      payload.role = companyOrRole.trim() || null;
+      payload.company = null;
+      payload.role = null;
     }
-    const { error } = await supabase.from("contacts").insert(payload);
+    const res = isEdit
+      ? await supabase.from("contacts").update(payload).eq("id", contact!.id)
+      : await supabase.from("contacts").insert(payload);
     setBusy(false);
-    if (error) {
-      toast.error(error.message);
+    if (res.error) {
+      toast.error(res.error.message);
       return;
     }
-    toast.success("Guardado ✓");
+    toast.success(isEdit ? "Actualizado ✓" : "Guardado ✓");
     onSaved();
+  };
+
+  const addCustom = (label?: string) => {
+    setCustomFields((p) => [...p, { k: label ?? "", v: "" }]);
+    setPersonalOpen(true);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 overflow-y-auto"
       style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="my-auto"
         style={{
-          width: 480,
+          width: 540,
           maxWidth: "100%",
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 20,
+          background: "#0d0d0d",
+          border: "1px solid #1e1e1e",
+          borderRadius: 14,
+          padding: 22,
         }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 style={{ fontSize: 16, fontWeight: 500, color: "var(--text-primary)" }}>
-            Nuevo contacto
+        <div className="flex items-center justify-between mb-5">
+          <h2 style={{ fontSize: 17, fontWeight: 500, color: "#f2f2f2" }}>
+            {isEdit ? "Editar contacto" : "Nuevo contacto"}
           </h2>
-          <button onClick={onClose} aria-label="Cerrar" style={{ color: "var(--text-tertiary)" }}>
+          <button onClick={onClose} aria-label="Cerrar" style={{ color: "#555" }}>
             <IconX size={16} />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          {(["client", "collaborator"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setType(t)}
-              style={{
-                background: type === t ? "var(--accent-subtle)" : "transparent",
-                color: type === t ? "var(--accent-color)" : "var(--text-secondary)",
-                border: `1px solid ${type === t ? "var(--accent-color)" : "var(--border)"}`,
-                borderRadius: "var(--radius-pill)",
-                padding: "5px 12px",
-                fontSize: 12,
-              }}
-            >
-              {t === "client" ? "Cliente" : "Colaborador"}
-            </button>
-          ))}
+        {/* Relationship type */}
+        <SectionLabel>Tipo de relación</SectionLabel>
+        <div className="flex flex-wrap items-center gap-2 mb-5">
+          {REL_TYPES.map((t) => {
+            const active = relType === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setRelType(t.id)}
+                style={{
+                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                  border: `1px solid ${active ? "rgba(99,102,241,0.3)" : "#222"}`,
+                  color: active ? "#818cf8" : "#666",
+                  borderRadius: 100,
+                  padding: "5px 14px",
+                  fontSize: 12,
+                }}
+              >
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="space-y-3">
-          <Field label="Nombre">
-            <BareInput value={name} onChange={setName} placeholder="Nombre completo" autoFocus />
-          </Field>
-          <Field label="Email">
+        <div className="space-y-3 mb-5">
+          <BareInput value={name} onChange={setName} placeholder="Nombre completo" autoFocus />
+          <div className="grid grid-cols-2 gap-2">
             <BareInput value={email} onChange={setEmail} placeholder="email@ejemplo.com" />
-          </Field>
-          <Field label={type === "client" ? "Empresa" : "Rol"}>
-            <BareInput
-              value={companyOrRole}
-              onChange={setCompanyOrRole}
-              placeholder={type === "client" ? "Acme Inc." : "Diseñador, dev, etc."}
-            />
-          </Field>
-          {type === "client" && (
-            <Field label="Estado">
-              <div className="flex items-center gap-2">
-                {(["lead", "active", "inactive"] as const).map((s) => (
+            <BareInput value={phone} onChange={setPhone} placeholder="Teléfono" />
+          </div>
+
+          {isWork && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <BareInput
+                  value={company}
+                  onChange={setCompany}
+                  placeholder={relType === "client" ? "Empresa" : "Empresa (opcional)"}
+                />
+                <BareInput
+                  value={role}
+                  onChange={setRole}
+                  placeholder={relType === "client" ? "Su rol" : "Rol / función"}
+                />
+              </div>
+              {relType === "client" && (
+                <div className="flex items-center gap-2">
+                  {(["lead", "active", "inactive"] as const).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setStatus(s)}
+                      style={{
+                        background: status === s ? "rgba(99,102,241,0.15)" : "transparent",
+                        border: `1px solid ${status === s ? "rgba(99,102,241,0.3)" : "#222"}`,
+                        color: status === s ? "#818cf8" : "#555",
+                        borderRadius: 100,
+                        padding: "4px 12px",
+                        fontSize: 11,
+                      }}
+                    >
+                      {STATUS_LABEL[s]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Personal context */}
+        <SectionLabel>Contexto personal</SectionLabel>
+        <textarea
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          rows={5}
+          placeholder="¿Quién es esta persona? Cuéntame lo que quieras que recuerde sobre ella. Puede ser su historia, su personalidad, datos importantes, sus mascotas, sus hijos..."
+          className="w-full focus:outline-none resize-y"
+          style={{
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: "#ccc",
+            background: "#0d0d0d",
+            border: "1px solid #1e1e1e",
+            borderRadius: 10,
+            padding: "10px 12px",
+            marginBottom: 18,
+          }}
+        />
+
+        {/* Personal data (collapsible) */}
+        <button
+          onClick={() => setPersonalOpen((p) => !p)}
+          className="w-full flex items-center justify-between"
+          style={{
+            background: "transparent",
+            border: "1px solid #1e1e1e",
+            borderRadius: 10,
+            padding: "10px 14px",
+            color: "#888",
+            fontSize: 12,
+            fontWeight: 500,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}
+        >
+          Datos personales
+          {personalOpen ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+        </button>
+
+        {personalOpen && (
+          <div className="space-y-3 mt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <FieldLabel>Cumpleaños</FieldLabel>
+                <input
+                  type="date"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  className="w-full focus:outline-none"
+                  style={{
+                    fontSize: 13,
+                    color: birthday ? "#ccc" : "#444",
+                    background: "#0d0d0d",
+                    border: "1px solid #1e1e1e",
+                    borderRadius: 10,
+                    padding: "8px 12px",
+                    colorScheme: "dark",
+                  }}
+                />
+                {birthday && (
+                  <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                    {formatBirthday(birthday)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <FieldLabel>Comuna / Dirección</FieldLabel>
+                <BareInput value={address} onChange={setAddress} placeholder="Ej: Peñalolén" />
+              </div>
+            </div>
+
+            {customFields.length > 0 && (
+              <div className="space-y-2">
+                {customFields.map((cf, idx) => (
+                  <CustomFieldRow
+                    key={idx}
+                    keyName={cf.k}
+                    value={cf.v}
+                    onChange={(k, v) =>
+                      setCustomFields((prev) =>
+                        prev.map((x, i) => (i === idx ? { k, v } : x)),
+                      )
+                    }
+                    onRemove={() =>
+                      setCustomFields((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                  />
+                ))}
+              </div>
+            )}
+
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => addCustom()}
+                  className="flex items-center gap-1"
+                  style={{
+                    fontSize: 12,
+                    color: "#818cf8",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    borderRadius: 100,
+                    padding: "4px 12px",
+                  }}
+                >
+                  <IconPlus size={12} /> Agregar dato
+                </button>
+                {CUSTOM_FIELD_SUGGESTIONS.filter(
+                  (s) => !customFields.some((c) => c.k.toLowerCase() === s.toLowerCase()),
+                ).map((s) => (
                   <button
                     key={s}
-                    onClick={() => setStatus(s)}
+                    onClick={() => addCustom(s)}
                     style={{
-                      background: status === s ? "var(--accent-subtle)" : "transparent",
-                      color: status === s ? "var(--accent-color)" : "var(--text-secondary)",
-                      border: `1px solid ${status === s ? "var(--accent-color)" : "var(--border)"}`,
-                      borderRadius: "var(--radius-pill)",
-                      padding: "4px 12px",
-                      fontSize: 12,
+                      fontSize: 11,
+                      color: "#666",
+                      border: "1px solid #222",
+                      borderRadius: 100,
+                      padding: "3px 10px",
                     }}
                   >
-                    {STATUS_LABEL[s]}
+                    {s}
                   </button>
                 ))}
               </div>
-            </Field>
-          )}
-          <Field label="Notas">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Notas internas..."
-              className="w-full bg-transparent focus:outline-none resize-none"
-              style={{
-                fontSize: 13,
-                color: "var(--text-primary)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                padding: "8px 12px",
-              }}
-            />
-          </Field>
-        </div>
+            </div>
+          </div>
+        )}
 
-        <div className="flex items-center justify-end gap-2 mt-5">
+        <div className="flex items-center justify-end gap-2 mt-6">
           <button
             onClick={onClose}
-            style={{
-              fontSize: 13,
-              color: "var(--text-tertiary)",
-              padding: "7px 14px",
-            }}
+            style={{ fontSize: 13, color: "#555", padding: "7px 14px" }}
           >
             Cancelar
           </button>
@@ -599,9 +883,10 @@ function NewContactModal({
             onClick={save}
             disabled={busy || !name.trim()}
             style={{
-              background: "var(--accent-color)",
-              color: "white",
-              borderRadius: "var(--radius-pill)",
+              background: "rgba(99,102,241,0.15)",
+              border: "1px solid rgba(99,102,241,0.4)",
+              color: "#818cf8",
+              borderRadius: 100,
               padding: "7px 18px",
               fontSize: 13,
               fontWeight: 500,
@@ -616,24 +901,26 @@ function NewContactModal({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontSize: 11,
-          letterSpacing: "0.05em",
-          textTransform: "uppercase",
-          color: "var(--text-tertiary)",
-          marginBottom: 4,
-          fontWeight: 500,
-        }}
-      >
-        {label}
-      </label>
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        textTransform: "uppercase",
+        color: "#555",
+        marginBottom: 8,
+      }}
+    >
       {children}
     </div>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, color: "#444", marginBottom: 4 }}>{children}</div>
   );
 }
 
@@ -654,88 +941,136 @@ function BareInput({
       autoFocus={autoFocus}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full bg-transparent focus:outline-none"
+      className="w-full focus:outline-none"
       style={{
-        fontSize: 14,
-        color: "var(--text-primary)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
+        fontSize: 13,
+        color: "#ccc",
+        background: "#0d0d0d",
+        border: "1px solid #1e1e1e",
+        borderRadius: 10,
         padding: "8px 12px",
       }}
     />
   );
 }
 
+function CustomFieldRow({
+  keyName,
+  value,
+  onChange,
+  onRemove,
+}: {
+  keyName: string;
+  value: string;
+  onChange: (k: string, v: string) => void;
+  onRemove: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      className="flex items-center gap-2 group"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <input
+        value={keyName}
+        onChange={(e) => onChange(e.target.value, value)}
+        placeholder="Etiqueta"
+        className="focus:outline-none"
+        style={{
+          width: 140,
+          fontSize: 12,
+          color: "#aaa",
+          background: "#0d0d0d",
+          border: "1px solid #1e1e1e",
+          borderRadius: 10,
+          padding: "7px 10px",
+        }}
+      />
+      <input
+        value={value}
+        onChange={(e) => onChange(keyName, e.target.value)}
+        placeholder="Valor"
+        className="flex-1 focus:outline-none"
+        style={{
+          fontSize: 13,
+          color: "#ccc",
+          background: "#0d0d0d",
+          border: "1px solid #1e1e1e",
+          borderRadius: 10,
+          padding: "7px 10px",
+        }}
+      />
+      <button
+        onClick={onRemove}
+        aria-label="Eliminar"
+        style={{ color: "#444", opacity: hover ? 1 : 0, transition: "opacity 0.15s" }}
+      >
+        <IconTrash size={14} />
+      </button>
+    </div>
+  );
+}
+
+/* ───────────── Detail Panel ───────────── */
+
+type PanelTab = "profile" | "projects" | "meetings" | "links";
+
 function ContactPanel({
   contact,
+  allContacts,
   projects,
   tasks,
-  allContacts,
+  meetings,
+  relations,
   onClose,
+  onEdit,
   onChange,
+  onNavigate,
+  userId,
 }: {
   contact: Contact;
+  allContacts: Contact[];
   projects: Project[];
   tasks: TaskRow[];
-  allContacts: Contact[];
+  meetings: Meeting[];
+  relations: Relation[];
   onClose: () => void;
+  onEdit: () => void;
   onChange: () => void;
+  onNavigate: (id: string) => void;
+  userId: string;
 }) {
-  const [tab, setTab] = useState<"projects" | "tasks" | "info">(
-    contact.type === "client" ? "projects" : "tasks",
-  );
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState(contact);
+  const [tab, setTab] = useState<PanelTab>("profile");
+  const [showLinkModal, setShowLinkModal] = useState(false);
 
   useEffect(() => {
-    setForm(contact);
-    setEditing(false);
-    setTab(contact.type === "client" ? "projects" : "tasks");
-  }, [contact.id, contact.type]);
+    setTab("profile");
+  }, [contact.id]);
 
-  const saveInfo = async () => {
-    const { error } = await supabase
-      .from("contacts")
-      .update({
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        company: form.company,
-        role: form.role,
-        notes: form.notes,
-      })
-      .eq("id", contact.id);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Guardado ✓");
-      setEditing(false);
-      onChange();
-    }
-  };
+  const rt = contact.relationship_type ?? contact.type;
+  const birthdayLabel = formatBirthday(contact.birthday);
+  const days = daysUntilBirthday(contact.birthday);
+  const birthdaySoon = days !== null && days <= 7;
 
-  const tabs: { key: typeof tab; label: string }[] =
-    contact.type === "client"
-      ? [
-          { key: "projects", label: "Proyectos" },
-          { key: "tasks", label: "Tareas" },
-          { key: "info", label: "Info" },
-        ]
-      : [
-          { key: "tasks", label: "Tareas asignadas" },
-          { key: "info", label: "Info" },
-        ];
+  const myRelations = relations.filter(
+    (r) => r.contact_a === contact.id || r.contact_b === contact.id,
+  );
 
-  const tasksByProject = useMemo(() => {
-    const map = new Map<string, { name: string; tasks: TaskRow[] }>();
-    for (const t of tasks) {
-      const proj = projects.find((p) => p.id === t.project_id) ?? null;
-      const key = proj?.id ?? "_none";
-      const name = proj?.name ?? "Sin proyecto";
-      if (!map.has(key)) map.set(key, { name, tasks: [] });
-      map.get(key)!.tasks.push(t);
-    }
-    return Array.from(map.values());
-  }, [tasks, projects]);
+  const linkedContacts = myRelations
+    .map((r) => {
+      const otherId = r.contact_a === contact.id ? r.contact_b : r.contact_a;
+      return { relation: r, other: allContacts.find((c) => c.id === otherId) };
+    })
+    .filter((x) => !!x.other) as { relation: Relation; other: Contact }[];
+
+  const customEntries = Object.entries(contact.custom_fields ?? {}).filter(
+    ([k]) => k && k.trim(),
+  );
+
+  const contactMeetings = meetings.filter((m) =>
+    m.title.toLowerCase().includes(contact.name.toLowerCase()),
+  );
 
   return (
     <>
@@ -747,10 +1082,10 @@ function ContactPanel({
       <aside
         className="fixed top-0 right-0 h-screen z-50 overflow-y-auto scrollbar-thin"
         style={{
-          width: 360,
+          width: 380,
           maxWidth: "100%",
-          background: "var(--bg-base)",
-          borderLeft: "1px solid var(--border)",
+          background: "#0a0a0a",
+          borderLeft: "1px solid #1e1e1e",
           animation: "alfredPanelIn 200ms ease both",
         }}
       >
@@ -758,476 +1093,640 @@ function ContactPanel({
           @keyframes alfredPanelIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         `}</style>
 
-        <div className="flex items-center justify-between px-5 pt-5">
-          <div className="flex items-center gap-3">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4">
+          <div className="flex items-start justify-between mb-4">
             <div
               className="flex items-center justify-center rounded-full"
               style={{
-                width: 36,
-                height: 36,
-                background: "var(--accent-subtle)",
-                color: "var(--accent-color)",
-                fontSize: 13,
-                fontWeight: 500,
+                width: 48,
+                height: 48,
+                background: "rgba(99,102,241,0.15)",
+                color: "#818cf8",
+                fontSize: 16,
+                fontWeight: 600,
               }}
             >
               {initials(contact.name)}
             </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
-                {contact.name}
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-                {contact.type === "client"
-                  ? contact.company || "Cliente"
-                  : contact.role || "Colaborador"}
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onEdit}
+                aria-label="Editar"
+                style={{ color: "#555", padding: 4 }}
+              >
+                <IconPencil size={15} />
+              </button>
+              <button
+                onClick={onClose}
+                aria-label="Cerrar"
+                style={{ color: "#555", padding: 4 }}
+              >
+                <IconX size={16} />
+              </button>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Cerrar" style={{ color: "var(--text-tertiary)" }}>
-            <IconX size={16} />
-          </button>
+          <div style={{ fontSize: 18, fontWeight: 500, color: "#f2f2f2" }}>
+            {contact.name}
+          </div>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span
+              style={{
+                fontSize: 11,
+                padding: "2px 10px",
+                borderRadius: 100,
+                background: "rgba(99,102,241,0.1)",
+                color: "#818cf8",
+                border: "1px solid rgba(99,102,241,0.2)",
+              }}
+            >
+              {REL_LABEL[rt]}
+            </span>
+            {rt === "client" && contact.status === "active" && (
+              <span
+                style={{
+                  fontSize: 11,
+                  padding: "2px 10px",
+                  borderRadius: 100,
+                  background: "rgba(16,185,129,0.1)",
+                  color: "#34d399",
+                  border: "1px solid rgba(16,185,129,0.2)",
+                }}
+              >
+                Activo
+              </span>
+            )}
+          </div>
+          {birthdayLabel && (
+            <div className="flex items-center gap-2 mt-2.5">
+              <span style={{ fontSize: 13, color: "#888" }}>
+                🎂 {birthdayLabel}
+              </span>
+              {birthdaySoon && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "1px 8px",
+                    borderRadius: 100,
+                    background: "rgba(217,119,6,0.12)",
+                    color: "#fbbf24",
+                    border: "1px solid rgba(217,119,6,0.2)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {days === 0 ? "Hoy" : "Pronto"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-5 mt-5">
-          {tabs.map((t) => (
+        <div className="flex gap-1 px-6 mb-4 overflow-x-auto">
+          {(
+            [
+              { k: "profile", l: "Perfil" },
+              { k: "projects", l: "Proyectos" },
+              { k: "meetings", l: "Reuniones" },
+              { k: "links", l: `Vínculos${linkedContacts.length ? ` ${linkedContacts.length}` : ""}` },
+            ] as const
+          ).map((t) => (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={t.k}
+              onClick={() => setTab(t.k as PanelTab)}
               style={{
                 fontSize: 12,
-                padding: "6px 12px",
-                borderRadius: "var(--radius-pill)",
-                background: tab === t.key ? "var(--accent-subtle)" : "transparent",
-                color: tab === t.key ? "var(--accent-color)" : "var(--text-secondary)",
-                fontWeight: tab === t.key ? 500 : 400,
+                padding: "5px 12px",
+                borderRadius: 100,
+                background: tab === t.k ? "rgba(99,102,241,0.15)" : "transparent",
+                border: `1px solid ${tab === t.k ? "rgba(99,102,241,0.3)" : "#222"}`,
+                color: tab === t.k ? "#818cf8" : "#555",
+                whiteSpace: "nowrap",
               }}
             >
-              {t.label}
+              {t.l}
             </button>
           ))}
         </div>
 
-        <div className="px-5 py-5">
-          {tab === "projects" && (
-            <ProjectsTab
-              clientId={contact.id}
-              projects={projects}
-              tasks={tasks}
-              onChange={onChange}
+        <div className="px-6 pb-8">
+          {tab === "profile" && (
+            <ProfileTab
+              contact={contact}
+              customEntries={customEntries}
+              birthdayLabel={birthdayLabel}
             />
           )}
-          {tab === "tasks" && (
-            <div className="space-y-4">
-              {tasksByProject.length === 0 ? (
-                <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
-                  Sin tareas vinculadas.
-                </p>
+          {tab === "projects" && (
+            <div className="space-y-2">
+              {projects.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#555" }}>Sin proyectos vinculados.</p>
               ) : (
-                tasksByProject.map((g) => (
-                  <div key={g.name}>
+                projects.map((p) => {
+                  const projTasks = tasks.filter((t) => t.project_id === p.id);
+                  const done = projTasks.filter((t) => t.status === "done").length;
+                  return (
                     <div
+                      key={p.id}
                       style={{
-                        fontSize: 11,
-                        letterSpacing: "0.08em",
-                        textTransform: "uppercase",
-                        color: "var(--text-tertiary)",
-                        fontWeight: 500,
-                        marginBottom: 8,
+                        background: "#111",
+                        border: "1px solid #1e1e1e",
+                        borderRadius: 10,
+                        padding: 12,
                       }}
                     >
-                      {g.name}
+                      <div style={{ fontSize: 13, color: "#e0e0e0" }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                        {done}/{projTasks.length} tareas
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      {g.tasks.map((t) => (
-                        <TaskRowSmall key={t.id} task={t} contacts={allContacts} />
-                      ))}
+                  );
+                })
+              )}
+            </div>
+          )}
+          {tab === "meetings" && (
+            <div className="space-y-2">
+              {contactMeetings.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#555" }}>
+                  Sin reuniones registradas con {contact.name.split(" ")[0]}.
+                </p>
+              ) : (
+                contactMeetings.map((m) => (
+                  <div
+                    key={m.id}
+                    style={{
+                      background: "#111",
+                      border: "1px solid #1e1e1e",
+                      borderRadius: 10,
+                      padding: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 13, color: "#e0e0e0" }}>{m.title}</div>
+                    <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
+                      {new Date(m.datetime).toLocaleString("es-CL", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
                     </div>
                   </div>
                 ))
               )}
             </div>
           )}
-          {tab === "info" && (
+          {tab === "links" && (
             <div className="space-y-3">
-              <InfoField
-                label="Email"
-                value={form.email ?? ""}
-                editing={editing}
-                onChange={(v) => setForm({ ...form, email: v })}
-              />
-              <InfoField
-                label="Teléfono"
-                value={form.phone ?? ""}
-                editing={editing}
-                onChange={(v) => setForm({ ...form, phone: v })}
-              />
-              {contact.type === "client" ? (
-                <InfoField
-                  label="Empresa"
-                  value={form.company ?? ""}
-                  editing={editing}
-                  onChange={(v) => setForm({ ...form, company: v })}
-                />
+              <div className="flex items-center justify-between">
+                <SectionLabel>Vínculos</SectionLabel>
+                <button
+                  onClick={() => setShowLinkModal(true)}
+                  className="flex items-center gap-1"
+                  style={{
+                    fontSize: 12,
+                    color: "#818cf8",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    borderRadius: 100,
+                    padding: "3px 10px",
+                  }}
+                >
+                  <IconPlus size={11} /> Vincular
+                </button>
+              </div>
+              {linkedContacts.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#555" }}>
+                  Aún no hay vínculos. Conecta a {contact.name.split(" ")[0]} con otros
+                  contactos.
+                </p>
               ) : (
-                <InfoField
-                  label="Rol"
-                  value={form.role ?? ""}
-                  editing={editing}
-                  onChange={(v) => setForm({ ...form, role: v })}
-                />
-              )}
-              <InfoField
-                label="Notas"
-                value={form.notes ?? ""}
-                editing={editing}
-                multiline
-                onChange={(v) => setForm({ ...form, notes: v })}
-              />
-              <div className="flex items-center justify-end gap-2 pt-2">
-                {editing ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        setForm(contact);
-                        setEditing(false);
-                      }}
-                      style={{ fontSize: 12, color: "var(--text-tertiary)", padding: "5px 10px" }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={saveInfo}
-                      style={{
-                        background: "var(--accent-color)",
-                        color: "white",
-                        borderRadius: "var(--radius-pill)",
-                        padding: "5px 14px",
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Guardar
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setEditing(true)}
+                linkedContacts.map(({ relation, other }) => (
+                  <div
+                    key={relation.id}
+                    onClick={() => onNavigate(other.id)}
+                    className="cursor-pointer"
                     style={{
-                      background: "transparent",
-                      color: "var(--accent-color)",
-                      border: "1px solid var(--accent-color)",
-                      borderRadius: "var(--radius-pill)",
-                      padding: "5px 14px",
-                      fontSize: 12,
+                      background: "#111",
+                      border: "1px solid #1e1e1e",
+                      borderRadius: 10,
+                      padding: 12,
                     }}
                   >
-                    Editar
-                  </button>
-                )}
-              </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="flex items-center justify-center rounded-full"
+                        style={{
+                          width: 26,
+                          height: 26,
+                          background: "rgba(99,102,241,0.15)",
+                          color: "#818cf8",
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {initials(other.name)}
+                      </div>
+                      <div style={{ fontSize: 13, color: "#e0e0e0", flex: 1 }}>
+                        {other.name}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "1px 8px",
+                          borderRadius: 100,
+                          background: "rgba(99,102,241,0.1)",
+                          color: "#818cf8",
+                          border: "1px solid rgba(99,102,241,0.2)",
+                        }}
+                      >
+                        {relation.relation_label}
+                      </span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!confirm("¿Eliminar este vínculo?")) return;
+                          await supabase
+                            .from("contact_relations")
+                            .delete()
+                            .eq("id", relation.id);
+                          onChange();
+                        }}
+                        aria-label="Eliminar vínculo"
+                        style={{ color: "#444" }}
+                      >
+                        <IconTrash size={12} />
+                      </button>
+                    </div>
+                    {relation.shared_context && (
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#555",
+                          fontStyle: "italic",
+                          marginTop: 4,
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {relation.shared_context}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>
       </aside>
+
+      {showLinkModal && (
+        <LinkContactModal
+          contact={contact}
+          allContacts={allContacts}
+          existingRelations={myRelations}
+          userId={userId}
+          onClose={() => setShowLinkModal(false)}
+          onSaved={() => {
+            setShowLinkModal(false);
+            onChange();
+          }}
+        />
+      )}
     </>
   );
 }
 
-function InfoField({
-  label,
-  value,
-  editing,
-  onChange,
-  multiline,
+function ProfileTab({
+  contact,
+  customEntries,
+  birthdayLabel,
 }: {
-  label: string;
-  value: string;
-  editing: boolean;
-  onChange: (v: string) => void;
-  multiline?: boolean;
+  contact: Contact;
+  customEntries: [string, string][];
+  birthdayLabel: string | null;
 }) {
+  return (
+    <div className="space-y-5">
+      {contact.context && (
+        <div>
+          <SectionLabel>Contexto</SectionLabel>
+          <div
+            style={{
+              background: "#0d0d0d",
+              borderLeft: "2px solid #222",
+              borderRadius: "0 8px 8px 0",
+              padding: "12px 16px",
+              fontSize: 13,
+              color: "#888",
+              lineHeight: 1.7,
+              fontStyle: "italic",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {contact.context}
+          </div>
+        </div>
+      )}
+
+      {(contact.email || contact.phone || contact.company || contact.role) && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {contact.email && <KV k="Email" v={contact.email} />}
+          {contact.phone && <KV k="Teléfono" v={contact.phone} />}
+          {contact.company && <KV k="Empresa" v={contact.company} />}
+          {contact.role && <KV k="Rol" v={contact.role} />}
+        </div>
+      )}
+
+      {(contact.address || birthdayLabel || customEntries.length > 0) && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+          {contact.address && (
+            <KV
+              k="Dirección"
+              v={
+                <span className="inline-flex items-center gap-1">
+                  <IconMapPin size={11} color="#555" />
+                  {contact.address}
+                </span>
+              }
+            />
+          )}
+          {birthdayLabel && (
+            <KV
+              k="Cumpleaños"
+              v={
+                <span className="inline-flex items-center gap-1">
+                  <IconCake size={11} color="#fbbf24" />
+                  {birthdayLabel}
+                </span>
+              }
+            />
+          )}
+          {customEntries.map(([k, v]) => (
+            <KV key={k} k={k} v={v} />
+          ))}
+        </div>
+      )}
+
+      {!contact.context &&
+        customEntries.length === 0 &&
+        !contact.address &&
+        !birthdayLabel && (
+          <p style={{ fontSize: 13, color: "#444", lineHeight: 1.6 }}>
+            Sin contexto aún. Edita este contacto para agregar información personal.
+          </p>
+        )}
+    </div>
+  );
+}
+
+function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <div
-        style={{
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--text-tertiary)",
-          marginBottom: 4,
-          fontWeight: 500,
-        }}
-      >
-        {label}
+      <div style={{ fontSize: 11, color: "#444", textTransform: "capitalize" }}>{k}</div>
+      <div style={{ fontSize: 13, color: "#ccc", marginTop: 2, wordBreak: "break-word" }}>
+        {v}
       </div>
-      {editing ? (
-        multiline ? (
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            rows={3}
-            className="w-full bg-transparent focus:outline-none resize-none"
-            style={{
-              fontSize: 13,
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "6px 10px",
-            }}
-          />
-        ) : (
-          <input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full bg-transparent focus:outline-none"
-            style={{
-              fontSize: 13,
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "6px 10px",
-            }}
-          />
-        )
-      ) : (
-        <p
-          className="whitespace-pre-line"
-          style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}
-        >
-          {value || <span style={{ color: "var(--text-tertiary)" }}>—</span>}
-        </p>
-      )}
     </div>
   );
 }
 
-function ProjectsTab({
-  clientId,
-  projects,
-  tasks,
-  onChange,
-}: {
-  clientId: string;
-  projects: Project[];
-  tasks: TaskRow[];
-  onChange: () => void;
-}) {
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
-  const { user } = useAuth();
+/* ───────────── Link Modal ───────────── */
 
-  const createProject = async () => {
-    if (!name.trim() || !user) return;
-    const { error } = await supabase.from("projects").insert({
-      user_id: user.id,
-      client_id: clientId,
-      name: name.trim(),
-      status: "active",
+function LinkContactModal({
+  contact,
+  allContacts,
+  existingRelations,
+  userId,
+  onClose,
+  onSaved,
+}: {
+  contact: Contact;
+  allContacts: Contact[];
+  existingRelations: Relation[];
+  userId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [label, setLabel] = useState("");
+  const [shared, setShared] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const linkedIds = new Set(
+    existingRelations.flatMap((r) => [r.contact_a, r.contact_b]).filter((id) => id !== contact.id),
+  );
+
+  const candidates = allContacts
+    .filter((c) => c.id !== contact.id && !linkedIds.has(c.id))
+    .filter((c) =>
+      search.trim() ? c.name.toLowerCase().includes(search.toLowerCase()) : true,
+    )
+    .slice(0, 6);
+
+  const save = async () => {
+    if (!selectedId || !label.trim() || !userId) return;
+    setBusy(true);
+    const { error } = await supabase.from("contact_relations").insert({
+      user_id: userId,
+      contact_a: contact.id,
+      contact_b: selectedId,
+      relation_label: label.trim(),
+      shared_context: shared.trim() || null,
     });
-    if (error) toast.error(error.message);
-    else {
-      setName("");
-      setCreating(false);
-      toast.success("Proyecto creado.");
-      onChange();
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+    toast.success("Vínculo creado ✓");
+    onSaved();
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return (
-    <div className="space-y-3">
-      {projects.length === 0 && !creating && (
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>Sin proyectos aún.</p>
-      )}
-      {projects.map((p) => {
-        const projTasks = tasks.filter((t) => t.project_id === p.id);
-        const done = projTasks.filter((t) => t.status === "done").length;
-        const total = projTasks.length;
-        const overdue = p.due_date && new Date(p.due_date) < today;
-        const pct = total ? (done / total) * 100 : 0;
-        return (
-          <div
-            key={p.id}
-            style={{
-              background: "var(--bg-elevated)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: 12,
-            }}
-          >
-            <div className="flex items-center justify-between">
-              <div style={{ fontSize: 14, color: "var(--text-primary)" }}>{p.name}</div>
-              <span
-                style={{
-                  fontSize: 10,
-                  padding: "1px 8px",
-                  borderRadius: "var(--radius-pill)",
-                  background:
-                    p.status === "active"
-                      ? "var(--accent-subtle)"
-                      : "transparent",
-                  border:
-                    p.status === "active" ? "none" : "1px solid var(--border)",
-                  color:
-                    p.status === "active"
-                      ? "var(--accent-color)"
-                      : "var(--text-tertiary)",
-                }}
-              >
-                {p.status === "active" ? "Activo" : p.status === "paused" ? "Pausa" : "Done"}
-              </span>
-            </div>
-            {p.due_date && (
-              <div
-                style={{
-                  fontSize: 12,
-                  color: overdue ? "oklch(0.7 0.2 25)" : "var(--text-tertiary)",
-                  marginTop: 4,
-                }}
-              >
-                {new Date(p.due_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-              </div>
-            )}
-            <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6 }}>
-              {done}/{total} tareas completadas
-            </div>
-            <div
-              style={{
-                marginTop: 4,
-                height: 3,
-                background: "var(--border)",
-                borderRadius: 4,
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${pct}%`,
-                  height: "100%",
-                  background: "var(--accent-color)",
-                  transition: "width 0.3s",
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
-
-      {creating ? (
-        <div className="flex items-center gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-            onKeyDown={(e) => e.key === "Enter" && createProject()}
-            placeholder="Nombre del proyecto"
-            className="flex-1 bg-transparent focus:outline-none"
-            style={{
-              fontSize: 13,
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "6px 10px",
-            }}
-          />
-          <button
-            onClick={createProject}
-            style={{
-              background: "var(--accent-color)",
-              color: "white",
-              borderRadius: "var(--radius-pill)",
-              padding: "5px 12px",
-              fontSize: 12,
-            }}
-          >
-            Crear
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1"
-          style={{
-            fontSize: 12,
-            color: "var(--accent-color)",
-            padding: "6px 0",
-          }}
-        >
-          <IconPlus size={12} stroke={2} /> Nuevo proyecto
-        </button>
-      )}
-    </div>
-  );
-}
-
-function TaskRowSmall({ task, contacts }: { task: TaskRow; contacts: Contact[] }) {
-  const assignee = contacts.find((c) => c.id === task.assigned_to);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const overdue =
-    task.status !== "done" && task.due_date && new Date(task.due_date) < today;
   return (
     <div
-      className="flex items-center gap-2"
-      style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: "6px 10px",
-      }}
+      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
     >
-      <span
+      <div
+        onClick={(e) => e.stopPropagation()}
         style={{
-          fontSize: 13,
-          flex: 1,
-          color: task.status === "done" ? "var(--text-tertiary)" : "var(--text-primary)",
-          textDecoration: task.status === "done" ? "line-through" : "none",
+          width: 460,
+          maxWidth: "100%",
+          background: "#0d0d0d",
+          border: "1px solid #1e1e1e",
+          borderRadius: 14,
+          padding: 22,
         }}
       >
-        {task.title}
-      </span>
-      {assignee && (
-        <span
-          className="rounded-full flex items-center justify-center"
+        <div className="flex items-center justify-between mb-4">
+          <h2 style={{ fontSize: 16, fontWeight: 500, color: "#f2f2f2" }}>
+            Vincular con otro contacto
+          </h2>
+          <button onClick={onClose} aria-label="Cerrar" style={{ color: "#555" }}>
+            <IconX size={16} />
+          </button>
+        </div>
+
+        <SectionLabel>Contacto</SectionLabel>
+        {selectedId ? (
+          (() => {
+            const sel = allContacts.find((c) => c.id === selectedId);
+            return (
+              <div
+                className="flex items-center justify-between mb-4"
+                style={{
+                  background: "#111",
+                  border: "1px solid rgba(99,102,241,0.3)",
+                  borderRadius: 10,
+                  padding: "8px 12px",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center justify-center rounded-full"
+                    style={{
+                      width: 24,
+                      height: 24,
+                      background: "rgba(99,102,241,0.15)",
+                      color: "#818cf8",
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {initials(sel?.name ?? "")}
+                  </div>
+                  <span style={{ fontSize: 13, color: "#e0e0e0" }}>{sel?.name}</span>
+                </div>
+                <button onClick={() => setSelectedId(null)} style={{ color: "#555" }}>
+                  <IconX size={14} />
+                </button>
+              </div>
+            );
+          })()
+        ) : (
+          <>
+            <BareInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar contacto por nombre..."
+            />
+            {search.trim() && (
+              <div className="mt-2 space-y-1 mb-4">
+                {candidates.length === 0 ? (
+                  <p style={{ fontSize: 12, color: "#555", padding: "6px 4px" }}>
+                    Sin resultados.
+                  </p>
+                ) : (
+                  candidates.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setSelectedId(c.id);
+                        setSearch("");
+                      }}
+                      className="w-full flex items-center gap-2 text-left"
+                      style={{
+                        background: "#111",
+                        border: "1px solid #1e1e1e",
+                        borderRadius: 10,
+                        padding: "6px 10px",
+                      }}
+                    >
+                      <div
+                        className="flex items-center justify-center rounded-full"
+                        style={{
+                          width: 22,
+                          height: 22,
+                          background: "rgba(99,102,241,0.15)",
+                          color: "#818cf8",
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {initials(c.name)}
+                      </div>
+                      <span style={{ fontSize: 13, color: "#ccc" }}>{c.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+            {!search.trim() && <div className="mb-4" />}
+          </>
+        )}
+
+        <SectionLabel>Tipo de vínculo</SectionLabel>
+        <BareInput
+          value={label}
+          onChange={setLabel}
+          placeholder="Ej: esposo/a, amigo/a, socio/a..."
+        />
+        <div className="flex flex-wrap gap-1.5 mt-2 mb-4">
+          {RELATION_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setLabel(s)}
+              style={{
+                fontSize: 11,
+                color: "#666",
+                border: "1px solid #222",
+                borderRadius: 100,
+                padding: "3px 10px",
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <SectionLabel>Contexto compartido</SectionLabel>
+        <textarea
+          value={shared}
+          onChange={(e) => setShared(e.target.value)}
+          rows={3}
+          placeholder="¿Qué tienen en común? (lugar donde viven, proyectos compartidos, historia en común...)"
+          className="w-full focus:outline-none resize-none"
           style={{
-            width: 18,
-            height: 18,
-            background: "var(--accent-subtle)",
-            color: "var(--accent-color)",
-            fontSize: 9,
-            fontWeight: 500,
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: "#ccc",
+            background: "#0d0d0d",
+            border: "1px solid #1e1e1e",
+            borderRadius: 10,
+            padding: "10px 12px",
           }}
-        >
-          {initials(assignee.name)}
-        </span>
-      )}
-      <span
-        style={{
-          fontSize: 10,
-          padding: "1px 7px",
-          borderRadius: "var(--radius-pill)",
-          background:
-            task.status === "done"
-              ? "transparent"
-              : overdue
-                ? "oklch(0.5 0.15 25 / 18%)"
-                : "var(--accent-subtle)",
-          color:
-            task.status === "done"
-              ? "var(--text-tertiary)"
-              : overdue
-                ? "oklch(0.78 0.16 25)"
-                : "var(--accent-color)",
-          border: task.status === "done" ? "1px solid var(--border)" : "none",
-        }}
-      >
-        {task.status === "done" ? "Hecha" : overdue ? "Vencida" : "Pendiente"}
-      </span>
-      <IconChevronRight size={12} color="var(--text-tertiary)" />
+        />
+
+        <div className="flex items-center justify-end gap-2 mt-5">
+          <button
+            onClick={onClose}
+            style={{ fontSize: 13, color: "#555", padding: "7px 14px" }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={save}
+            disabled={busy || !selectedId || !label.trim()}
+            style={{
+              background: "rgba(99,102,241,0.15)",
+              border: "1px solid rgba(99,102,241,0.4)",
+              color: "#818cf8",
+              borderRadius: 100,
+              padding: "7px 18px",
+              fontSize: 13,
+              fontWeight: 500,
+              opacity: busy || !selectedId || !label.trim() ? 0.5 : 1,
+            }}
+          >
+            <span className="inline-flex items-center gap-1">
+              <IconLink size={12} />
+              {busy ? "Guardando…" : "Vincular"}
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
