@@ -169,6 +169,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          assistant_gender: string | null
+          assistant_name: string | null
           created_at: string | null
           email: string | null
           goals: string | null
@@ -181,6 +183,8 @@ export type Database = {
           timezone: string | null
         }
         Insert: {
+          assistant_gender?: string | null
+          assistant_name?: string | null
           created_at?: string | null
           email?: string | null
           goals?: string | null
@@ -193,6 +197,8 @@ export type Database = {
           timezone?: string | null
         }
         Update: {
+          assistant_gender?: string | null
+          assistant_name?: string | null
           created_at?: string | null
           email?: string | null
           goals?: string | null
