@@ -14,6 +14,7 @@ import {
   IconSettings,
   IconAddressBook,
   IconBriefcase,
+  IconCurrencyDollar,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -27,6 +28,7 @@ const items = [
   { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
   { to: "/reminders", label: "Recordatorios", icon: IconBell },
   { to: "/notes", label: "Notas", icon: IconPencil },
+  { to: "/finanzas", label: "Finanzas", icon: IconCurrencyDollar },
   { to: "/contacts", label: "Contactos", icon: IconAddressBook },
 ] as const;
 
