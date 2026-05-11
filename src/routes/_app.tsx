@@ -36,7 +36,9 @@ function AppLayout() {
         style={{ background: "var(--bg-base)" }}
       >
         <div key={pathname} className="alfred-page h-full">
-          <Outlet />
+          <div className="alfred-page-shell">
+            <Outlet />
+          </div>
         </div>
       </main>
       <QuickCapture />
