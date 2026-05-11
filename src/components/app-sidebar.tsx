@@ -101,7 +101,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
                 to={item.to}
                 onClick={onNavigate}
                 className={cn(
-                  "inline-flex items-center transition-colors no-underline w-fit",
+                  "flex items-center transition-colors no-underline w-fit",
                 )}
                 style={{
                   borderRadius: "100px",
