@@ -165,12 +165,22 @@ function Dashboard() {
       const todayStr = today.toISOString().slice(0, 10);
       const { data: existing } = await supabase
         .from("daily_briefs")
-        .select("content")
+        .select("content,generated_at")
         .eq("date", todayStr)
         .maybeSingle();
       if (existing) {
         setBrief(existing.content);
         fetchedBriefRef.current = true;
+        // Detect changes since brief generation
+        const since = existing.generated_at as string;
+        const [tNew, tUpd, mNew, rNew] = await Promise.all([
+          supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+          supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("updated_at", since),
+          supabase.from("meetings").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+          supabase.from("reminders").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+        ]);
+        const hasChanges = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0) > 0;
+        setBriefStaleness({ hasBrief: true, hasChanges });
       } else if (!fetchedBriefRef.current) {
         fetchedBriefRef.current = true;
         generateBrief();
