@@ -49,6 +49,54 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          last_activity_at: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          status: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity_at?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          last_activity_at?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          status?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_briefs: {
         Row: {
           content: string
@@ -212,6 +260,53 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          budget: number | null
+          client_id: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          name: string
+          notes: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          budget?: number | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          budget?: number | null
+          client_id?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reminders: {
         Row: {
           created_at: string | null
@@ -253,12 +348,14 @@ export type Database = {
       tasks: {
         Row: {
           ai_summary: string | null
+          assigned_to: string | null
           created_at: string | null
           description: string | null
           due_date: string | null
           id: string
           priority: string
           project: string | null
+          project_id: string | null
           status: string
           title: string
           updated_at: string | null
@@ -266,12 +363,14 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          assigned_to?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string
           project?: string | null
+          project_id?: string | null
           status?: string
           title: string
           updated_at?: string | null
@@ -279,18 +378,34 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          assigned_to?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
           id?: string
           priority?: string
           project?: string | null
+          project_id?: string | null
           status?: string
           title?: string
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_user_id_fkey"
             columns: ["user_id"]

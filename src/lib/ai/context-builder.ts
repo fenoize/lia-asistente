@@ -41,13 +41,15 @@ export async function buildContext(
   const startOfTomorrow = new Date(endOfToday); startOfTomorrow.setSeconds(startOfTomorrow.getSeconds() + 1);
   const endOfTomorrow = new Date(startOfTomorrow); endOfTomorrow.setHours(23, 59, 59, 999);
 
-  const [profileRes, tasksRes, meetingsRes, remindersRes] = await Promise.all([
+  const fourteenDaysAgo = new Date(now);
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes] = await Promise.all([
     supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
-      .select("title, priority, due_date, status")
-      .neq("status", "done")
+      .select("title, priority, due_date, status, assigned_to, project_id")
       .order("due_date", { ascending: true, nullsFirst: false })
-      .limit(30),
+      .limit(80),
     supabase.from("meetings")
       .select("title, datetime, duration_minutes, preparation_needed")
       .gte("datetime", startOfToday.toISOString())
@@ -59,12 +61,19 @@ export async function buildContext(
       .gte("datetime", startOfToday.toISOString())
       .order("datetime", { ascending: true })
       .limit(20),
+    supabase.from("contacts")
+      .select("id, name, type, status, last_activity_at, company"),
+    supabase.from("projects")
+      .select("id, name, status, due_date, client_id"),
   ]);
 
   const profile = profileRes.data ?? {};
-  const tasks = tasksRes.data ?? [];
+  const allTasks = tasksRes.data ?? [];
+  const tasks = allTasks.filter((t: any) => t.status !== "done");
   const meetings = meetingsRes.data ?? [];
   const reminders = remindersRes.data ?? [];
+  const contacts = contactsRes.data ?? [];
+  const projects = projectsRes.data ?? [];
 
   const overdue = tasks.filter(
     (t: any) => t.due_date && new Date(t.due_date) < startOfToday,
@@ -113,6 +122,34 @@ export async function buildContext(
     tomorrowMeetings: bullets(tomorrowMeetings.map(fmtMeeting), "(ninguna)"),
     activeReminders: bullets(
       reminders.map((r: any) => `- ${r.title} (${fmtDate(r.datetime)})`),
+      "(ninguno)",
+    ),
+    activeClients: contacts.filter((c: any) => c.type === "client" && c.status === "active").length,
+    overdueProjects: bullets(
+      projects
+        .filter(
+          (p: any) =>
+            p.status === "active" && p.due_date && new Date(p.due_date) < startOfToday,
+        )
+        .map((p: any) => {
+          const client = contacts.find((c: any) => c.id === p.client_id);
+          return `- ${p.name}${client ? ` (${client.name})` : ""} — vencía ${fmtDate(p.due_date)}`;
+        }),
+      "(ninguno)",
+    ),
+    unassignedTasks: bullets(
+      tasks.filter((t: any) => !t.assigned_to).map(fmtTask).slice(0, 15),
+      "(ninguna)",
+    ),
+    inactiveClients: bullets(
+      contacts
+        .filter(
+          (c: any) =>
+            c.type === "client" &&
+            c.status === "active" &&
+            (!c.last_activity_at || new Date(c.last_activity_at) < fourteenDaysAgo),
+        )
+        .map((c: any) => `- ${c.name}${c.company ? ` (${c.company})` : ""}`),
       "(ninguno)",
     ),
   };

@@ -19,9 +19,11 @@ import { Route as ApiAiRouteImport } from './routes/api/ai'
 import { Route as AppTasksRouteImport } from './routes/_app.tasks'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRemindersRouteImport } from './routes/_app.reminders'
+import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppNotesRouteImport } from './routes/_app.notes'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppContactsRouteImport } from './routes/_app.contacts'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -73,6 +75,11 @@ const AppRemindersRoute = AppRemindersRouteImport.update({
   path: '/reminders',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProjectsRoute = AppProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotesRoute = AppNotesRouteImport.update({
   id: '/notes',
   path: '/notes',
@@ -88,6 +95,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppContactsRoute = AppContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChatRoute = AppChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -99,9 +111,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/chat': typeof AppChatRoute
+  '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
   '/reminders': typeof AppRemindersRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
@@ -114,9 +128,11 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/chat': typeof AppChatRoute
+  '/contacts': typeof AppContactsRoute
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
   '/reminders': typeof AppRemindersRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
@@ -131,9 +147,11 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/_app/chat': typeof AppChatRoute
+  '/_app/contacts': typeof AppContactsRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/notes': typeof AppNotesRoute
+  '/_app/projects': typeof AppProjectsRoute
   '/_app/reminders': typeof AppRemindersRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tasks': typeof AppTasksRoute
@@ -148,9 +166,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/chat'
+    | '/contacts'
     | '/dashboard'
     | '/meetings'
     | '/notes'
+    | '/projects'
     | '/reminders'
     | '/settings'
     | '/tasks'
@@ -163,9 +183,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/chat'
+    | '/contacts'
     | '/dashboard'
     | '/meetings'
     | '/notes'
+    | '/projects'
     | '/reminders'
     | '/settings'
     | '/tasks'
@@ -179,9 +201,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/_app/chat'
+    | '/_app/contacts'
     | '/_app/dashboard'
     | '/_app/meetings'
     | '/_app/notes'
+    | '/_app/projects'
     | '/_app/reminders'
     | '/_app/settings'
     | '/_app/tasks'
@@ -272,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRemindersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/projects': {
+      id: '/_app/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/notes': {
       id: '/_app/notes'
       path: '/notes'
@@ -293,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/contacts': {
+      id: '/_app/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof AppContactsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/chat': {
       id: '/_app/chat'
       path: '/chat'
@@ -305,9 +343,11 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
+  AppContactsRoute: typeof AppContactsRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppProjectsRoute: typeof AppProjectsRoute
   AppRemindersRoute: typeof AppRemindersRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTasksRoute: typeof AppTasksRoute
@@ -315,9 +355,11 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
+  AppContactsRoute: AppContactsRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppNotesRoute: AppNotesRoute,
+  AppProjectsRoute: AppProjectsRoute,
   AppRemindersRoute: AppRemindersRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTasksRoute: AppTasksRoute,

@@ -11,6 +11,10 @@ export type AlfredContext = {
   activeReminders: string;
   assistantName: string;
   assistantGender: "feminine" | "masculine";
+  activeClients: number;
+  overdueProjects: string;
+  unassignedTasks: string;
+  inactiveClients: string;
 };
 
 function personalityBlock(c: AlfredContext): string {
@@ -54,6 +58,20 @@ ${c.tomorrowMeetings}
 
 Recordatorios activos:
 ${c.activeReminders}
+
+CONTEXTO DE CLIENTES Y PROYECTOS
+Clientes activos: ${c.activeClients}
+
+Proyectos atrasados:
+${c.overdueProjects}
+
+Tareas sin asignar:
+${c.unassignedTasks}
+
+Clientes sin actividad en 14+ días:
+${c.inactiveClients}
+
+Cuando el usuario pregunte por un cliente específico, busca en este contexto y responde con el estado real de sus proyectos y tareas.
 
 FILOSOFÍA
 - La IA propone. El humano aprueba. Nunca ejecutes sin confirmación.
