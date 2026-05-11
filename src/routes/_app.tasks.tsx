@@ -84,15 +84,15 @@ function TasksPage() {
   }, [tasks, filter]);
 
   const groups = useMemo(() => {
-    const today: Task[] = [], week: Task[] = [], later: Task[] = [];
+    const urgent: Task[] = [], week: Task[] = [], later: Task[] = [];
     for (const t of filtered) {
+      if (t.priority === "high" || t.priority === "urgent") { urgent.push(t); continue; }
       if (!t.due_date) { later.push(t); continue; }
       const d = new Date(t.due_date);
-      if (d <= endOfToday()) today.push(t);
-      else if (d <= endOfWeek()) week.push(t);
+      if (d <= endOfWeek()) week.push(t);
       else later.push(t);
     }
-    return { today, week, later };
+    return { urgent, week, later };
   }, [filtered]);
 
   const toggle = async (t: Task) => {
@@ -123,13 +123,16 @@ function TasksPage() {
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: 8 }}>
           <h1 className="alfred-h1">Tareas</h1>
           <span
             style={{
-              fontSize: 12, color: "var(--text-tertiary)",
-              padding: "2px 8px", borderRadius: "var(--radius-pill)",
-              background: "var(--bg-elevated)", border: "1px solid var(--border)",
+              fontSize: 11,
+              color: "#666",
+              padding: "2px 10px",
+              borderRadius: 100,
+              background: "#1a1a1a",
+              border: "1px solid #222",
             }}
           >
             {counts}
@@ -141,21 +144,28 @@ function TasksPage() {
       </header>
 
       <div className="flex flex-wrap gap-1.5 mb-6">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            style={{
-              fontSize: 12, padding: "5px 12px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--border)",
-              background: filter === f.id ? "var(--accent-subtle)" : "transparent",
-              color: filter === f.id ? "var(--accent-color)" : "var(--text-secondary)",
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              style={{
+                fontSize: 12,
+                padding: "6px 16px",
+                borderRadius: 100,
+                border: active
+                  ? "1px solid rgba(99,102,241,0.3)"
+                  : "1px solid #222",
+                background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                color: active ? "#818cf8" : "#555",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
@@ -167,15 +177,16 @@ function TasksPage() {
         />
       ) : (
         <div className="space-y-6">
-          {(["today", "week", "later"] as const).map((g) => {
+          {(["urgent", "week", "later"] as const).map((g) => {
             const list = groups[g];
             if (!list.length) return null;
-            const label = g === "today" ? "HOY" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
+            const label =
+              g === "urgent" ? "URGENTE" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
             return (
               <section key={g}>
                 <div className="alfred-section-label">{label}</div>
-                <ul className="space-y-1">
-                  {list.map((t) => (
+                <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {list.map((t: Task) => (
                     <TaskRow
                       key={t.id}
                       task={t}
@@ -218,15 +229,24 @@ function TaskRow({
 
   return (
     <li
-      className="group flex items-center gap-3"
-      style={{ padding: "8px 4px" }}
+      className="group flex items-center gap-3 transition-colors"
+      style={{
+        padding: "10px 12px",
+        borderRadius: 8,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#0f0f0f";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
     >
       <button
         onClick={onToggle}
         aria-label={done ? "Marcar pendiente" : "Marcar completada"}
         style={{
           width: 16, height: 16, borderRadius: "50%",
-          border: `1.5px solid ${done ? "var(--accent-color)" : "var(--border)"}`,
+          border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
           background: done ? "var(--accent-color)" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
@@ -248,15 +268,15 @@ function TaskRow({
             if (e.key === "Escape") onCancel();
           }}
           className="flex-1 bg-transparent border-0 outline-none"
-          style={{ fontSize: 14, color: "var(--text-primary)" }}
+          style={{ fontSize: 14, color: "#ccc" }}
         />
       ) : (
         <span
           onClick={onStartEdit}
-          className="flex-1 cursor-text"
+          className="flex-1 cursor-text truncate"
           style={{
             fontSize: 14,
-            color: done ? "var(--text-tertiary)" : "var(--text-primary)",
+            color: done ? "#444" : "#ccc",
             textDecoration: done ? "line-through" : "none",
           }}
         >
@@ -266,23 +286,11 @@ function TaskRow({
 
       <PriorityBadge priority={task.priority} />
 
-      {task.project && (
-        <span
-          style={{
-            fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-pill)",
-            background: "var(--bg-hover, var(--bg-elevated))",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {task.project}
-        </span>
-      )}
-
       {task.due_date && (
         <span
           style={{
             fontSize: 12,
-            color: overdue ? "#f87171" : "var(--text-tertiary)",
+            color: overdue ? "#f87171" : "#555",
           }}
         >
           {new Date(task.due_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
@@ -291,11 +299,11 @@ function TaskRow({
 
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
         <button onClick={onStartEdit} aria-label="Editar"
-          style={{ color: "var(--text-tertiary)", padding: 4 }}>
+          style={{ color: "#666", padding: 4 }}>
           <IconPencil size={14} />
         </button>
         <button onClick={onRemove} aria-label="Eliminar"
-          style={{ color: "var(--text-tertiary)", padding: 4 }}
+          style={{ color: "#666", padding: 4 }}
           className="hover:text-red-400">
           <IconTrash size={14} />
         </button>
@@ -305,20 +313,46 @@ function TaskRow({
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const map: Record<string, { label: string; bg: string; color: string; border?: string }> = {
-    urgent: { label: "Urgente", bg: "rgba(248,113,113,0.12)", color: "#fca5a5" },
-    high: { label: "Alta", bg: "rgba(251,191,36,0.12)", color: "#fcd34d" },
-    medium: { label: "Media", bg: "transparent", color: "var(--text-secondary)", border: "var(--border)" },
-    low: { label: "Baja", bg: "transparent", color: "var(--text-tertiary)" },
+  const map: Record<
+    string,
+    { label: string; bg: string; color: string; border: string }
+  > = {
+    urgent: {
+      label: "Alta",
+      bg: "rgba(220,38,38,0.1)",
+      color: "#f87171",
+      border: "1px solid rgba(220,38,38,0.2)",
+    },
+    high: {
+      label: "Alta",
+      bg: "rgba(220,38,38,0.1)",
+      color: "#f87171",
+      border: "1px solid rgba(220,38,38,0.2)",
+    },
+    medium: {
+      label: "Media",
+      bg: "rgba(217,119,6,0.1)",
+      color: "#fbbf24",
+      border: "1px solid rgba(217,119,6,0.2)",
+    },
+    low: {
+      label: "Baja",
+      bg: "transparent",
+      color: "#444",
+      border: "1px solid #222",
+    },
   };
   const m = map[priority] ?? map.medium;
   return (
     <span
       style={{
-        fontSize: 11, padding: "2px 8px",
-        borderRadius: "var(--radius-pill)",
-        background: m.bg, color: m.color,
-        border: m.border ? `1px solid ${m.border}` : "none",
+        fontSize: 11,
+        padding: "2px 10px",
+        borderRadius: 100,
+        background: m.bg,
+        color: m.color,
+        border: m.border,
+        whiteSpace: "nowrap",
       }}
     >
       {m.label}
