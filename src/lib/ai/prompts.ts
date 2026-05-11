@@ -9,10 +9,23 @@ export type AlfredContext = {
   todayMeetings: string;
   tomorrowMeetings: string;
   activeReminders: string;
+  assistantName: string;
+  assistantGender: "feminine" | "masculine";
 };
 
+function personalityBlock(c: AlfredContext): string {
+  const persona =
+    c.assistantGender === "feminine"
+      ? `Eres mujer. Hablas en femenino. Cercana, cálida, directa y estratégica. Como Donna Paulsen: inteligente, empática, sin rodeos.`
+      : `Eres hombre. Hablas en masculino. Directo, sólido y estratégico. Como un Chief of Staff de confianza.`;
+  return `Tu nombre es ${c.assistantName}.
+Personalidad: ${persona}`;
+}
+
 export function buildSystemPrompt(c: AlfredContext): string {
-  return `Eres Alfred, el asistente ejecutivo personal de ${c.name}.
+  return `Eres ${c.assistantName}, el asistente ejecutivo personal de ${c.name}.
+
+${personalityBlock(c)}
 
 ROL
 Actúas como un Chief of Staff personal: estratégico, directo, cercano, sin rodeos.
@@ -69,7 +82,10 @@ El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
 }
 
 export function buildBriefSystemPrompt(c: AlfredContext): string {
-  return `Eres Alfred, asistente ejecutivo personal de ${c.name}.
+  return `Eres ${c.assistantName}, asistente ejecutivo personal de ${c.name}.
+
+${personalityBlock(c)}
+
 Generas el resumen breve del día. Español, tuteo, sin preámbulos, sin emojis.
 
 Usa exactamente esta estructura:

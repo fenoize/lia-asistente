@@ -42,7 +42,7 @@ export async function buildContext(
   const endOfTomorrow = new Date(startOfTomorrow); endOfTomorrow.setHours(23, 59, 59, 999);
 
   const [profileRes, tasksRes, meetingsRes, remindersRes] = await Promise.all([
-    supabase.from("profiles").select("name, role, goals, timezone").maybeSingle(),
+    supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
       .select("title, priority, due_date, status")
       .neq("status", "done")
@@ -90,11 +90,15 @@ export async function buildContext(
     (m: any) => new Date(m.datetime) > endOfToday,
   );
 
+  const gender = ((profile as any).assistant_gender === "feminine" ? "feminine" : "masculine") as "feminine" | "masculine";
+
   return {
     name: (profile as any).name ?? "amigo",
     role: (profile as any).role ?? "(sin definir)",
     goals: (profile as any).goals ?? "(sin definir)",
     timezone: (profile as any).timezone ?? TZ,
+    assistantName: (profile as any).assistant_name ?? "Alfred",
+    assistantGender: gender,
     currentTime: now.toLocaleString("es-CL", {
       timeZone: TZ,
       weekday: "long",
