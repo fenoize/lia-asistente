@@ -515,7 +515,7 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
           {meeting.duration_minutes}m
         </span>
       )}
-    </div>
+    </button>
   );
 }
 
