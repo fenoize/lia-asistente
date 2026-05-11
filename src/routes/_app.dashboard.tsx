@@ -74,7 +74,7 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [profile, t, m, r] = await Promise.all([
+      const [profile, t, m, r, c] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase
           .from("tasks")
@@ -95,11 +95,26 @@ function Dashboard() {
           .gte("datetime", startOfDay.toISOString())
           .lte("datetime", endOfDay.toISOString())
           .order("datetime"),
+        supabase
+          .from("contacts")
+          .select("id,name,birthday,context")
+          .not("birthday", "is", null),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       setTasks((t.data as Task[]) ?? []);
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
+      const upcoming = ((c.data as any[]) ?? [])
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          birthday: row.birthday as string,
+          context: row.context as string | null,
+          daysUntil: daysUntil(row.birthday),
+        }))
+        .filter((b) => b.daysUntil <= 3)
+        .sort((a, b) => a.daysUntil - b.daysUntil);
+      setBirthdays(upcoming);
 
       const todayStr = today.toISOString().slice(0, 10);
       const { data: existing } = await supabase
