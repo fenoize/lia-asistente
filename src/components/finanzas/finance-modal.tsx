@@ -158,7 +158,7 @@ export function FinanceModal({
     if (!record?.id) return;
     if (!confirm(`¿Eliminar ${TITLE[kind]}?`)) return;
     setSaving(true);
-    await supabase.from(TABLE[kind]).delete().eq("id", record.id);
+    await (supabase.from(TABLE[kind] as never) as unknown as { delete: () => { eq: (c: string, v: string) => Promise<unknown> } }).delete().eq("id", record.id);
     setSaving(false);
     onSaved();
   };
