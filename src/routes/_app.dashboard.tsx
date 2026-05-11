@@ -443,15 +443,23 @@ function Dashboard() {
 
       {/* Finanzas */}
       <Block label="FINANZAS">
-        <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
-          Este mes: sin datos aún — configura tus cuentas{" "}
-          <Link
-            to="/finanzas"
-            style={{ color: "#6366f1", fontStyle: "normal" }}
-          >
-            configurar →
+        {!finance || !finance.hasData ? (
+          <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
+            Este mes: sin datos aún — {" "}
+            <Link to="/finanzas" style={{ color: "#6366f1", fontStyle: "normal" }}>
+              configurar →
+            </Link>
+          </p>
+        ) : (
+          <Link to="/finanzas" style={{ display: "block", textDecoration: "none" }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#bbb" }}>
+              <span>Ingresos: <strong style={{ color: "#10b981" }}>{fmtMoney(finance.income, finance.currency)}</strong></span>
+              <span>Gastos: <strong style={{ color: "#ef4444" }}>{fmtMoney(finance.expense, finance.currency)}</strong></span>
+              <span>Balance: <strong style={{ color: finance.income - finance.expense >= 0 ? "#10b981" : "#ef4444" }}>{fmtMoney(finance.income - finance.expense, finance.currency)}</strong></span>
+              {finance.pending > 0 && <span>Por cobrar: <strong style={{ color: "#f59e0b" }}>{fmtMoney(finance.pending, finance.currency)}</strong></span>}
+            </div>
           </Link>
-        </p>
+        )}
       </Block>
 
       {editingMeeting && (
