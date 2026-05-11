@@ -16,8 +16,8 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userName, setUserName] = useState("");
-  const [name, setName] = useState("Alfred");
-  const [gender, setGender] = useState<Gender>("masculine");
+  const [name, setName] = useState("Lia");
+  const [gender, setGender] = useState<Gender>("feminine");
 
   useEffect(() => {
     if (!user) return;
