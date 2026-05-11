@@ -184,7 +184,6 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [captureOpen, setCaptureOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const items = [
