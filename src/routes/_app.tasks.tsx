@@ -121,12 +121,10 @@ function TasksPage() {
   const counts = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
+    <div>
       <header className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
-            Tareas
-          </h1>
+          <h1 className="alfred-h1">Tareas</h1>
           <span
             style={{
               fontSize: 12, color: "var(--text-tertiary)",
@@ -137,17 +135,7 @@ function TasksPage() {
             {counts}
           </span>
         </div>
-        <button
-          onClick={openCapture}
-          className="flex items-center gap-1.5"
-          style={{
-            fontSize: 12, padding: "6px 14px",
-            borderRadius: "var(--radius-pill)",
-            border: "1px solid var(--accent-color)",
-            color: "var(--accent-color)",
-            background: "transparent",
-          }}
-        >
+        <button onClick={openCapture} className="alfred-new-btn">
           <IconPlus size={14} /> Nueva tarea
         </button>
       </header>
