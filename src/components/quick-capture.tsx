@@ -205,17 +205,21 @@ export function QuickCapture() {
         }}
       >
         {/* Input */}
-        <input
+        <MentionInput
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKeyDown}
+          onChange={setText}
+          onSubmit={save}
           placeholder="¿Qué quieres capturar?"
+          autoFocus
           className="bg-transparent border-0 outline-none w-full"
           style={{
             padding: "20px 24px",
             fontSize: 18,
             color: "var(--text-primary)",
+            background: "transparent",
+            border: "none",
+            outline: "none",
           }}
         />
 
