@@ -318,7 +318,7 @@ export function MobileBottomNav() {
   return (
     <>
       <nav
-        className="md:hidden"
+        className="flex md:hidden"
         style={{
           position: "fixed",
           bottom: 0,
@@ -329,7 +329,6 @@ export function MobileBottomNav() {
           borderTop: "1px solid #141414",
           paddingBottom: "env(safe-area-inset-bottom)",
           zIndex: 100,
-          display: "flex",
           alignItems: "center",
           justifyContent: "space-around",
         }}
