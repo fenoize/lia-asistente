@@ -172,29 +172,13 @@ function Dashboard() {
     .replace(/^\w/, (c) => c.toUpperCase());
 
   return (
-    <div
-      className="mx-auto"
-      style={{ maxWidth: 640, padding: "40px 24px" }}
-    >
+    <div>
       {/* Greeting */}
       <header style={{ marginBottom: 32 }}>
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 500,
-            letterSpacing: "-0.02em",
-            color: "var(--text-primary)",
-          }}
-        >
+        <h1 className="alfred-h1">
           {greeting}{name ? `, ${name}` : ""}. Soy {assistant.name}.
         </h1>
-        <p
-          style={{
-            marginTop: 4,
-            fontSize: 13,
-            color: "var(--text-tertiary)",
-          }}
-        >
+        <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
           {dateLabel}
         </p>
       </header>
