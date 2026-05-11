@@ -18,6 +18,9 @@ export type FinanceRecord = {
   // gasto
   category?: string | null;
   expense_date?: string | null;
+  expense_type?: string | null;
+  task_id?: string | null;
+  project_id?: string | null;
   // sub
   name?: string | null;
   frequency?: string | null;
@@ -27,6 +30,9 @@ export type FinanceRecord = {
   type?: string | null;
   balance?: number | null;
 };
+
+type TaskOption = { id: string; title: string };
+type ProjectOption = { id: string; name: string };
 
 const TABLE: Record<FinanceKind, string> = {
   cobro: "finance_incomes",
