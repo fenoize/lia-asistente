@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconMapPin, IconVideo, IconBolt, IconX, IconTrash } from "@tabler/icons-react";
+import { IconPlus, IconMapPin, IconVideo, IconBolt } from "@tabler/icons-react";
+import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 
 export const Route = createFileRoute("/_app/meetings")({
   component: MeetingsPage,
