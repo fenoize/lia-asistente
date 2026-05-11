@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { IconBell, IconCheck, IconPlus } from "@tabler/icons-react";
 import { toast } from "sonner";
