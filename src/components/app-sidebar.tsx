@@ -25,9 +25,7 @@ const items = [
 ] as const;
 
 function openQuickCapture() {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
-  );
+  window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
 }
 
 function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
