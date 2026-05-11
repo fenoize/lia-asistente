@@ -313,7 +313,7 @@ export function ChatInterface() {
             </div>
           )}
           <InputBar
-            ref={taRef}
+            taRef={taRef}
             value={input}
             onChange={setInput}
             onSend={() => sendText(input)}
