@@ -128,34 +128,62 @@ export function QuickCapture() {
     if (!user || !text.trim()) return;
     setBusy(true);
     try {
-      const title = text.trim().split("\n")[0].slice(0, 140);
       const priorityMap = { urgent: "high", high: "high", medium: "medium", low: "low" } as const;
 
-      if (detected === "task") {
+      // Try AI parsing first for better title/description/datetime extraction
+      let ai: {
+        type: "task" | "meeting" | "reminder" | "note";
+        title: string;
+        description?: string | null;
+        datetime?: string | null;
+        priority?: "low" | "medium" | "high" | null;
+        duration_minutes?: number | null;
+      } | null = null;
+      try {
+        const res = await fetch("/api/quick-capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (res.ok) ai = await res.json();
+      } catch {
+        // fall back to local heuristics
+      }
+
+      const type = ai?.type ?? detected;
+      const fallbackTitle = text.trim().split("\n")[0].slice(0, 140);
+      const title = (ai?.title?.trim() || fallbackTitle).slice(0, 200);
+      const description = ai?.description?.trim() || (text.length > title.length ? text : null);
+      const userOverrideDt = dtTouched ? fromDateInputs(dt.date, dt.time) : null;
+      const datetime = userOverrideDt || ai?.datetime || fromDateInputs(dt.date, dt.time);
+
+      if (type === "task") {
         await supabase.from("tasks").insert({
           user_id: user.id,
           title,
-          description: text.length > title.length ? text : null,
-          priority: priorityMap[priority],
-          due_date: dtTouched ? fromDateInputs(dt.date, dt.time) : null,
+          description,
+          priority: ai?.priority ?? priorityMap[priority],
+          due_date: userOverrideDt || ai?.datetime || null,
         });
-      } else if (detected === "meeting") {
+      } else if (type === "meeting") {
         await supabase.from("meetings").insert({
           user_id: user.id,
           title,
-          datetime: fromDateInputs(dt.date, dt.time),
+          datetime,
+          notes: description,
+          duration_minutes: ai?.duration_minutes ?? 60,
         });
-      } else if (detected === "reminder") {
+      } else if (type === "reminder") {
         await supabase.from("reminders").insert({
           user_id: user.id,
           title,
-          datetime: fromDateInputs(dt.date, dt.time),
+          datetime,
         });
       } else {
         await supabase.from("notes").insert({
           user_id: user.id,
-          content: text,
-          type: detected === "idea" ? "idea" : noteKind,
+          content: description || text,
+          type: type === "note" && (noteKind === "idea" || noteKind === "highlight") ? noteKind : "note",
         });
       }
 
