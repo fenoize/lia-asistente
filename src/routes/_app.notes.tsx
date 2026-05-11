@@ -107,7 +107,7 @@ function NotesPage() {
       ) : (
         <div style={{ columnCount: 2, columnGap: 12 }}>
           {filtered.map((n) => (
-            <NoteCard key={n.id} note={n} onRemove={() => remove(n.id)} />
+            <NoteCard key={n.id} note={n} onRemove={() => remove(n.id)} onSave={(patch) => updateNote(n.id, patch)} />
           ))}
         </div>
       )}
