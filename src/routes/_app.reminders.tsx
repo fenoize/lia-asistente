@@ -66,7 +66,7 @@ function RemindersPage() {
             label="PRÓXIMOS"
             items={upcoming}
             onToggle={toggle}
-            empty="Sin recordatorios pendientes. Alfred te avisará cuando tengas uno."
+            empty={`Sin recordatorios pendientes. ${assistant.name} te avisará cuando tengas uno.`}
           />
           {completed.length > 0 && (
             <Section
