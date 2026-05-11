@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { IconBell, IconCheck, IconPlus } from "@tabler/icons-react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ function openCapture() {
 
 function RemindersPage() {
   const { user } = useAuth();
+  const assistant = useAssistant();
   const [items, setItems] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +66,7 @@ function RemindersPage() {
             label="PRÓXIMOS"
             items={upcoming}
             onToggle={toggle}
-            empty="Sin recordatorios pendientes. Alfred te avisará cuando tengas uno."
+            empty={`Sin recordatorios pendientes. ${assistant.name} te avisará cuando tengas uno.`}
           />
           {completed.length > 0 && (
             <Section
