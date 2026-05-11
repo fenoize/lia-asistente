@@ -3,6 +3,7 @@ import { IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil }
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 
 type Action = {
@@ -46,6 +47,7 @@ function parseAction(text: string): { clean: string; action: Action | null } {
 
 export function ChatInterface() {
   const { user } = useAuth();
+  const assistant = useAssistant();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
