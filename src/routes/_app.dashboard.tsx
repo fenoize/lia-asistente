@@ -30,6 +30,23 @@ type Meeting = {
   duration_minutes: number | null;
 };
 type Reminder = { id: string; title: string; datetime: string; done: boolean };
+type BirthdayContact = {
+  id: string;
+  name: string;
+  birthday: string;
+  context: string | null;
+  daysUntil: number;
+};
+
+function daysUntil(birthdayIso: string): number {
+  const [, m, d] = birthdayIso.split("-").map(Number);
+  if (!m || !d) return 999;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), m - 1, d);
+  if (next < today) next = new Date(now.getFullYear() + 1, m - 1, d);
+  return Math.round((next.getTime() - today.getTime()) / 86_400_000);
+}
 
 function Dashboard() {
   const { user } = useAuth();
@@ -40,6 +57,7 @@ function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const fetchedBriefRef = useRef(false);
 
