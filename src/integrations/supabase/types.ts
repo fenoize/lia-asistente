@@ -49,16 +49,66 @@ export type Database = {
           },
         ]
       }
+      contact_relations: {
+        Row: {
+          contact_a: string
+          contact_b: string
+          created_at: string
+          id: string
+          relation_label: string
+          shared_context: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_a: string
+          contact_b: string
+          created_at?: string
+          id?: string
+          relation_label: string
+          shared_context?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_a?: string
+          contact_b?: string
+          created_at?: string
+          id?: string
+          relation_label?: string
+          shared_context?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_relations_contact_a_fkey"
+            columns: ["contact_a"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_relations_contact_b_fkey"
+            columns: ["contact_b"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
+          address: string | null
+          birthday: string | null
           company: string | null
+          context: string | null
           created_at: string
+          custom_fields: Json
           email: string | null
           id: string
           last_activity_at: string | null
           name: string
           notes: string | null
           phone: string | null
+          relationship_type: string
           role: string | null
           status: string | null
           type: string
@@ -66,14 +116,19 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
+          birthday?: string | null
           company?: string | null
+          context?: string | null
           created_at?: string
+          custom_fields?: Json
           email?: string | null
           id?: string
           last_activity_at?: string | null
           name: string
           notes?: string | null
           phone?: string | null
+          relationship_type?: string
           role?: string | null
           status?: string | null
           type?: string
@@ -81,14 +136,19 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
+          birthday?: string | null
           company?: string | null
+          context?: string | null
           created_at?: string
+          custom_fields?: Json
           email?: string | null
           id?: string
           last_activity_at?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
+          relationship_type?: string
           role?: string | null
           status?: string | null
           type?: string
