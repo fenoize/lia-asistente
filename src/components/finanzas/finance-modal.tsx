@@ -78,6 +78,27 @@ export function FinanceModal({
     r.expense_date ?? new Date().toISOString().slice(0, 10),
   );
 
+  // Gasto extra
+  const [expenseType, setExpenseType] = useState<string>(r.expense_type ?? "one_time");
+  const [taskId, setTaskId] = useState<string>(r.task_id ?? "");
+  const [projectId, setProjectId] = useState<string>(r.project_id ?? "");
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  useEffect(() => {
+    if (kind !== "gasto") return;
+    void (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return;
+      const [t, p] = await Promise.all([
+        supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200),
+        supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200),
+      ]);
+      setTasks((t.data ?? []) as TaskOption[]);
+      setProjects((p.data ?? []) as ProjectOption[]);
+    })();
+  }, [kind]);
+
   // Sub
   const [name, setName] = useState<string>(r.name ?? "");
   const [frequency, setFrequency] = useState<string>(r.frequency ?? "monthly");
