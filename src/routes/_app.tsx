@@ -109,6 +109,7 @@ function AppLayout() {
             }}
           />
         )}
+        <MobileTopBar />
         <div key={pathname} className="alfred-page h-full">
           <div className="alfred-page-shell">
             <Outlet />
