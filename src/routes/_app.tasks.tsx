@@ -123,13 +123,16 @@ function TasksPage() {
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: 8 }}>
           <h1 className="alfred-h1">Tareas</h1>
           <span
             style={{
-              fontSize: 12, color: "var(--text-tertiary)",
-              padding: "2px 8px", borderRadius: "var(--radius-pill)",
-              background: "var(--bg-elevated)", border: "1px solid var(--border)",
+              fontSize: 11,
+              color: "#666",
+              padding: "2px 10px",
+              borderRadius: 100,
+              background: "#1a1a1a",
+              border: "1px solid #222",
             }}
           >
             {counts}
@@ -141,21 +144,28 @@ function TasksPage() {
       </header>
 
       <div className="flex flex-wrap gap-1.5 mb-6">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            style={{
-              fontSize: 12, padding: "5px 12px",
-              borderRadius: "var(--radius-pill)",
-              border: "1px solid var(--border)",
-              background: filter === f.id ? "var(--accent-subtle)" : "transparent",
-              color: filter === f.id ? "var(--accent-color)" : "var(--text-secondary)",
-            }}
-          >
-            {f.label}
-          </button>
-        ))}
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              style={{
+                fontSize: 12,
+                padding: "6px 16px",
+                borderRadius: 100,
+                border: active
+                  ? "1px solid rgba(99,102,241,0.3)"
+                  : "1px solid #222",
+                background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                color: active ? "#818cf8" : "#555",
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {loading ? (
@@ -167,15 +177,16 @@ function TasksPage() {
         />
       ) : (
         <div className="space-y-6">
-          {(["today", "week", "later"] as const).map((g) => {
+          {(["urgent", "week", "later"] as const).map((g) => {
             const list = groups[g];
             if (!list.length) return null;
-            const label = g === "today" ? "HOY" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
+            const label =
+              g === "urgent" ? "URGENTE" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
             return (
               <section key={g}>
                 <div className="alfred-section-label">{label}</div>
-                <ul className="space-y-1">
-                  {list.map((t) => (
+                <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {list.map((t: Task) => (
                     <TaskRow
                       key={t.id}
                       task={t}
