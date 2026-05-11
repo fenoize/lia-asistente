@@ -23,6 +23,7 @@ function openCapture() {
 
 function RemindersPage() {
   const { user } = useAuth();
+  const assistant = useAssistant();
   const [items, setItems] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
