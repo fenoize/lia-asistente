@@ -30,6 +30,7 @@ const SUGGESTIONS = [
   "¿Qué tareas están atrasadas?",
   "Estoy colapsado, ayúdame",
   "Reorganiza mi tarde",
+  "¿Cómo voy financieramente?",
 ];
 
 const ACTION_RE = /```action\s*([\s\S]*?)```/i;
@@ -233,19 +234,23 @@ export function ChatInterface() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "24px 24px 16px" }}>
           {isEmpty && (
-            <div className="text-center pt-16 pb-8">
+            <div
+              className="flex flex-col items-center justify-center text-center"
+              style={{ minHeight: "60vh" }}
+            >
               <h2
                 style={{
-                  fontSize: 22,
-                  fontWeight: 500,
-                  letterSpacing: "-0.02em",
-                  color: "var(--text-primary)",
+                  fontSize: 28,
+                  fontWeight: 600,
+                  letterSpacing: "-0.03em",
+                  color: "#f2f2f2",
+                  lineHeight: 1.15,
                 }}
               >
                 {greeting}{name ? `, ${name}` : ""}.
               </h2>
-              <p style={{ marginTop: 6, fontSize: 14, color: "var(--text-tertiary)" }}>
-                ¿En qué te ayudo?
+              <p style={{ marginTop: 6, fontSize: 15, color: "#555" }}>
+                ¿En qué te ayudo{name ? `, ${name}` : ""}?
               </p>
             </div>
           )}
@@ -302,20 +307,20 @@ export function ChatInterface() {
                   className="shrink-0 transition-colors"
                   style={{
                     fontSize: 12,
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-pill)",
-                    padding: "6px 14px",
-                    color: "var(--text-secondary)",
-                    background: "transparent",
+                    border: "1px solid #222",
+                    borderRadius: 100,
+                    padding: "7px 16px",
+                    color: "#888",
+                    background: "#111",
                     whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--accent-color)";
-                    e.currentTarget.style.color = "var(--accent-color)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)";
+                    e.currentTarget.style.color = "#818cf8";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.color = "var(--text-secondary)";
+                    e.currentTarget.style.borderColor = "#222";
+                    e.currentTarget.style.color = "#888";
                   }}
                 >
                   {s}
@@ -569,15 +574,31 @@ function InputBar({
   const hasText = value.trim().length > 0;
   return (
     <div
-      className="flex items-end gap-2"
+      className="flex items-end gap-2.5"
       style={{
-        background: "var(--bg-elevated)",
-        border: `1px solid ${focused ? "var(--accent-color)" : "var(--border)"}`,
-        borderRadius: "var(--radius-lg)",
-        padding: "8px 8px 8px 14px",
+        background: "#111111",
+        border: `1px solid ${focused ? "rgba(99,102,241,0.5)" : "#222"}`,
+        borderRadius: 14,
+        padding: "14px 16px",
         transition: "border-color 0.15s",
       }}
     >
+      <div
+        className="shrink-0 flex items-center justify-center"
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: "rgba(99,102,241,0.15)",
+          color: "#818cf8",
+          fontSize: 11,
+          fontWeight: 600,
+          marginBottom: 6,
+        }}
+        aria-hidden
+      >
+        A
+      </div>
       <textarea
         ref={taRef}
         value={value}
@@ -592,14 +613,12 @@ function InputBar({
         }}
         rows={1}
         placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
-        className="flex-1 bg-transparent resize-none focus:outline-none"
+        className="flex-1 bg-transparent resize-none focus:outline-none alfred-chat-input"
         style={{
           fontSize: 14,
           lineHeight: "22px",
           color: "var(--text-primary)",
           minHeight: 22,
-          paddingTop: 6,
-          paddingBottom: 6,
         }}
       />
       <button
@@ -610,8 +629,8 @@ function InputBar({
           width: 32,
           height: 32,
           borderRadius: "50%",
-          background: hasText ? "var(--accent-color)" : "var(--bg-hover)",
-          color: hasText ? "white" : "var(--text-tertiary)",
+          background: hasText ? "#6366f1" : "#1a1a1a",
+          color: hasText ? "white" : "#555",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
