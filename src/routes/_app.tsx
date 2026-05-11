@@ -115,6 +115,7 @@ function AppLayout() {
         </div>
       </main>
       <QuickCapture />
+      <MobileBottomNav />
     </div>
   );
 }
