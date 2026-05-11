@@ -82,25 +82,44 @@ function MeetingsPage() {
         </button>
       </header>
 
-      <div className="flex gap-1.5 mb-8">
+      <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
         {days.map((d, i) => {
           const isSel = sameDay(d, selected);
-          const isToday = sameDay(d, new Date());
           return (
             <button
               key={i}
               onClick={() => setSelected(d)}
-              className="flex-1 flex flex-col items-center gap-1"
+              className="flex-1 flex flex-col items-center"
               style={{
-                padding: "10px 0",
-                borderRadius: "var(--radius-md)",
-                background: isSel ? "var(--accent-subtle)" : "transparent",
-                border: `1px solid ${isSel ? "var(--accent-color)" : "var(--border)"}`,
-                color: isSel || isToday ? "var(--accent-color)" : "var(--text-secondary)",
+                gap: 4,
+                padding: "10px 16px",
+                borderRadius: 10,
+                background: isSel ? "transparent" : "#111",
+                border: isSel
+                  ? "1px solid rgba(99,102,241,0.5)"
+                  : "1px solid #1a1a1a",
+                transition: "border-color 0.15s",
               }}
             >
-              <span style={{ fontSize: 10, letterSpacing: "0.08em" }}>{DAYS[i]}</span>
-              <span style={{ fontSize: 16, fontWeight: 500 }}>{d.getDate()}</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  color: isSel ? "#818cf8" : "#555",
+                }}
+              >
+                {DAYS[i]}
+              </span>
+              <span
+                style={{
+                  fontSize: 18,
+                  fontWeight: isSel ? 600 : 500,
+                  color: isSel ? "#f2f2f2" : "#888",
+                }}
+              >
+                {d.getDate()}
+              </span>
             </button>
           );
         })}
