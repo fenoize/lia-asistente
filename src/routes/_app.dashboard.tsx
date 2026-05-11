@@ -431,6 +431,14 @@ function Dashboard() {
           </Link>
         </p>
       </Block>
+
+      {editingMeeting && (
+        <EditMeetingModal
+          meeting={editingMeeting}
+          onClose={() => setEditingMeeting(null)}
+          onSaved={async () => { setEditingMeeting(null); await reloadMeetings(); }}
+        />
+      )}
     </div>
   );
 }
