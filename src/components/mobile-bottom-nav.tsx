@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
@@ -17,8 +17,6 @@ import {
   IconLogout,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 const menuItems = [
   { to: "/chat", label: "Chat con Lia", icon: IconMessageCircle },
