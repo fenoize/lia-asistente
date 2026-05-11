@@ -173,14 +173,7 @@ function TasksPage() {
             const label = g === "today" ? "HOY" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
             return (
               <section key={g}>
-                <div
-                  style={{
-                    fontSize: 10, letterSpacing: "0.12em",
-                    color: "var(--text-tertiary)", marginBottom: 8,
-                  }}
-                >
-                  {label}
-                </div>
+                <div className="alfred-section-label">{label}</div>
                 <ul className="space-y-1">
                   {list.map((t) => (
                     <TaskRow
