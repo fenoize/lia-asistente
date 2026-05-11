@@ -14,7 +14,286 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_briefs: {
+        Row: {
+          content: string
+          date: string | null
+          generated_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          date?: string | null
+          generated_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          date?: string | null
+          generated_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_briefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          created_at: string | null
+          datetime: string
+          duration_minutes: number | null
+          id: string
+          location: string | null
+          notes: string | null
+          preparation_needed: boolean | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          datetime: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          preparation_needed?: boolean | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          datetime?: string
+          duration_minutes?: number | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          preparation_needed?: boolean | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          linked_task_id: string | null
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          linked_task_id?: string | null
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          linked_task_id?: string | null
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          goals: string | null
+          id: string
+          name: string | null
+          onboarding_completed: boolean | null
+          plan: string | null
+          preferred_model: string | null
+          role: string | null
+          timezone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          goals?: string | null
+          id: string
+          name?: string | null
+          onboarding_completed?: boolean | null
+          plan?: string | null
+          preferred_model?: string | null
+          role?: string | null
+          timezone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          goals?: string | null
+          id?: string
+          name?: string | null
+          onboarding_completed?: boolean | null
+          plan?: string | null
+          preferred_model?: string | null
+          role?: string | null
+          timezone?: string | null
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          created_at: string | null
+          datetime: string
+          done: boolean | null
+          id: string
+          recurrence: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          datetime: string
+          done?: boolean | null
+          id?: string
+          recurrence?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          datetime?: string
+          done?: boolean | null
+          id?: string
+          recurrence?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          ai_summary: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string
+          project: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          project?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string
+          project?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
