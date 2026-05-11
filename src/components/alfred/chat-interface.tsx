@@ -234,19 +234,23 @@ export function ChatInterface() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "24px 24px 16px" }}>
           {isEmpty && (
-            <div className="text-center pt-16 pb-8">
+            <div
+              className="flex flex-col items-center justify-center text-center"
+              style={{ minHeight: "60vh" }}
+            >
               <h2
                 style={{
-                  fontSize: 22,
-                  fontWeight: 500,
-                  letterSpacing: "-0.02em",
-                  color: "var(--text-primary)",
+                  fontSize: 28,
+                  fontWeight: 600,
+                  letterSpacing: "-0.03em",
+                  color: "#f2f2f2",
+                  lineHeight: 1.15,
                 }}
               >
                 {greeting}{name ? `, ${name}` : ""}.
               </h2>
-              <p style={{ marginTop: 6, fontSize: 14, color: "var(--text-tertiary)" }}>
-                ¿En qué te ayudo?
+              <p style={{ marginTop: 6, fontSize: 15, color: "#555" }}>
+                ¿En qué te ayudo{name ? `, ${name}` : ""}?
               </p>
             </div>
           )}
