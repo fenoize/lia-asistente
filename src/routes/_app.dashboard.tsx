@@ -7,6 +7,7 @@ import {
   IconRefresh,
   IconBell,
   IconCheck,
+  IconCake,
 } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
