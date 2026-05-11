@@ -411,6 +411,20 @@ function NewProjectModal({
               </option>
             ))}
           </select>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Descripción (opcional)"
+            rows={3}
+            className="w-full bg-transparent focus:outline-none resize-none"
+            style={{
+              fontSize: 14,
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 12px",
+            }}
+          />
           <input
             type="date"
             value={dueDate}
@@ -418,13 +432,62 @@ function NewProjectModal({
             className="w-full bg-transparent focus:outline-none"
             style={{
               fontSize: 14,
-              color: "var(--text-primary)",
+              color: dueDate ? "var(--text-primary)" : "var(--text-tertiary)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",
               padding: "8px 12px",
               colorScheme: "dark",
             }}
           />
+          <div className="flex gap-2">
+            <input
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder="Presupuesto"
+              inputMode="decimal"
+              className="flex-1 bg-transparent focus:outline-none"
+              style={{
+                fontSize: 14,
+                color: "var(--text-primary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "8px 12px",
+              }}
+            />
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as "CLP" | "USD")}
+              className="focus:outline-none"
+              style={{
+                fontSize: 14,
+                color: "var(--text-primary)",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "8px 12px",
+              }}
+            >
+              <option value="CLP">CLP</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as typeof status)}
+            className="w-full focus:outline-none"
+            style={{
+              fontSize: 14,
+              color: "var(--text-primary)",
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-md)",
+              padding: "8px 12px",
+            }}
+          >
+            <option value="active">Activo</option>
+            <option value="paused">En pausa</option>
+            <option value="completed">Completado</option>
+          </select>
         </div>
         <div className="flex items-center justify-end gap-2 mt-5">
           <button
