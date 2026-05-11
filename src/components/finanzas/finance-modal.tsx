@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
 import { IconX, IconTrash } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,6 +18,9 @@ export type FinanceRecord = {
   // gasto
   category?: string | null;
   expense_date?: string | null;
+  expense_type?: string | null;
+  task_id?: string | null;
+  project_id?: string | null;
   // sub
   name?: string | null;
   frequency?: string | null;
@@ -27,6 +30,9 @@ export type FinanceRecord = {
   type?: string | null;
   balance?: number | null;
 };
+
+type TaskOption = { id: string; title: string };
+type ProjectOption = { id: string; name: string };
 
 const TABLE: Record<FinanceKind, string> = {
   cobro: "finance_incomes",
@@ -71,6 +77,27 @@ export function FinanceModal({
   const [expenseDate, setExpenseDate] = useState<string>(
     r.expense_date ?? new Date().toISOString().slice(0, 10),
   );
+
+  // Gasto extra
+  const [expenseType, setExpenseType] = useState<string>(r.expense_type ?? "one_time");
+  const [taskId, setTaskId] = useState<string>(r.task_id ?? "");
+  const [projectId, setProjectId] = useState<string>(r.project_id ?? "");
+  const [tasks, setTasks] = useState<TaskOption[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
+
+  useEffect(() => {
+    if (kind !== "gasto") return;
+    void (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return;
+      const [t, p] = await Promise.all([
+        supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200),
+        supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200),
+      ]);
+      setTasks((t.data ?? []) as TaskOption[]);
+      setProjects((p.data ?? []) as ProjectOption[]);
+    })();
+  }, [kind]);
 
   // Sub
   const [name, setName] = useState<string>(r.name ?? "");
@@ -118,6 +145,9 @@ export function FinanceModal({
         currency,
         category: category.trim() || null,
         expense_date: expenseDate,
+        expense_type: expenseType,
+        task_id: taskId || null,
+        project_id: projectId || null,
         notes: notes.trim() || null,
       };
     } else if (kind === "sub") {
@@ -250,14 +280,41 @@ export function FinanceModal({
           )}
 
           {kind === "gasto" && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Fecha">
-                <input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} style={inputStyle} />
-              </Field>
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Fecha">
+                  <input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} style={inputStyle} />
+                </Field>
+                <Field label="Tipo">
+                  <select value={expenseType} onChange={(e) => setExpenseType(e.target.value)} style={inputStyle}>
+                    <option value="one_time">Único</option>
+                    <option value="fixed">Fijo</option>
+                    <option value="recurring">Recurrente</option>
+                  </select>
+                </Field>
+              </div>
               <Field label="Categoría">
                 <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Comida, transporte..." style={inputStyle} />
               </Field>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Proyecto">
+                  <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={inputStyle}>
+                    <option value="">— Ninguno —</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Tarea">
+                  <select value={taskId} onChange={(e) => setTaskId(e.target.value)} style={inputStyle}>
+                    <option value="">— Ninguna —</option>
+                    {tasks.map((t) => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </>
           )}
 
           {kind === "sub" && (

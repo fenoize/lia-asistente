@@ -233,9 +233,11 @@ export type Database = {
           currency: string
           description: string
           expense_date: string
+          expense_type: string
           id: string
           notes: string | null
           project_id: string | null
+          task_id: string | null
           updated_at: string
           user_id: string
         }
@@ -246,9 +248,11 @@ export type Database = {
           currency?: string
           description: string
           expense_date?: string
+          expense_type?: string
           id?: string
           notes?: string | null
           project_id?: string | null
+          task_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -259,9 +263,11 @@ export type Database = {
           currency?: string
           description?: string
           expense_date?: string
+          expense_type?: string
           id?: string
           notes?: string | null
           project_id?: string | null
+          task_id?: string | null
           updated_at?: string
           user_id?: string
         }
