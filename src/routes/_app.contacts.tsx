@@ -291,10 +291,10 @@ function ContactCard({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        background: "var(--bg-elevated)",
-        border: `1px solid ${hover ? "var(--accent-subtle)" : "var(--border)"}`,
-        borderRadius: "var(--radius-md)",
-        padding: 16,
+        background: "#111111",
+        border: `1px solid ${hover ? "rgba(99,102,241,0.3)" : "#1e1e1e"}`,
+        borderRadius: 12,
+        padding: "16px 20px",
         cursor: "pointer",
         transition: "border-color 0.15s",
       }}
@@ -303,29 +303,43 @@ function ContactCard({
         <div
           className="flex items-center justify-center rounded-full shrink-0"
           style={{
-            width: 32,
-            height: 32,
-            background: "var(--accent-subtle)",
-            color: "var(--accent-color)",
-            fontSize: 12,
-            fontWeight: 500,
+            width: 36,
+            height: 36,
+            background: "rgba(99,102,241,0.15)",
+            color: "#818cf8",
+            fontSize: 13,
+            fontWeight: 600,
           }}
         >
           {initials(contact.name)}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: "#f2f2f2" }}>
           {contact.name}
         </div>
-        {contact.type === "client" && contact.status && (
+        {contact.type === "client" && contact.status === "active" && (
           <span
             style={{
               fontSize: 11,
-              padding: "2px 8px",
-              borderRadius: "var(--radius-pill)",
+              padding: "2px 10px",
+              borderRadius: 100,
+              background: "rgba(16,185,129,0.1)",
+              color: "#34d399",
+              border: "1px solid rgba(16,185,129,0.2)",
+              fontWeight: 500,
+            }}
+          >
+            Activo
+          </span>
+        )}
+        {contact.type === "client" && contact.status && contact.status !== "active" && (
+          <span
+            style={{
+              fontSize: 11,
+              padding: "2px 10px",
+              borderRadius: 100,
               background: statusColor.bg,
               color: statusColor.color,
-              border:
-                contact.status === "inactive" ? "1px solid var(--border)" : "none",
+              border: contact.status === "inactive" ? "1px solid #222" : "none",
               fontWeight: 500,
             }}
           >
@@ -333,16 +347,16 @@ function ContactCard({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3" style={{ fontSize: 13, marginLeft: 44 }}>
-        <span style={{ color: "var(--text-secondary)" }}>
-          {contact.type === "client" ? contact.company || "—" : contact.role || "—"}
-        </span>
-        {contact.email && (
-          <span style={{ color: "var(--text-tertiary)" }}>· {contact.email}</span>
-        )}
+      <div style={{ fontSize: 12, color: "#555", marginLeft: 48 }}>
+        {[
+          contact.type === "client" ? contact.company : contact.role,
+          contact.email,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "—"}
       </div>
-      <div className="flex items-center justify-between mt-3" style={{ marginLeft: 44 }}>
-        <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+      <div className="flex items-center justify-between mt-2" style={{ marginLeft: 48 }}>
+        <div style={{ fontSize: 11, color: "#333" }}>
           {contact.type === "client"
             ? `${projectCount} proyecto${projectCount === 1 ? "" : "s"} · ${taskCount} tarea${taskCount === 1 ? "" : "s"} pendiente${taskCount === 1 ? "" : "s"}`
             : `${taskCount} tarea${taskCount === 1 ? "" : "s"} asignada${taskCount === 1 ? "" : "s"}`}
@@ -354,7 +368,7 @@ function ContactCard({
               onEdit();
             }}
             aria-label="Editar"
-            style={{ color: "var(--text-tertiary)", padding: 4 }}
+            style={{ color: "#555", padding: 4 }}
           >
             <IconPencil size={14} stroke={1.75} />
           </button>
@@ -364,7 +378,7 @@ function ContactCard({
               onDelete();
             }}
             aria-label="Borrar"
-            style={{ color: "var(--text-tertiary)", padding: 4 }}
+            style={{ color: "#555", padding: 4 }}
           >
             <IconTrash size={14} stroke={1.75} />
           </button>
