@@ -4,6 +4,57 @@ import { createClient } from "@supabase/supabase-js";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
 import { buildContext } from "@/lib/ai/context-builder";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
+import { extractMentions } from "@/lib/mentions";
+
+async function buildMentionsBlock(sb: any, lastUserText: string): Promise<string> {
+  const mentions = extractMentions(lastUserText);
+  if (mentions.length === 0) return "";
+  const contactIds = mentions.filter((m) => m.type === "contact").map((m) => m.id);
+  const projectIds = mentions.filter((m) => m.type === "project").map((m) => m.id);
+  const [cRes, pRes, tRes] = await Promise.all([
+    contactIds.length
+      ? sb.from("contacts").select("id, name, company, relationship_type, type, status, context").in("id", contactIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length
+      ? sb.from("projects").select("id, name, status, due_date, client_id").in("id", projectIds)
+      : Promise.resolve({ data: [] }),
+    projectIds.length
+      ? sb.from("tasks").select("project_id, status").in("project_id", projectIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const contactsById = new Map<string, any>((cRes.data ?? []).map((c: any) => [c.id, c]));
+  const tasksByProject = new Map<string, number>();
+  (tRes.data ?? []).forEach((t: any) => {
+    if (t.status !== "done") tasksByProject.set(t.project_id, (tasksByProject.get(t.project_id) ?? 0) + 1);
+  });
+  // Resolve client names for projects
+  const clientIds = (pRes.data ?? []).map((p: any) => p.client_id).filter(Boolean);
+  let clientMap = new Map<string, string>();
+  if (clientIds.length) {
+    const { data: cs } = await sb.from("contacts").select("id, name").in("id", clientIds);
+    clientMap = new Map((cs ?? []).map((c: any) => [c.id, c.name]));
+  }
+  const lines: string[] = [];
+  for (const m of mentions) {
+    if (m.type === "contact") {
+      const c = contactsById.get(m.id);
+      if (!c) { lines.push(`- Contacto: ${m.name} (id: ${m.id})`); continue; }
+      const rt = c.relationship_type ?? c.type ?? "contacto";
+      const extras = [c.company, c.status ? `estado ${c.status}` : null, c.context].filter(Boolean).join(" — ");
+      lines.push(`- Contacto: ${c.name} (${rt}${extras ? `; ${extras}` : ""}) [id: ${m.id}]`);
+    } else {
+      const p = (pRes.data ?? []).find((x: any) => x.id === m.id);
+      if (!p) { lines.push(`- Proyecto: ${m.name} (id: ${m.id})`); continue; }
+      const pending = tasksByProject.get(p.id) ?? 0;
+      const client = p.client_id ? clientMap.get(p.client_id) : null;
+      const due = p.due_date ? `vence ${new Date(p.due_date).toLocaleDateString("es-CL")}` : null;
+      const extras = [p.status ? `estado ${p.status}` : null, `${pending} tareas pendientes`, client ? `cliente ${client}` : null, due]
+        .filter(Boolean).join(", ");
+      lines.push(`- Proyecto: ${p.name} (${extras}) [id: ${m.id}]`);
+    }
+  }
+  return `\n\nMENCIONES EN ESTE MENSAJE:\n${lines.join("\n")}\n\nUsa estas referencias con precisión cuando respondas.`;
+}
 
 function jsonError(status: number, message: string) {
   return new Response(JSON.stringify({ error: message }), {
