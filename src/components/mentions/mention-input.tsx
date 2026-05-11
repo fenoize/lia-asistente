@@ -261,7 +261,7 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
               {filtered.projects.length > 0 && (
                 <>
                   <div className="alfred-mention-section">PROYECTOS</div>
-                  {filtered.projects.map((p, i) => {
+                  {filtered.projects.map((p: any, i) => {
                     const idx = filtered.contacts.length + i;
                     return (
                       <button
