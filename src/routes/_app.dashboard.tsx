@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -175,10 +175,18 @@ function Dashboard() {
     <div>
       {/* Greeting */}
       <header style={{ marginBottom: 32 }}>
-        <h1 className="alfred-h1">
-          {greeting}{name ? `, ${name}` : ""}. Soy {assistant.name}.
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 600,
+            letterSpacing: "-0.03em",
+            color: "#f2f2f2",
+            lineHeight: 1.15,
+          }}
+        >
+          {greeting}{name ? `, ${name}` : ""}.
         </h1>
-        <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
+        <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
           {dateLabel}
         </p>
       </header>
@@ -186,27 +194,28 @@ function Dashboard() {
       {/* Daily Brief */}
       <section
         style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderLeft: "2px solid var(--accent-color)",
-          borderRadius: "var(--radius-lg)",
+          background: "#111111",
+          border: "1px solid #1e1e1e",
+          borderLeft: "3px solid #6366f1",
+          borderRadius: 12,
           padding: "20px 24px",
-          marginBottom: 32,
+          marginBottom: 8,
+          position: "relative",
         }}
       >
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-3">
             <span
               style={{
                 fontSize: 10,
-                color: "var(--accent-color)",
+                color: "#6366f1",
                 letterSpacing: "0.1em",
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
               {assistant.name.toUpperCase()}
             </span>
-            <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
+            <span style={{ fontSize: 13, color: "#555" }}>
               Resumen del día
             </span>
           </div>
@@ -214,8 +223,8 @@ function Dashboard() {
             onClick={generateBrief}
             disabled={briefLoading}
             aria-label="Regenerar resumen"
-            style={{ color: "var(--text-tertiary)" }}
-            className="hover:opacity-100 opacity-70 transition"
+            style={{ color: "#444" }}
+            className="hover:opacity-100 opacity-80 transition"
           >
             <IconRefresh
               size={14}
@@ -235,7 +244,9 @@ function Dashboard() {
             style={{
               opacity: briefLoading ? 0.5 : 1,
               transition: "opacity 0.2s",
-              color: "var(--text-primary)",
+              color: "#ccc",
+              fontSize: 14,
+              lineHeight: 1.7,
             }}
           >
             <ReactMarkdown>{brief}</ReactMarkdown>
@@ -243,7 +254,7 @@ function Dashboard() {
         ) : briefLoading ? (
           <Skeleton />
         ) : (
-          <p style={{ fontSize: 14, color: "var(--text-tertiary)" }}>
+          <p style={{ fontSize: 14, color: "#555", lineHeight: 1.7 }}>
             Sin resumen aún. Toca el ícono para generarlo.
           </p>
         )}
@@ -267,7 +278,7 @@ function Dashboard() {
         {urgentTasks.length === 0 ? (
           <Empty>Cero urgencias. Bien.</Empty>
         ) : (
-          <div className="space-y-1.5">
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {visibleTasks.map((t) => (
               <TaskRow
                 key={t.id}
@@ -305,6 +316,19 @@ function Dashboard() {
             ))}
           </div>
         )}
+      </Block>
+
+      {/* Finanzas */}
+      <Block label="FINANZAS">
+        <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
+          Este mes: sin datos aún — configura tus cuentas{" "}
+          <Link
+            to="/finanzas"
+            style={{ color: "#6366f1", fontStyle: "normal" }}
+          >
+            configurar →
+          </Link>
+        </p>
       </Block>
     </div>
   );
@@ -345,24 +369,22 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
     <div
       className="flex items-center gap-4 transition-colors"
       style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
+        background: "#111111",
+        border: "1px solid #1e1e1e",
+        borderRadius: 10,
         padding: "12px 16px",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "var(--bg-elevated)";
         e.currentTarget.style.borderColor = "var(--accent-subtle)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.background = "var(--bg-surface)";
-        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.borderColor = "#1e1e1e";
       }}
     >
       <span
         style={{
-          fontSize: 12,
-          color: "var(--accent-color)",
+          fontSize: 13,
+          color: "#6366f1",
           fontWeight: 600,
           fontVariantNumeric: "tabular-nums",
         }}
@@ -370,15 +392,8 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
         {time}
       </span>
       <span
-        style={{
-          width: 1,
-          height: 32,
-          background: "var(--border)",
-        }}
-      />
-      <span
         className="flex-1 truncate"
-        style={{ fontSize: 14, color: "var(--text-primary)" }}
+        style={{ fontSize: 14, color: "#e0e0e0" }}
       >
         {meeting.title}
       </span>
@@ -386,10 +401,11 @@ function MeetingRow({ meeting }: { meeting: Meeting }) {
         <span
           style={{
             fontSize: 11,
-            background: "var(--bg-hover)",
-            color: "var(--text-secondary)",
-            borderRadius: "var(--radius-pill)",
-            padding: "3px 10px",
+            background: "#1a1a1a",
+            border: "1px solid #222",
+            color: "#666",
+            borderRadius: 100,
+            padding: "2px 10px",
           }}
         >
           {meeting.duration_minutes}m
@@ -409,23 +425,31 @@ function TaskRow({
   onToggle: () => void;
 }) {
   const done = task.status === "done";
+  const high = task.priority === "high";
   return (
     <div
       className="flex items-center gap-3 group"
       style={{
-        padding: "8px 4px",
+        padding: "8px 10px",
+        borderRadius: 8,
         opacity: done ? 0.4 : 1,
-        transition: "opacity 0.3s",
+        transition: "opacity 0.3s, background-color 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#111111";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
       }}
     >
       <button
         onClick={onToggle}
         aria-label="Completar tarea"
         style={{
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           borderRadius: "50%",
-          border: `1.5px solid ${done ? "var(--accent-color)" : "var(--border)"}`,
+          border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
           background: done ? "var(--accent-color)" : "transparent",
           flexShrink: 0,
           display: "flex",
@@ -437,33 +461,45 @@ function TaskRow({
           if (!done) e.currentTarget.style.borderColor = "var(--accent-color)";
         }}
         onMouseLeave={(e) => {
-          if (!done) e.currentTarget.style.borderColor = "var(--border)";
+          if (!done) e.currentTarget.style.borderColor = "#333";
         }}
       >
-        {done && <IconCheck size={10} stroke={3} color="white" />}
+        {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
       <span
         className="flex-1 truncate"
         style={{
           fontSize: 14,
-          color: "var(--text-primary)",
+          color: "#d0d0d0",
           textDecoration: done ? "line-through" : "none",
         }}
       >
         {task.title}
       </span>
-      {overdue && !done && (
+      {high && !done && (
         <span
           style={{
-            fontSize: 10,
-            background: "oklch(0.65 0.21 25 / 16%)",
-            color: "oklch(0.75 0.18 25)",
-            borderRadius: "var(--radius-pill)",
-            padding: "2px 8px",
-            fontWeight: 500,
+            fontSize: 11,
+            background: "rgba(220,38,38,0.12)",
+            color: "#f87171",
+            borderRadius: 100,
+            padding: "2px 10px",
           }}
         >
-          atrasada
+          Alta
+        </span>
+      )}
+      {overdue && !done && !high && (
+        <span
+          style={{
+            fontSize: 11,
+            background: "rgba(220,38,38,0.12)",
+            color: "#f87171",
+            borderRadius: 100,
+            padding: "2px 10px",
+          }}
+        >
+          Atrasada
         </span>
       )}
     </div>
