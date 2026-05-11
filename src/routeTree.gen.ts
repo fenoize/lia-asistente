@@ -19,6 +19,7 @@ import { Route as ApiAiRouteImport } from './routes/api/ai'
 import { Route as AppTasksRouteImport } from './routes/_app.tasks'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppRemindersRouteImport } from './routes/_app.reminders'
+import { Route as AppProjectsRouteImport } from './routes/_app.projects'
 import { Route as AppNotesRouteImport } from './routes/_app.notes'
 import { Route as AppMeetingsRouteImport } from './routes/_app.meetings'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -74,6 +75,11 @@ const AppRemindersRoute = AppRemindersRouteImport.update({
   path: '/reminders',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProjectsRoute = AppProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppNotesRoute = AppNotesRouteImport.update({
   id: '/notes',
   path: '/notes',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
   '/reminders': typeof AppRemindersRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/meetings': typeof AppMeetingsRoute
   '/notes': typeof AppNotesRoute
+  '/projects': typeof AppProjectsRoute
   '/reminders': typeof AppRemindersRoute
   '/settings': typeof AppSettingsRoute
   '/tasks': typeof AppTasksRoute
@@ -143,6 +151,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/meetings': typeof AppMeetingsRoute
   '/_app/notes': typeof AppNotesRoute
+  '/_app/projects': typeof AppProjectsRoute
   '/_app/reminders': typeof AppRemindersRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tasks': typeof AppTasksRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/meetings'
     | '/notes'
+    | '/projects'
     | '/reminders'
     | '/settings'
     | '/tasks'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/meetings'
     | '/notes'
+    | '/projects'
     | '/reminders'
     | '/settings'
     | '/tasks'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/meetings'
     | '/_app/notes'
+    | '/_app/projects'
     | '/_app/reminders'
     | '/_app/settings'
     | '/_app/tasks'
@@ -284,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRemindersRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/projects': {
+      id: '/_app/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AppProjectsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/notes': {
       id: '/_app/notes'
       path: '/notes'
@@ -328,6 +347,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppMeetingsRoute: typeof AppMeetingsRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppProjectsRoute: typeof AppProjectsRoute
   AppRemindersRoute: typeof AppRemindersRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTasksRoute: typeof AppTasksRoute
@@ -339,6 +359,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppMeetingsRoute: AppMeetingsRoute,
   AppNotesRoute: AppNotesRoute,
+  AppProjectsRoute: AppProjectsRoute,
   AppRemindersRoute: AppRemindersRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTasksRoute: AppTasksRoute,
