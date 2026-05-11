@@ -156,5 +156,29 @@ export async function buildContext(
         .map((c: any) => `- ${c.name}${c.company ? ` (${c.company})` : ""}`),
       "(ninguno)",
     ),
+    contactMemory: bullets(
+      contacts.map((c: any) => {
+        const rt = c.relationship_type ?? c.type ?? "contacto";
+        const ctx = c.context ? c.context.replace(/\s+/g, " ").trim().slice(0, 240) : "sin contexto";
+        const bday = c.birthday ? ` · cumpleaños ${c.birthday}` : "";
+        const cf = c.custom_fields && typeof c.custom_fields === "object"
+          ? Object.entries(c.custom_fields)
+              .filter(([k, v]) => k && v)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")
+          : "";
+        return `- ${c.name} (${rt}): ${ctx}${bday}${cf ? ` · ${cf}` : ""}`;
+      }),
+      "(sin contactos guardados)",
+    ),
+    contactLinks: bullets(
+      relations.map((r: any) => {
+        const a = contacts.find((c: any) => c.id === r.contact_a)?.name ?? "?";
+        const b = contacts.find((c: any) => c.id === r.contact_b)?.name ?? "?";
+        const sc = r.shared_context ? ` Contexto: ${r.shared_context}` : "";
+        return `- ${a} y ${b} son ${r.relation_label}.${sc}`;
+      }),
+      "(sin vínculos)",
+    ),
   };
 }
