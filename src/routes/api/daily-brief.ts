@@ -2,57 +2,59 @@ import { createFileRoute } from "@tanstack/react-router";
 import { streamText } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
+import { buildContext } from "@/lib/ai/context-builder";
+import { buildBriefSystemPrompt } from "@/lib/ai/prompts";
 
-const SYSTEM = `Eres Alfred. Generas un resumen breve del día para el usuario.
-- Español de Chile, tuteo.
-- Sin preámbulos. Empieza con lo importante.
-- Máximo 150 palabras.
-- Estructura: 2-4 frases de contexto, luego una lista corta con bullets de lo crítico.
-- Tono calmado, ejecutivo. No motivacional cursi.`;
+function jsonError(status: number, message: string) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 export const Route = createFileRoute("/api/daily-brief")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        if (!apiKey) return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
 
         const authHeader = request.headers.get("authorization");
-        const supabaseUrl = process.env.SUPABASE_URL!;
-        const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
-
-        let context = "";
-        if (authHeader?.startsWith("Bearer ")) {
-          const sb = createClient(supabaseUrl, supabaseKey, {
-            global: { headers: { Authorization: authHeader } },
-            auth: { persistSession: false, autoRefreshToken: false },
-          });
-          const start = new Date(); start.setHours(0, 0, 0, 0);
-          const end = new Date(); end.setHours(23, 59, 59, 999);
-          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(23, 59, 59, 999);
-
-          const [tasks, meetings, reminders, profile] = await Promise.all([
-            sb.from("tasks").select("title, priority, due_date, status").eq("status", "pending").limit(20),
-            sb.from("meetings").select("title, datetime, duration_minutes").gte("datetime", start.toISOString()).lte("datetime", tomorrow.toISOString()),
-            sb.from("reminders").select("title, datetime").eq("done", false).gte("datetime", start.toISOString()).lte("datetime", tomorrow.toISOString()),
-            sb.from("profiles").select("name, role, goals").maybeSingle(),
-          ]);
-          context = JSON.stringify({
-            today: start.toISOString(),
-            profile: profile.data,
-            meetings: meetings.data,
-            reminders: reminders.data,
-            tasks: tasks.data,
-          }, null, 2);
+        if (!authHeader?.startsWith("Bearer ")) {
+          return jsonError(401, "Sesión inválida.");
         }
 
-        const gateway = createLovableAiGatewayProvider(apiKey);
-        const result = streamText({
-          model: gateway(DEFAULT_MODEL),
-          system: SYSTEM,
-          prompt: `Datos del usuario para hoy y mañana:\n\n${context || "(sin datos)"}\n\nGenera el resumen del día.`,
-        });
-        return result.toTextStreamResponse();
+        const sb = createClient(
+          process.env.SUPABASE_URL!,
+          process.env.SUPABASE_PUBLISHABLE_KEY!,
+          {
+            global: { headers: { Authorization: authHeader } },
+            auth: { persistSession: false, autoRefreshToken: false },
+          },
+        );
+
+        const { data: userRes, error: userErr } = await sb.auth.getUser();
+        if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
+
+        try {
+          const ctx = await buildContext(sb);
+          const gateway = createLovableAiGatewayProvider(apiKey);
+          const result = streamText({
+            model: gateway(DEFAULT_MODEL),
+            system: buildBriefSystemPrompt(ctx),
+            prompt: "Genera el resumen del día siguiendo exactamente la estructura indicada.",
+          });
+          return result.toTextStreamResponse();
+        } catch (e: any) {
+          const msg = String(e?.message ?? e);
+          if (/429|rate/i.test(msg)) {
+            return jsonError(429, "Alfred está ocupado ahora, intenta en un momento.");
+          }
+          if (/402|credit/i.test(msg)) {
+            return jsonError(402, "Sin créditos en Lovable AI.");
+          }
+          return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
+        }
       },
     },
   },

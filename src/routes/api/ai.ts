@@ -1,66 +1,76 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { createClient } from "@supabase/supabase-js";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
+import { buildContext } from "@/lib/ai/context-builder";
+import { buildSystemPrompt } from "@/lib/ai/prompts";
 
-const SYSTEM = `Eres Alfred, un asistente ejecutivo personal. Hablas español de Chile, tuteas (usas "tú").
-Reglas:
-- Sin preámbulos. Sin "claro, puedo ayudarte". Vas directo.
-- Calmado, inteligente, breve. Como un buen jefe de gabinete.
-- Markdown ligero cuando ayude (listas cortas, negritas para lo importante).
-- Si no sabes algo, lo dices.
-
-Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees tú.
-En vez de eso, al final de tu mensaje agrega un bloque de código con la acción propuesta, así:
-
-\`\`\`action
-{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
-\`\`\`
-
-El usuario verá una tarjeta de confirmación y decidirá. No expliques el bloque.`;
+function jsonError(status: number, message: string) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 export const Route = createFileRoute("/api/ai")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        if (!apiKey) return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
 
-        const body = (await request.json()) as {
-          messages: { role: "user" | "assistant"; content: string }[];
-          context?: {
-            name?: string;
-            now?: string;
-            tasks?: Array<{ title: string; due_date: string | null; priority: string; status: string }>;
-            meetings?: Array<{ title: string; datetime: string }>;
-            reminders?: Array<{ title: string; datetime: string }>;
-          };
-        };
+        const authHeader = request.headers.get("authorization");
+        if (!authHeader?.startsWith("Bearer ")) {
+          return jsonError(401, "Sesión inválida.");
+        }
 
-        const gateway = createLovableAiGatewayProvider(apiKey);
-        const model = gateway(DEFAULT_MODEL);
-
-        const ctx = body.context;
-        const ctxText = ctx
-          ? `\n\nContexto del usuario (${ctx.now ?? new Date().toISOString()}, America/Santiago):
-- Nombre: ${ctx.name ?? "desconocido"}
-- Tareas pendientes: ${(ctx.tasks ?? []).slice(0, 15).map(t => `[${t.priority}] ${t.title}${t.due_date ? ` (vence ${t.due_date})` : ""}`).join("; ") || "ninguna"}
-- Reuniones próximas: ${(ctx.meetings ?? []).slice(0, 10).map(m => `${m.title} @ ${m.datetime}`).join("; ") || "ninguna"}
-- Recordatorios activos: ${(ctx.reminders ?? []).slice(0, 10).map(r => `${r.title} @ ${r.datetime}`).join("; ") || "ninguno"}`
-          : "";
-
-        const uiMessages: UIMessage[] = body.messages.map((m, i) => ({
-          id: String(i),
-          role: m.role,
-          parts: [{ type: "text", text: m.content }],
-        } as UIMessage));
-
-        const result = streamText({
-          model,
-          system: SYSTEM + ctxText,
-          messages: await convertToModelMessages(uiMessages),
+        const supabaseUrl = process.env.SUPABASE_URL!;
+        const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
+        const sb = createClient(supabaseUrl, supabaseKey, {
+          global: { headers: { Authorization: authHeader } },
+          auth: { persistSession: false, autoRefreshToken: false },
         });
 
-        return result.toTextStreamResponse();
+        const { data: userRes, error: userErr } = await sb.auth.getUser();
+        if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
+
+        let body: { messages: { role: "user" | "assistant"; content: string }[] };
+        try {
+          body = await request.json();
+        } catch {
+          return jsonError(400, "Petición inválida.");
+        }
+        if (!Array.isArray(body.messages) || body.messages.length === 0) {
+          return jsonError(400, "Faltan mensajes.");
+        }
+
+        try {
+          const ctx = await buildContext(sb);
+          const system = buildSystemPrompt(ctx);
+
+          const uiMessages: UIMessage[] = body.messages.slice(-20).map((m, i) => ({
+            id: String(i),
+            role: m.role,
+            parts: [{ type: "text", text: m.content }],
+          } as UIMessage));
+
+          const gateway = createLovableAiGatewayProvider(apiKey);
+          const result = streamText({
+            model: gateway(DEFAULT_MODEL),
+            system,
+            messages: await convertToModelMessages(uiMessages),
+          });
+          return result.toTextStreamResponse();
+        } catch (e: any) {
+          const msg = String(e?.message ?? e);
+          if (/429|rate/i.test(msg)) {
+            return jsonError(429, "Alfred está ocupado ahora, intenta en un momento.");
+          }
+          if (/402|credit/i.test(msg)) {
+            return jsonError(402, "Sin créditos en Lovable AI. Agrega créditos en Settings → Workspace → Usage.");
+          }
+          return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
+        }
       },
     },
   },
