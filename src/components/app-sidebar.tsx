@@ -12,6 +12,8 @@ import {
   IconMenu2,
   IconX,
   IconSettings,
+  IconAddressBook,
+  IconBriefcase,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -21,9 +23,11 @@ const items = [
   { to: "/dashboard", label: "Hoy", icon: IconHome },
   { to: "/chat", label: "Chat", icon: IconMessageCircle },
   { to: "/tasks", label: "Tareas", icon: IconCircleCheck },
+  { to: "/projects", label: "Proyectos", icon: IconBriefcase },
   { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
   { to: "/reminders", label: "Recordatorios", icon: IconBell },
   { to: "/notes", label: "Notas", icon: IconPencil },
+  { to: "/contacts", label: "Contactos", icon: IconAddressBook },
 ] as const;
 
 function openQuickCapture() {
