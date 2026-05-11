@@ -216,6 +216,7 @@ function Dashboard() {
         { user_id: user.id, content: acc, date: todayStr } as any,
         { onConflict: "user_id,date" } as any,
       );
+      setBriefStaleness({ hasBrief: true, hasChanges: false });
     } catch {
       toast.error("No pude generar el resumen ahora.");
     } finally {
