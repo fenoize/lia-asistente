@@ -103,7 +103,7 @@ export async function buildContext(
     (m: any) => new Date(m.datetime) > endOfToday,
   );
 
-  const gender = ((profile as any).assistant_gender === "feminine" ? "feminine" : "masculine") as "feminine" | "masculine";
+  const gender = ((profile as any).assistant_gender === "masculine" ? "masculine" : "feminine") as "feminine" | "masculine";
 
   return {
     name: (profile as any).name ?? "amigo",
