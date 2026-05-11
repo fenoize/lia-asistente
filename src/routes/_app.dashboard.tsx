@@ -73,6 +73,7 @@ function Dashboard() {
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [finance, setFinance] = useState<{ income: number; expense: number; pending: number; currency: string; hasData: boolean } | null>(null);
+  const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
 
   const reloadMeetings = async () => {
@@ -164,12 +165,22 @@ function Dashboard() {
       const todayStr = today.toISOString().slice(0, 10);
       const { data: existing } = await supabase
         .from("daily_briefs")
-        .select("content")
+        .select("content,generated_at")
         .eq("date", todayStr)
         .maybeSingle();
       if (existing) {
         setBrief(existing.content);
         fetchedBriefRef.current = true;
+        // Detect changes since brief generation
+        const since = existing.generated_at as string;
+        const [tNew, tUpd, mNew, rNew] = await Promise.all([
+          supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+          supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("updated_at", since),
+          supabase.from("meetings").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+          supabase.from("reminders").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
+        ]);
+        const hasChanges = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0) > 0;
+        setBriefStaleness({ hasBrief: true, hasChanges });
       } else if (!fetchedBriefRef.current) {
         fetchedBriefRef.current = true;
         generateBrief();
@@ -205,6 +216,7 @@ function Dashboard() {
         { user_id: user.id, content: acc, date: todayStr } as any,
         { onConflict: "user_id,date" } as any,
       );
+      setBriefStaleness({ hasBrief: true, hasChanges: false });
     } catch {
       toast.error("No pude generar el resumen ahora.");
     } finally {
@@ -298,23 +310,36 @@ function Dashboard() {
               Resumen del día
             </span>
           </div>
-          <button
-            onClick={generateBrief}
-            disabled={briefLoading}
-            aria-label="Regenerar resumen"
-            style={{ color: "#444" }}
-            className="hover:opacity-100 opacity-80 transition"
-          >
-            <IconRefresh
-              size={14}
-              stroke={1.75}
-              style={
-                briefLoading
-                  ? { animation: "alfredSpin 0.9s linear infinite" }
-                  : undefined
-              }
-            />
-          </button>
+          {(briefStaleness.hasChanges || !briefStaleness.hasBrief || briefLoading) && (
+            <button
+              onClick={generateBrief}
+              disabled={briefLoading}
+              aria-label="Actualizar resumen"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 500,
+                color: "#6366f1",
+                background: "rgba(99,102,241,0.1)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                borderRadius: 999,
+                padding: "4px 10px",
+                cursor: briefLoading ? "not-allowed" : "pointer",
+                opacity: briefLoading ? 0.7 : 1,
+                transition: "background 0.15s",
+              }}
+              className="hover:bg-[rgba(99,102,241,0.18)]"
+            >
+              {briefLoading ? "Actualizando…" : "Actualizar"}
+              <IconRefresh
+                size={12}
+                stroke={2}
+                style={briefLoading ? { animation: "alfredSpin 0.9s linear infinite" } : undefined}
+              />
+            </button>
+          )}
         </div>
 
         {brief ? (
