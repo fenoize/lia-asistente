@@ -325,18 +325,28 @@ function NewProjectModal({
   const clients = contacts.filter((c) => c.type === "client");
   const [name, setName] = useState("");
   const [clientId, setClientId] = useState<string>("");
+  const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [budget, setBudget] = useState("");
+  const [currency, setCurrency] = useState<"CLP" | "USD">("CLP");
+  const [status, setStatus] = useState<"active" | "paused" | "completed">("active");
   const [busy, setBusy] = useState(false);
 
   const save = async () => {
     if (!name.trim() || !userId) return;
     setBusy(true);
+    const budgetNum = budget.trim() ? Number(budget.replace(/[^\d.-]/g, "")) : null;
+    const noteParts: string[] = [];
+    if (description.trim()) noteParts.push(description.trim());
+    if (budgetNum != null) noteParts.push(`[currency:${currency}]`);
     const { error } = await supabase.from("projects").insert({
       user_id: userId,
       name: name.trim(),
       client_id: clientId || null,
       due_date: dueDate || null,
-      status: "active",
+      budget: budgetNum,
+      notes: noteParts.length ? noteParts.join("\n\n") : null,
+      status,
     });
     setBusy(false);
     if (error) toast.error(error.message);
