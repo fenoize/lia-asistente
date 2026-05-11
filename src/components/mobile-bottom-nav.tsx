@@ -10,6 +10,8 @@ import {
   IconPencil,
   IconAddressBook,
   IconCurrencyDollar,
+  IconCalendarEvent,
+  IconBell,
   IconSettings,
   IconChevronRight,
   IconLogout,
@@ -40,6 +42,8 @@ const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
 
 const menuItems = [
   { to: "/chat", label: "Chat con Lia", icon: IconMessageCircle },
+  { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
+  { to: "/reminders", label: "Recordatorios", icon: IconBell },
   { to: "/projects", label: "Proyectos", icon: IconBriefcase },
   { to: "/notes", label: "Notas", icon: IconPencil },
   { to: "/contacts", label: "Contactos", icon: IconAddressBook },
