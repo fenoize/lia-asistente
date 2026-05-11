@@ -2,53 +2,188 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { IconBell, IconCheck, IconPlus } from "@tabler/icons-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/reminders")({
   component: RemindersPage,
 });
 
+type Reminder = {
+  id: string;
+  title: string;
+  datetime: string;
+  done: boolean | null;
+};
+
+function openCapture() {
+  window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
+}
+
 function RemindersPage() {
   const { user } = useAuth();
-  const [reminders, setReminders] = useState<any[]>([]);
+  const [items, setItems] = useState<Reminder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const load = async () => {
-    const { data } = await supabase.from("reminders").select("*").order("datetime", { ascending: true });
-    setReminders(data ?? []);
-  };
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("reminders")
+        .select("*")
+        .order("datetime", { ascending: true });
+      setItems((data as Reminder[]) ?? []);
+      setLoading(false);
+    })();
+  }, [user]);
 
-  const toggle = async (r: any) => {
-    await supabase.from("reminders").update({ done: !r.done }).eq("id", r.id);
-    load();
+  const toggle = async (r: Reminder) => {
+    const next = !r.done;
+    setItems((prev) => prev.map((x) => (x.id === r.id ? { ...x, done: next } : x)));
+    const { error } = await supabase.from("reminders").update({ done: next }).eq("id", r.id);
+    if (error) toast.error(error.message);
   };
+
+  const upcoming = items.filter((r) => !r.done);
+  const completed = items.filter((r) => !!r.done);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Recordatorios</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Para que no se te olvide.</p>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 24px" }}>
+      <header className="flex items-center justify-between mb-8">
+        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+          Recordatorios
+        </h1>
+        <button
+          onClick={openCapture}
+          className="flex items-center gap-1.5"
+          style={{
+            fontSize: 12, padding: "6px 14px",
+            borderRadius: "var(--radius-pill)",
+            border: "1px solid var(--accent-color)",
+            color: "var(--accent-color)",
+            background: "transparent",
+          }}
+        >
+          <IconPlus size={14} /> Nuevo
+        </button>
       </header>
 
-      {reminders.length === 0 && (
-        <p className="text-sm text-muted-foreground py-12 text-center">Nada por recordar. Usa ⌘K para agregar.</p>
+      {loading ? (
+        <Skeletons />
+      ) : (
+        <div className="space-y-8">
+          <Section
+            label="PRÓXIMOS"
+            items={upcoming}
+            onToggle={toggle}
+            empty="Sin recordatorios pendientes. Alfred te avisará cuando tengas uno."
+          />
+          {completed.length > 0 && (
+            <Section
+              label="COMPLETADOS"
+              items={completed}
+              onToggle={toggle}
+            />
+          )}
+        </div>
       )}
+    </div>
+  );
+}
 
-      <div className="space-y-1">
-        {reminders.map((r) => (
-          <div
-            key={r.id}
-            className={cn("flex items-center gap-3 px-4 py-3 surface-1 hairline rounded-xl", r.done && "opacity-50")}
-          >
-            <Checkbox checked={r.done} onCheckedChange={() => toggle(r)} />
-            <span className={cn("flex-1 text-sm", r.done && "line-through")}>{r.title}</span>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {new Date(r.datetime).toLocaleString("es-CL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-            </span>
-          </div>
-        ))}
+function Section({
+  label, items, onToggle, empty,
+}: {
+  label: string;
+  items: Reminder[];
+  onToggle: (r: Reminder) => void;
+  empty?: string;
+}) {
+  return (
+    <section>
+      <div
+        style={{
+          fontSize: 10, letterSpacing: "0.12em",
+          color: "var(--text-tertiary)", marginBottom: 10,
+        }}
+      >
+        {label}
       </div>
+      {items.length === 0 && empty ? (
+        <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{empty}</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((r) => (
+            <ReminderRow key={r.id} reminder={r} onToggle={() => onToggle(r)} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ReminderRow({ reminder: r, onToggle }: { reminder: Reminder; onToggle: () => void }) {
+  const dt = new Date(r.datetime);
+  const fmt = dt.toLocaleString("es-CL", {
+    weekday: "short", day: "numeric", month: "short",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  return (
+    <li
+      className="flex items-center gap-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-md)",
+        padding: "12px 14px",
+        opacity: r.done ? 0.55 : 1,
+        transition: "opacity 200ms ease, transform 200ms ease",
+      }}
+    >
+      <IconBell size={16} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
+      <div className="flex-1 min-w-0">
+        <div
+          style={{
+            fontSize: 14, color: "var(--text-primary)",
+            textDecoration: r.done ? "line-through" : "none",
+          }}
+        >
+          {r.title}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{fmt}</div>
+      </div>
+      <button
+        onClick={onToggle}
+        aria-label={r.done ? "Desmarcar" : "Marcar completado"}
+        style={{
+          width: 22, height: 22, borderRadius: "50%",
+          border: `1.5px solid ${r.done ? "var(--accent-color)" : "var(--border)"}`,
+          background: r.done ? "var(--accent-color)" : "transparent",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0,
+        }}
+        className="hover:scale-110 transition-transform"
+      >
+        {r.done && <IconCheck size={12} stroke={3} color="white" />}
+      </button>
+    </li>
+  );
+}
+
+function Skeletons() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            height: 56, borderRadius: "var(--radius-md)",
+            background: "var(--bg-elevated)", opacity: 0.5,
+            animation: "alfredShimmer 1.4s infinite",
+          }}
+        />
+      ))}
     </div>
   );
 }

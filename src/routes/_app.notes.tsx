@@ -1,102 +1,203 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/notes")({
   component: NotesPage,
 });
 
-const typeLabels: Record<string, string> = {
-  note: "Nota",
-  idea: "Idea",
-  highlight: "Destacado",
+type Note = {
+  id: string;
+  content: string;
+  type: string | null;
+  created_at: string | null;
 };
+
+type Tab = "all" | "note" | "idea" | "highlight";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "all", label: "Todo" },
+  { id: "note", label: "Nota" },
+  { id: "idea", label: "Idea" },
+  { id: "highlight", label: "Highlight" },
+];
+
+function openCapture() {
+  window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
+}
 
 function NotesPage() {
   const { user } = useAuth();
-  const [notes, setNotes] = useState<any[]>([]);
-  const [content, setContent] = useState("");
-  const [type, setType] = useState("note");
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Tab>("all");
 
-  const load = async () => {
-    const { data } = await supabase.from("notes").select("*").order("created_at", { ascending: false });
-    setNotes(data ?? []);
-  };
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("notes")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setNotes((data as Note[]) ?? []);
+      setLoading(false);
+    })();
+  }, [user]);
 
-  const save = async () => {
-    if (!content.trim() || !user) return;
-    const { error } = await supabase.from("notes").insert({ user_id: user.id, content, type });
-    if (error) return toast.error(error.message);
-    setContent("");
-    load();
-  };
+  const filtered = useMemo(
+    () => (tab === "all" ? notes : notes.filter((n) => (n.type ?? "note") === tab)),
+    [notes, tab],
+  );
 
   const remove = async (id: string) => {
-    await supabase.from("notes").delete().eq("id", id);
-    load();
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    const { error } = await supabase.from("notes").delete().eq("id", id);
+    if (error) toast.error(error.message);
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold tracking-tight">Notas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Pensamientos sueltos, ideas, destacados.</p>
+    <div style={{ maxWidth: 760, margin: "0 auto", padding: "40px 24px" }}>
+      <header className="flex items-center justify-between mb-6">
+        <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
+          Notas
+        </h1>
+        <button
+          onClick={openCapture}
+          className="flex items-center gap-1.5"
+          style={{
+            fontSize: 12, padding: "6px 14px",
+            borderRadius: "var(--radius-pill)",
+            border: "1px solid var(--accent-color)",
+            color: "var(--accent-color)",
+            background: "transparent",
+          }}
+        >
+          <IconPlus size={14} /> Nueva
+        </button>
       </header>
 
-      <div className="surface-1 hairline rounded-2xl p-4 mb-8">
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Escribe lo que tengas en mente…"
-          rows={3}
-          className="border-0 bg-transparent resize-none focus-visible:ring-0 px-0"
-        />
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <div className="flex gap-1">
-            {Object.entries(typeLabels).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setType(key)}
-                className={`text-xs rounded-full px-2.5 py-1 transition ${
-                  type === key ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <Button onClick={save} disabled={!content.trim()} className="rounded-[20px] h-9">Guardar</Button>
-        </div>
+      <div className="flex gap-1.5 mb-6">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              fontSize: 12, padding: "5px 12px",
+              borderRadius: "var(--radius-pill)",
+              border: "1px solid var(--border)",
+              background: tab === t.id ? "var(--accent-subtle)" : "transparent",
+              color: tab === t.id ? "var(--accent-color)" : "var(--text-secondary)",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-12">Sin notas aún.</p>
+      {loading ? (
+        <Skeletons />
+      ) : filtered.length === 0 ? (
+        <div className="text-center" style={{ padding: "80px 0" }}>
+          <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>Aún no has guardado nada por aquí.</p>
+          <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 6 }}>
+            Tus ideas, highlights y notas vivirán acá.
+          </p>
+        </div>
       ) : (
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-          {notes.map((n) => (
-            <div key={n.id} className="break-inside-avoid surface-1 hairline rounded-xl p-4 group">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{typeLabels[n.type] ?? n.type}</span>
-                <button
-                  onClick={() => remove(n.id)}
-                  className="opacity-0 group-hover:opacity-100 text-[10px] text-muted-foreground hover:text-destructive transition"
-                >
-                  Eliminar
-                </button>
-              </div>
-              <p className="text-sm whitespace-pre-wrap">{n.content}</p>
-              <p className="mt-3 text-[10px] text-muted-foreground">
-                {new Date(n.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
-              </p>
-            </div>
+        <div style={{ columnCount: 2, columnGap: 12 }}>
+          {filtered.map((n) => (
+            <NoteCard key={n.id} note={n} onRemove={() => remove(n.id)} />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function NoteCard({ note, onRemove }: { note: Note; onRemove: () => void }) {
+  const type = (note.type ?? "note") as "note" | "idea" | "highlight";
+  const tag: Record<string, { label: string; bg: string; color: string }> = {
+    note: { label: "Nota", bg: "rgba(255,255,255,0.06)", color: "var(--text-secondary)" },
+    idea: { label: "Idea", bg: "var(--accent-subtle)", color: "var(--accent-color)" },
+    highlight: { label: "Highlight", bg: "rgba(251,191,36,0.14)", color: "#fcd34d" },
+  };
+  const t = tag[type] ?? tag.note;
+  const date = note.created_at
+    ? new Date(note.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short" })
+    : "";
+
+  return (
+    <article
+      className="group relative break-inside-avoid hover:[--note-border:var(--accent-subtle)]"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--note-border, var(--border))",
+        borderRadius: "var(--radius-md)",
+        padding: 16,
+        marginBottom: 12,
+        transition: "border-color 200ms ease",
+      }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <span
+          style={{
+            fontSize: 11, padding: "2px 8px",
+            borderRadius: "var(--radius-pill)",
+            background: t.bg, color: t.color,
+          }}
+        >
+          {t.label}
+        </span>
+        <button
+          onClick={onRemove}
+          aria-label="Eliminar"
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
+
+      <p
+        style={{
+          fontSize: 14, lineHeight: 1.6,
+          color: "var(--text-primary)",
+          display: "-webkit-box",
+          WebkitLineClamp: 6,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          whiteSpace: "pre-wrap",
+        }}
+      >
+        {note.content}
+      </p>
+
+      <div className="flex justify-end mt-3">
+        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{date}</span>
+      </div>
+    </article>
+  );
+}
+
+function Skeletons() {
+  return (
+    <div style={{ columnCount: 2, columnGap: 12 }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="break-inside-avoid"
+          style={{
+            height: 100 + (i % 3) * 30,
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-elevated)", opacity: 0.5,
+            marginBottom: 12,
+            animation: "alfredShimmer 1.4s infinite",
+          }}
+        />
+      ))}
     </div>
   );
 }
