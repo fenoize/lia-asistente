@@ -3,7 +3,6 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
   IconCircleCheck,
-  IconBell,
   IconMenu2,
   IconPlus,
   IconMessageCircle,
