@@ -536,7 +536,6 @@ function ActionCard({
   );
 }
 
-const InputBar = (
 function InputBar({
   value,
   onChange,
