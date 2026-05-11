@@ -143,16 +143,7 @@ function ProjectsPage() {
             if (list.length === 0) return null;
             return (
               <section key={g.key}>
-                <div
-                  className="mb-3"
-                  style={{
-                    fontSize: 11,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: "var(--text-tertiary)",
-                    fontWeight: 500,
-                  }}
-                >
+                <div className="alfred-section-label">
                   {g.label} · {list.length}
                 </div>
                 <div className="space-y-3">
