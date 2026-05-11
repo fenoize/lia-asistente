@@ -7,7 +7,7 @@ export type AssistantConfig = {
   gender: "feminine" | "masculine";
 };
 
-const DEFAULT: AssistantConfig = { name: "Alfred", gender: "masculine" };
+const DEFAULT: AssistantConfig = { name: "Lia", gender: "feminine" };
 
 export function useAssistant(): AssistantConfig {
   const { user } = useAuth();
