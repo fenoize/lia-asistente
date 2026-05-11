@@ -307,20 +307,20 @@ export function ChatInterface() {
                   className="shrink-0 transition-colors"
                   style={{
                     fontSize: 12,
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-pill)",
-                    padding: "6px 14px",
-                    color: "var(--text-secondary)",
-                    background: "transparent",
+                    border: "1px solid #222",
+                    borderRadius: 100,
+                    padding: "7px 16px",
+                    color: "#888",
+                    background: "#111",
                     whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "var(--accent-color)";
-                    e.currentTarget.style.color = "var(--accent-color)";
+                    e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)";
+                    e.currentTarget.style.color = "#818cf8";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.color = "var(--text-secondary)";
+                    e.currentTarget.style.borderColor = "#222";
+                    e.currentTarget.style.color = "#888";
                   }}
                 >
                   {s}
