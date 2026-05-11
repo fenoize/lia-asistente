@@ -116,7 +116,7 @@ function Onboarding() {
         <StepShell key={step}>
           {step === 0 && (
             <Step
-              title="Hola. Soy Alfred."
+              title="Hola. Soy LIA."
               subtitle="Tu asistente ejecutivo personal. ¿Cómo te llamas?"
             >
               <BareInput
