@@ -561,7 +561,7 @@ function InputBar({
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
-  taRef: React.RefObject<HTMLTextAreaElement | null>;
+  taRef: React.RefObject<MentionInputHandle | null>;
   placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
@@ -593,28 +593,29 @@ function InputBar({
       >
         A
       </div>
-      <textarea
-        ref={taRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (hasText && !disabled) onSend();
-          }
-        }}
-        rows={1}
-        placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
-        className="flex-1 bg-transparent resize-none focus:outline-none alfred-chat-input"
-        style={{
-          fontSize: 14,
-          lineHeight: "22px",
-          color: "var(--text-primary)",
-          minHeight: 22,
-        }}
-      />
+      <div className="flex-1 min-w-0">
+        <MentionInput
+          ref={taRef}
+          value={value}
+          onChange={onChange}
+          onSubmit={() => { if (hasText && !disabled) onSend(); }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          multiline
+          rows={1}
+          maxRows={5}
+          placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
+          className="w-full bg-transparent resize-none focus:outline-none alfred-chat-input"
+          style={{
+            fontSize: 14,
+            lineHeight: "22px",
+            color: "var(--text-primary)",
+            minHeight: 22,
+            border: "none",
+            outline: "none",
+          }}
+        />
+      </div>
       <button
         onClick={onSend}
         disabled={!hasText || disabled}
