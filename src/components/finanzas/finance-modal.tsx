@@ -280,14 +280,42 @@ export function FinanceModal({
           )}
 
           {kind === "gasto" && (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Fecha">
-                <input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} style={inputStyle} />
-              </Field>
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Fecha">
+                  <input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} style={inputStyle} />
+                </Field>
+                <Field label="Tipo">
+                  <select value={expenseType} onChange={(e) => setExpenseType(e.target.value)} style={inputStyle}>
+                    <option value="one_time">Único</option>
+                    <option value="fixed">Fijo</option>
+                    <option value="recurring">Recurrente</option>
+                  </select>
+                </Field>
+              </div>
               <Field label="Categoría">
                 <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Comida, transporte..." style={inputStyle} />
               </Field>
-            </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Proyecto">
+                  <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={inputStyle}>
+                    <option value="">— Ninguno —</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Tarea">
+                  <select value={taskId} onChange={(e) => setTaskId(e.target.value)} style={inputStyle}>
+                    <option value="">— Ninguna —</option>
+                    {tasks.map((t) => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </>
+          )}
           )}
 
           {kind === "sub" && (
