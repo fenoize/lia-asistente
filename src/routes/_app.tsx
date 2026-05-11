@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
@@ -34,7 +35,9 @@ function AppLayout() {
         className="flex-1 min-w-0 overflow-y-auto h-screen"
         style={{ background: "var(--bg-base)" }}
       >
-        <Outlet />
+        <div key={pathname} className="alfred-page h-full">
+          <Outlet />
+        </div>
       </main>
       <QuickCapture />
     </div>

@@ -55,7 +55,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#0A0A0A" },
+      { name: "theme-color", content: "#080808" },
       { title: "Alfred — Tu asistente personal" },
       { name: "description", content: "Alfred es tu asistente ejecutivo con IA. Tareas, reuniones, recordatorios y notas — todo en un solo lugar, calmado y minimal." },
       { property: "og:title", content: "Alfred — Tu asistente personal" },
