@@ -13,6 +13,9 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiQuickCaptureRouteImport } from './routes/api/quick-capture'
+import { Route as ApiDailyBriefRouteImport } from './routes/api/daily-brief'
+import { Route as ApiAiRouteImport } from './routes/api/ai'
 import { Route as AppTareasRouteImport } from './routes/_app.tareas'
 import { Route as AppReunionesRouteImport } from './routes/_app.reuniones'
 import { Route as AppRecordatoriosRouteImport } from './routes/_app.recordatorios'
@@ -37,6 +40,21 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQuickCaptureRoute = ApiQuickCaptureRouteImport.update({
+  id: '/api/quick-capture',
+  path: '/api/quick-capture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDailyBriefRoute = ApiDailyBriefRouteImport.update({
+  id: '/api/daily-brief',
+  path: '/api/daily-brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAiRoute = ApiAiRouteImport.update({
+  id: '/api/ai',
+  path: '/api/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppTareasRoute = AppTareasRouteImport.update({
@@ -80,6 +98,9 @@ export interface FileRoutesByFullPath {
   '/recordatorios': typeof AppRecordatoriosRoute
   '/reuniones': typeof AppReunionesRoute
   '/tareas': typeof AppTareasRoute
+  '/api/ai': typeof ApiAiRoute
+  '/api/daily-brief': typeof ApiDailyBriefRoute
+  '/api/quick-capture': typeof ApiQuickCaptureRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,6 +112,9 @@ export interface FileRoutesByTo {
   '/recordatorios': typeof AppRecordatoriosRoute
   '/reuniones': typeof AppReunionesRoute
   '/tareas': typeof AppTareasRoute
+  '/api/ai': typeof ApiAiRoute
+  '/api/daily-brief': typeof ApiDailyBriefRoute
+  '/api/quick-capture': typeof ApiQuickCaptureRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +128,9 @@ export interface FileRoutesById {
   '/_app/recordatorios': typeof AppRecordatoriosRoute
   '/_app/reuniones': typeof AppReunionesRoute
   '/_app/tareas': typeof AppTareasRoute
+  '/api/ai': typeof ApiAiRoute
+  '/api/daily-brief': typeof ApiDailyBriefRoute
+  '/api/quick-capture': typeof ApiQuickCaptureRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +144,9 @@ export interface FileRouteTypes {
     | '/recordatorios'
     | '/reuniones'
     | '/tareas'
+    | '/api/ai'
+    | '/api/daily-brief'
+    | '/api/quick-capture'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +158,9 @@ export interface FileRouteTypes {
     | '/recordatorios'
     | '/reuniones'
     | '/tareas'
+    | '/api/ai'
+    | '/api/daily-brief'
+    | '/api/quick-capture'
   id:
     | '__root__'
     | '/'
@@ -140,6 +173,9 @@ export interface FileRouteTypes {
     | '/_app/recordatorios'
     | '/_app/reuniones'
     | '/_app/tareas'
+    | '/api/ai'
+    | '/api/daily-brief'
+    | '/api/quick-capture'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -147,6 +183,9 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  ApiAiRoute: typeof ApiAiRoute
+  ApiDailyBriefRoute: typeof ApiDailyBriefRoute
+  ApiQuickCaptureRoute: typeof ApiQuickCaptureRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -177,6 +216,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quick-capture': {
+      id: '/api/quick-capture'
+      path: '/api/quick-capture'
+      fullPath: '/api/quick-capture'
+      preLoaderRoute: typeof ApiQuickCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/daily-brief': {
+      id: '/api/daily-brief'
+      path: '/api/daily-brief'
+      fullPath: '/api/daily-brief'
+      preLoaderRoute: typeof ApiDailyBriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ai': {
+      id: '/api/ai'
+      path: '/api/ai'
+      fullPath: '/api/ai'
+      preLoaderRoute: typeof ApiAiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/tareas': {
@@ -249,6 +309,9 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  ApiAiRoute: ApiAiRoute,
+  ApiDailyBriefRoute: ApiDailyBriefRoute,
+  ApiQuickCaptureRoute: ApiQuickCaptureRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
