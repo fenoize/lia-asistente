@@ -278,7 +278,7 @@ function Dashboard() {
         {urgentTasks.length === 0 ? (
           <Empty>Cero urgencias. Bien.</Empty>
         ) : (
-          <div className="space-y-1.5">
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {visibleTasks.map((t) => (
               <TaskRow
                 key={t.id}
