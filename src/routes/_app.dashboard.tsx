@@ -52,6 +52,14 @@ function daysUntil(birthdayIso: string): number {
   return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
+function fmtMoney(amount: number, currency: string) {
+  try {
+    return new Intl.NumberFormat("es-CL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${Math.round(amount)} ${currency}`;
+  }
+}
+
 function Dashboard() {
   const { user } = useAuth();
   const assistant = useAssistant();
@@ -64,6 +72,7 @@ function Dashboard() {
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [finance, setFinance] = useState<{ income: number; expense: number; pending: number; currency: string; hasData: boolean } | null>(null);
   const fetchedBriefRef = useRef(false);
 
   const reloadMeetings = async () => {
@@ -133,6 +142,24 @@ function Dashboard() {
         .filter((b) => b.daysUntil <= 3)
         .sort((a, b) => a.daysUntil - b.daysUntil);
       setBirthdays(upcoming);
+
+      // Finance summary for current month
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const [incRes, expRes, accRes] = await Promise.all([
+        supabase.from("finance_incomes").select("amount,currency,status,paid_at,due_date").eq("user_id", user.id),
+        supabase.from("finance_expenses").select("amount,currency,expense_date").eq("user_id", user.id).gte("expense_date", monthStart).lte("expense_date", monthEnd),
+        supabase.from("finance_accounts").select("id").eq("user_id", user.id).limit(1),
+      ]);
+      const incomes = (incRes.data ?? []) as Array<{ amount: number; currency: string; status: string; paid_at: string | null; due_date: string | null }>;
+      const expenses = (expRes.data ?? []) as Array<{ amount: number; currency: string; expense_date: string }>;
+      const accounts = (accRes.data ?? []) as Array<{ id: string }>;
+      const income = incomes.filter(i => i.status === "paid" && i.paid_at && i.paid_at >= monthStart && i.paid_at <= monthEnd).reduce((s, i) => s + Number(i.amount || 0), 0);
+      const expense = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const pending = incomes.filter(i => i.status !== "paid" && i.status !== "cancelled").reduce((s, i) => s + Number(i.amount || 0), 0);
+      const currency = incomes[0]?.currency || expenses[0]?.currency || "CLP";
+      const hasData = incomes.length > 0 || expenses.length > 0 || accounts.length > 0;
+      setFinance({ income, expense, pending, currency, hasData });
 
       const todayStr = today.toISOString().slice(0, 10);
       const { data: existing } = await supabase
@@ -424,15 +451,23 @@ function Dashboard() {
 
       {/* Finanzas */}
       <Block label="FINANZAS">
-        <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
-          Este mes: sin datos aún — configura tus cuentas{" "}
-          <Link
-            to="/finanzas"
-            style={{ color: "#6366f1", fontStyle: "normal" }}
-          >
-            configurar →
+        {!finance || !finance.hasData ? (
+          <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
+            Este mes: sin datos aún — {" "}
+            <Link to="/finanzas" style={{ color: "#6366f1", fontStyle: "normal" }}>
+              configurar →
+            </Link>
+          </p>
+        ) : (
+          <Link to="/finanzas" style={{ display: "block", textDecoration: "none" }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#bbb" }}>
+              <span>Ingresos: <strong style={{ color: "#10b981" }}>{fmtMoney(finance.income, finance.currency)}</strong></span>
+              <span>Gastos: <strong style={{ color: "#ef4444" }}>{fmtMoney(finance.expense, finance.currency)}</strong></span>
+              <span>Balance: <strong style={{ color: finance.income - finance.expense >= 0 ? "#10b981" : "#ef4444" }}>{fmtMoney(finance.income - finance.expense, finance.currency)}</strong></span>
+              {finance.pending > 0 && <span>Por cobrar: <strong style={{ color: "#f59e0b" }}>{fmtMoney(finance.pending, finance.currency)}</strong></span>}
+            </div>
           </Link>
-        </p>
+        )}
       </Block>
 
       {editingMeeting && (
