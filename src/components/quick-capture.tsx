@@ -71,7 +71,7 @@ export function QuickCapture() {
   const [noteKind, setNoteKind] = useState<"note" | "idea" | "highlight">("note");
   const [dt, setDt] = useState<{ date: string; time: string }>(toDateInputs(null));
   const [dtTouched, setDtTouched] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<MentionInputHandle>(null);
   const { user } = useAuth();
 
   const detected = useMemo(() => detectType(text), [text]);
