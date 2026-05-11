@@ -145,6 +145,9 @@ export function FinanceModal({
         currency,
         category: category.trim() || null,
         expense_date: expenseDate,
+        expense_type: expenseType,
+        task_id: taskId || null,
+        project_id: projectId || null,
         notes: notes.trim() || null,
       };
     } else if (kind === "sub") {
