@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Clock, MapPin } from "lucide-react";
 
-export const Route = createFileRoute("/_app/reuniones")({
+export const Route = createFileRoute("/_app/meetings")({
   component: MeetingsPage,
 });
 

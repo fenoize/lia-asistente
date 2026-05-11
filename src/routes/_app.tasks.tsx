@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_app/tareas")({
+export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
 });
 

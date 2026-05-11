@@ -121,7 +121,7 @@ function Dashboard() {
       </section>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Card title="Próximas reuniones" icon={Calendar} href="/reuniones" empty="Sin reuniones por ahora.">
+        <Card title="Próximas reuniones" icon={Calendar} href="/meetings" empty="Sin reuniones por ahora.">
           {meetings.map((m) => (
             <Row
               key={m.id}
@@ -131,7 +131,7 @@ function Dashboard() {
           ))}
         </Card>
 
-        <Card title="Tareas urgentes" icon={CheckSquare} href="/tareas" empty="Cero pendientes. Bien.">
+        <Card title="Tareas urgentes" icon={CheckSquare} href="/tasks" empty="Cero pendientes. Bien.">
           {tasks.map((t) => (
             <Row
               key={t.id}
@@ -142,7 +142,7 @@ function Dashboard() {
           ))}
         </Card>
 
-        <Card title="Recordatorios" icon={Bell} href="/recordatorios" empty="Nada que recordar.">
+        <Card title="Recordatorios" icon={Bell} href="/reminders" empty="Nada que recordar.">
           {reminders.map((r) => (
             <Row
               key={r.id}
