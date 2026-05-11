@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
 import { IconX, IconTrash } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 
