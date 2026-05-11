@@ -3,7 +3,6 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
   IconCircleCheck,
-  IconBell,
   IconMenu2,
   IconPlus,
   IconMessageCircle,
@@ -312,7 +311,7 @@ export function MobileBottomNav() {
     { to: "/dashboard", label: "Inicio", icon: IconHome },
     { to: "/tasks", label: "Tareas", icon: IconCircleCheck },
     null, // center
-    { to: "/reminders", label: "Recordatorios", icon: IconBell },
+    { to: "/chat", label: "Chat", icon: IconMessageCircle },
     { action: "menu" as const, label: "Menú", icon: IconMenu2 },
   ];
 
