@@ -57,7 +57,7 @@ export function ChatInterface() {
   const [name, setName] = useState("");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
 
   // Load history + context
