@@ -99,6 +99,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               <Link
                 key={item.to}
                 to={item.to}
+                preload="render"
                 onClick={onNavigate}
                 className={cn(
                   "flex items-center transition-colors no-underline w-fit",
