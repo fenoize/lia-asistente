@@ -1,0 +1,248 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { IconVenus, IconMars } from "@tabler/icons-react";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+export const Route = createFileRoute("/_app/settings")({
+  component: SettingsPage,
+});
+
+type Gender = "feminine" | "masculine";
+
+function SettingsPage() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [name, setName] = useState("Alfred");
+  const [gender, setGender] = useState<Gender>("masculine");
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("name, assistant_name, assistant_gender")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data) {
+        setUserName(((data as any).name ?? "").split(" ")[0] || "");
+        setName((data as any).assistant_name || "Alfred");
+        setGender(((data as any).assistant_gender === "feminine" ? "feminine" : "masculine"));
+      }
+      setLoading(false);
+    })();
+  }, [user]);
+
+  const save = async () => {
+    if (!user) return;
+    const finalName = name.trim() || "Alfred";
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ assistant_name: finalName, assistant_gender: gender })
+      .eq("id", user.id);
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else toast.success("Guardado ✓");
+  };
+
+  const greetingPreview =
+    gender === "feminine"
+      ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy lista para ayudarte a organizar tu semana.`
+      : `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy listo para ayudarte a organizar tu semana.`;
+
+  return (
+    <div className="mx-auto" style={{ maxWidth: 640, padding: "40px 24px" }}>
+      <h1
+        style={{
+          fontSize: 22,
+          fontWeight: 500,
+          letterSpacing: "-0.02em",
+          color: "var(--text-primary)",
+          marginBottom: 4,
+        }}
+      >
+        Ajustes
+      </h1>
+      <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 32 }}>
+        Personaliza tu experiencia.
+      </p>
+
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: "24px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--text-tertiary)",
+            fontWeight: 600,
+            marginBottom: 16,
+          }}
+        >
+          Tu asistente
+        </div>
+
+        <label
+          style={{
+            display: "block",
+            fontSize: 12,
+            color: "var(--text-secondary)",
+            marginBottom: 6,
+          }}
+        >
+          Nombre
+        </label>
+        <input
+          value={name}
+          maxLength={20}
+          onChange={(e) => setName(e.target.value)}
+          disabled={loading}
+          placeholder="Ej: Lia, Max, Nova, Alex..."
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            fontSize: 14,
+            color: "var(--text-primary)",
+            marginBottom: 24,
+          }}
+        />
+
+        <label
+          style={{
+            display: "block",
+            fontSize: 12,
+            color: "var(--text-secondary)",
+            marginBottom: 8,
+          }}
+        >
+          Personalidad
+        </label>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <PersonaCard
+            active={gender === "feminine"}
+            onClick={() => setGender("feminine")}
+            Icon={IconVenus}
+            label="Femenina"
+            caption="Cercana, cálida, estratégica"
+          />
+          <PersonaCard
+            active={gender === "masculine"}
+            onClick={() => setGender("masculine")}
+            Icon={IconMars}
+            label="Masculina"
+            caption="Directo, sólido, estratégico"
+          />
+        </div>
+
+        <div
+          style={{
+            background: "var(--bg-base)",
+            border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)",
+            padding: "14px 16px",
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "var(--text-tertiary)",
+              marginBottom: 6,
+              fontWeight: 600,
+            }}
+          >
+            Vista previa
+          </div>
+          <p style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>
+            {greetingPreview}
+          </p>
+        </div>
+
+        <button
+          onClick={save}
+          disabled={saving || loading}
+          style={{
+            background: "var(--accent-color)",
+            color: "white",
+            borderRadius: "var(--radius-pill)",
+            padding: "9px 22px",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: saving || loading ? 0.5 : 1,
+          }}
+        >
+          {saving ? "Guardando…" : "Guardar"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function PersonaCard({
+  active,
+  onClick,
+  Icon,
+  label,
+  caption,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: React.ComponentType<{ size?: number; stroke?: number; color?: string }>;
+  label: string;
+  caption: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-center transition-colors"
+      style={{
+        border: `${active ? 2 : 1}px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+        background: active ? "var(--accent-subtle)" : "transparent",
+        borderRadius: "var(--radius-lg)",
+        padding: active ? "19px" : "20px",
+      }}
+    >
+      <div className="flex items-center justify-center mb-2">
+        <Icon
+          size={24}
+          stroke={1.5}
+          color={active ? "var(--accent-color)" : "var(--text-secondary)"}
+        />
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 500,
+          color: active ? "var(--accent-color)" : "var(--text-primary)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          marginTop: 2,
+          fontSize: 11,
+          color: "var(--text-tertiary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {caption}
+      </div>
+    </button>
+  );
+}
