@@ -60,7 +60,21 @@ function Dashboard() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const fetchedBriefRef = useRef(false);
+
+  const reloadMeetings = async () => {
+    if (!user) return;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const { data } = await supabase
+      .from("meetings")
+      .select("*")
+      .gte("datetime", start.toISOString())
+      .lte("datetime", end.toISOString())
+      .order("datetime");
+    setMeetings((data as Meeting[]) ?? []);
+  };
 
   const today = new Date();
   const hour = today.getHours();
