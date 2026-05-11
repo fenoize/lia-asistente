@@ -110,7 +110,7 @@ export async function buildContext(
     role: (profile as any).role ?? "(sin definir)",
     goals: (profile as any).goals ?? "(sin definir)",
     timezone: (profile as any).timezone ?? TZ,
-    assistantName: (profile as any).assistant_name ?? "Alfred",
+    assistantName: (profile as any).assistant_name ?? "Lia",
     assistantGender: gender,
     currentTime: now.toLocaleString("es-CL", {
       timeZone: TZ,
