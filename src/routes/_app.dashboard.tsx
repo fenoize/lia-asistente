@@ -318,19 +318,8 @@ function Block({
   children: React.ReactNode;
 }) {
   return (
-    <section style={{ marginBottom: 32 }}>
-      <div
-        style={{
-          fontSize: 10,
-          color: "var(--text-tertiary)",
-          letterSpacing: "0.1em",
-          fontWeight: 500,
-          marginBottom: 12,
-          paddingLeft: 4,
-        }}
-      >
-        {label}
-      </div>
+    <section>
+      <div className="alfred-section-label">{label}</div>
       {children}
     </section>
   );
