@@ -97,7 +97,9 @@ export const Route = createFileRoute("/api/ai")({
 
         try {
           const ctx = await buildContext(sb);
-          const system = buildSystemPrompt(ctx);
+          const lastUser = [...body.messages].reverse().find((m) => m.role === "user")?.content ?? "";
+          const mentionsBlock = await buildMentionsBlock(sb, lastUser);
+          const system = buildSystemPrompt(ctx) + mentionsBlock;
 
           const uiMessages: UIMessage[] = body.messages.slice(-20).map((m, i) => ({
             id: String(i),
