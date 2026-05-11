@@ -20,26 +20,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type CaptureType = "task" | "meeting" | "reminder" | "note";
-const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
-
-function detectType(raw: string): CaptureType {
-  const t = raw.toLowerCase().trim();
-  if (!t) return "task";
-  if (/(reuni[oó]n|llama|llamada|\bcall\b|meeting|junta)/.test(t)) return "meeting";
-  if (/(recu[eé]rdame|recordar|recordatorio|ma[ñn]ana a las|hoy a las)/.test(t)) return "reminder";
-  if (TIME_RE.test(t)) return "reminder";
-  if (t.length > 90) return "note";
-  return "task";
-}
-
-const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
-  task: { label: "Tarea", emoji: "📋" },
-  meeting: { label: "Reunión", emoji: "📅" },
-  reminder: { label: "Recordatorio", emoji: "🔔" },
-  note: { label: "Nota", emoji: "📝" },
-};
-
 const menuItems = [
   { to: "/chat", label: "Chat con Lia", icon: IconMessageCircle },
   { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
