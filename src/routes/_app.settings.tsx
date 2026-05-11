@@ -51,8 +51,8 @@ function SettingsPage() {
 
   const greetingPreview =
     gender === "feminine"
-      ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy lista para ayudarte a organizar tu semana.`
-      : `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy listo para ayudarte a organizar tu semana.`;
+      ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy lista para ayudarte a organizar tu semana.`
+      : `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy listo para ayudarte a organizar tu semana.`;
 
   return (
     <div className="mx-auto" style={{ maxWidth: 640, padding: "40px 24px" }}>
