@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
@@ -9,8 +8,6 @@ import {
   IconPencil,
   IconPlus,
   IconLogout,
-  IconMenu2,
-  IconX,
   IconSettings,
   IconAddressBook,
   IconBriefcase,
