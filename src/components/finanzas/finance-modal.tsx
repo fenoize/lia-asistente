@@ -316,7 +316,6 @@ export function FinanceModal({
               </div>
             </>
           )}
-          )}
 
           {kind === "sub" && (
             <>
