@@ -29,8 +29,8 @@ function SettingsPage() {
         .maybeSingle();
       if (data) {
         setUserName(((data as any).name ?? "").split(" ")[0] || "");
-        setName((data as any).assistant_name || "Alfred");
-        setGender(((data as any).assistant_gender === "feminine" ? "feminine" : "masculine"));
+        setName((data as any).assistant_name || "Lia");
+        setGender(((data as any).assistant_gender === "masculine" ? "masculine" : "feminine"));
       }
       setLoading(false);
     })();
