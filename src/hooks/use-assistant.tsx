@@ -24,8 +24,8 @@ export function useAssistant(): AssistantConfig {
         .maybeSingle();
       if (cancelled || !data) return;
       setCfg({
-        name: (data as any).assistant_name || "Alfred",
-        gender: ((data as any).assistant_gender === "feminine" ? "feminine" : "masculine"),
+        name: (data as any).assistant_name || "Lia",
+        gender: ((data as any).assistant_gender === "masculine" ? "masculine" : "feminine"),
       });
     })();
     return () => {
