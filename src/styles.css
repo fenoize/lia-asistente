@@ -130,6 +130,20 @@
   padding: 36px 48px 48px;
 }
 
+@media (max-width: 767px) {
+  .alfred-page-shell {
+    padding: 20px 24px 96px;
+  }
+  .alfred-h1 {
+    font-size: 22px;
+  }
+}
+
+@keyframes alfredSheetIn {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 .alfred-h1 {
   font-size: 26px;
   font-weight: 600;

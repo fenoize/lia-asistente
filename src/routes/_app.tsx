@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { QuickCapture } from "@/components/quick-capture";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 
 // In-memory cache: once we've confirmed onboarding for a user in this tab,
 // skip the DB roundtrip on every subsequent module navigation.
@@ -114,6 +115,7 @@ function AppLayout() {
         </div>
       </main>
       <QuickCapture />
+      <MobileBottomNav />
     </div>
   );
 }

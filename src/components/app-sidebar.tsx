@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
@@ -9,8 +8,6 @@ import {
   IconPencil,
   IconPlus,
   IconLogout,
-  IconMenu2,
-  IconX,
   IconSettings,
   IconAddressBook,
   IconBriefcase,
@@ -216,54 +213,9 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function AppSidebar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   return (
-    <>
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        aria-label="Abrir menú"
-        className="md:hidden fixed top-3 left-3 z-30 p-2 rounded-md"
-        style={{
-          background: "var(--bg-surface)",
-          border: "1px solid var(--border)",
-          color: "var(--text-secondary)",
-        }}
-      >
-        <IconMenu2 size={16} stroke={1.75} />
-      </button>
-
-      {/* Desktop */}
-      <aside className="hidden md:block sticky top-0 h-screen shrink-0">
-        <SidebarBody />
-      </aside>
-
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0"
-            style={{ background: "rgba(0,0,0,0.6)" }}
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative h-full">
-            <SidebarBody onNavigate={() => setMobileOpen(false)} />
-            <button
-              onClick={() => setMobileOpen(false)}
-              aria-label="Cerrar menú"
-              className="absolute top-3 right-[-40px] p-2 rounded-md"
-              style={{
-                background: "var(--bg-surface)",
-                border: "1px solid var(--border)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              <IconX size={16} stroke={1.75} />
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+    <aside className="hidden md:block sticky top-0 h-screen shrink-0">
+      <SidebarBody />
+    </aside>
   );
 }
