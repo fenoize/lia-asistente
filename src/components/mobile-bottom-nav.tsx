@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   IconHome,
@@ -17,28 +17,6 @@ import {
   IconLogout,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-type CaptureType = "task" | "meeting" | "reminder" | "note";
-const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
-
-function detectType(raw: string): CaptureType {
-  const t = raw.toLowerCase().trim();
-  if (!t) return "task";
-  if (/(reuni[oó]n|llama|llamada|\bcall\b|meeting|junta)/.test(t)) return "meeting";
-  if (/(recu[eé]rdame|recordar|recordatorio|ma[ñn]ana a las|hoy a las)/.test(t)) return "reminder";
-  if (TIME_RE.test(t)) return "reminder";
-  if (t.length > 90) return "note";
-  return "task";
-}
-
-const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
-  task: { label: "Tarea", emoji: "📋" },
-  meeting: { label: "Reunión", emoji: "📅" },
-  reminder: { label: "Recordatorio", emoji: "🔔" },
-  note: { label: "Nota", emoji: "📝" },
-};
 
 const menuItems = [
   { to: "/chat", label: "Chat con Lia", icon: IconMessageCircle },
@@ -129,110 +107,6 @@ function BottomSheet({
   );
 }
 
-function QuickCaptureSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useAuth();
-  const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const detected = useMemo(() => detectType(text), [text]);
-
-  useEffect(() => {
-    if (open) {
-      setText("");
-      setTimeout(() => ref.current?.focus(), 80);
-    }
-  }, [open]);
-
-  async function save() {
-    if (!user || !text.trim() || busy) return;
-    setBusy(true);
-    try {
-      const title = text.trim().split("\n")[0].slice(0, 140);
-      if (detected === "task") {
-        await supabase.from("tasks").insert({ user_id: user.id, title, description: text.length > title.length ? text : null, priority: "medium" });
-      } else if (detected === "meeting") {
-        await supabase.from("meetings").insert({ user_id: user.id, title, datetime: new Date().toISOString() });
-      } else if (detected === "reminder") {
-        await supabase.from("reminders").insert({ user_id: user.id, title, datetime: new Date().toISOString() });
-      } else {
-        await supabase.from("notes").insert({ user_id: user.id, content: text, type: "note" });
-      }
-      toast.success("Guardado", { description: title });
-      onClose();
-    } catch (e: any) {
-      toast.error(e.message ?? "No se pudo guardar");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <BottomSheet open={open} onClose={onClose}>
-      <div style={{ padding: "8px 24px 20px" }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, color: "#f2f2f2", marginBottom: 16 }}>
-          ¿Qué quieres capturar?
-        </h2>
-        <textarea
-          ref={ref}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Escribe cualquier cosa..."
-          style={{
-            width: "100%",
-            background: "#0d0d0d",
-            border: "1px solid #1e1e1e",
-            borderRadius: 12,
-            padding: "14px 16px",
-            fontSize: 15,
-            color: "#ccc",
-            minHeight: 80,
-            outline: "none",
-            resize: "vertical",
-            fontFamily: "inherit",
-          }}
-        />
-        {text.trim() && (
-          <div style={{ marginTop: 12 }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                background: "rgba(99,102,241,0.14)",
-                color: "#818cf8",
-                border: "1px solid rgba(99,102,241,0.3)",
-                borderRadius: 999,
-                padding: "4px 12px",
-                fontSize: 13,
-              }}
-            >
-              <span>{typeMeta[detected].emoji}</span> {typeMeta[detected].label}
-            </span>
-          </div>
-        )}
-        <button
-          onClick={save}
-          disabled={busy || !text.trim()}
-          style={{
-            width: "100%",
-            background: "#6366f1",
-            color: "white",
-            border: "none",
-            borderRadius: 12,
-            padding: 14,
-            fontSize: 15,
-            fontWeight: 500,
-            marginTop: 16,
-            opacity: busy || !text.trim() ? 0.5 : 1,
-            cursor: busy || !text.trim() ? "not-allowed" : "pointer",
-          }}
-        >
-          {busy ? "Guardando…" : "Guardar"}
-        </button>
-      </div>
-    </BottomSheet>
-  );
-}
 
 function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
@@ -308,7 +182,6 @@ function MenuSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [captureOpen, setCaptureOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const items = [
@@ -342,7 +215,7 @@ export function MobileBottomNav() {
             return (
               <button
                 key="center"
-                onClick={() => setCaptureOpen(true)}
+                onClick={() => window.dispatchEvent(new CustomEvent("alfred:quick-capture"))}
                 aria-label="Capturar"
                 style={{
                   width: 52,
@@ -419,7 +292,7 @@ export function MobileBottomNav() {
         })}
       </nav>
 
-      <QuickCaptureSheet open={captureOpen} onClose={() => setCaptureOpen(false)} />
+      
       <MenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} />
     </>
   );
