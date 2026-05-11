@@ -15,6 +15,8 @@ export type AlfredContext = {
   overdueProjects: string;
   unassignedTasks: string;
   inactiveClients: string;
+  contactMemory: string;
+  contactLinks: string;
 };
 
 function personalityBlock(c: AlfredContext): string {
