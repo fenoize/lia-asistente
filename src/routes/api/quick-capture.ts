@@ -44,10 +44,15 @@ export const Route = createFileRoute("/api/quick-capture")({
         if (!text?.trim()) return new Response("Empty", { status: 400 });
 
         const gateway = createLovableAiGatewayProvider(apiKey);
-        const now = new Date().toISOString();
+        const nowSantiago = new Intl.DateTimeFormat("sv-SE", {
+          timeZone: "America/Santiago",
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit",
+          hour12: false,
+        }).format(new Date()).replace(" ", "T");
         const { text: raw } = await generateText({
           model: gateway(DEFAULT_MODEL),
-          system: SYSTEM + `\nFecha y hora actual: ${now} (America/Santiago).`,
+          system: SYSTEM + `\nFecha y hora actual en America/Santiago (zona del usuario): ${nowSantiago}-03:00. Usa este offset al generar datetimes.`,
           prompt: text,
         });
 
