@@ -399,8 +399,135 @@ function Chip({
   );
 }
 
-function Completion({ name, onDone }: { name: string; onDone: () => void }) {
-  const full = FINAL_TEXT(name);
+function PersonaCard({
+  active,
+  onClick,
+  Icon,
+  label,
+  caption,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: React.ComponentType<{ size?: number; stroke?: number; color?: string }>;
+  label: string;
+  caption: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="text-center transition-colors"
+      style={{
+        border: `${active ? 2 : 1}px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+        background: active ? "var(--accent-subtle)" : "transparent",
+        borderRadius: "var(--radius-lg)",
+        padding: active ? "23px" : "24px",
+      }}
+    >
+      <div className="flex items-center justify-center mb-3">
+        <Icon
+          size={28}
+          stroke={1.5}
+          color={active ? "var(--accent-color)" : "var(--text-secondary)"}
+        />
+      </div>
+      <div
+        style={{
+          fontSize: 14,
+          fontWeight: 500,
+          color: active ? "var(--accent-color)" : "var(--text-primary)",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 12,
+          color: "var(--text-tertiary)",
+          lineHeight: 1.4,
+        }}
+      >
+        {caption}
+      </div>
+    </button>
+  );
+}
+
+function AssistantIntro({
+  assistantName,
+  gender,
+  onDone,
+}: {
+  assistantName: string;
+  gender: "feminine" | "masculine";
+  onDone: () => void;
+}) {
+  const full =
+    gender === "feminine"
+      ? `${assistantName} está lista para conocerte.`
+      : `${assistantName} está listo para conocerte.`;
+  const [shown, setShown] = useState("");
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setShown(full.slice(0, i));
+      if (i >= full.length) {
+        clearInterval(id);
+        if (!doneRef.current) {
+          doneRef.current = true;
+          setTimeout(onDone, 1500);
+        }
+      }
+    }, 35);
+    return () => clearInterval(id);
+  }, [full, onDone]);
+
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "var(--bg-base)" }}
+    >
+      <p
+        className="text-center"
+        style={{
+          fontSize: 24,
+          color: "var(--text-primary)",
+          fontWeight: 400,
+          letterSpacing: "-0.02em",
+        }}
+      >
+        {shown}
+        <span
+          className="inline-block ml-0.5"
+          style={{
+            width: 8,
+            height: 22,
+            background: "var(--accent-color)",
+            verticalAlign: "-4px",
+            animation: "alfredBlink 1s step-end infinite",
+          }}
+        />
+      </p>
+      <style>{`@keyframes alfredBlink { 50% { opacity: 0; } }`}</style>
+    </div>
+  );
+}
+
+function Completion({
+  userName,
+  assistantName,
+  gender,
+  onDone,
+}: {
+  userName: string;
+  assistantName: string;
+  gender: "feminine" | "masculine";
+  onDone: () => void;
+}) {
+  const full = FINAL_TEXT(userName, assistantName, gender);
   const [shown, setShown] = useState("");
   const doneRef = useRef(false);
 
@@ -439,7 +566,7 @@ function Completion({ name, onDone }: { name: string; onDone: () => void }) {
               fontSize: 15,
             }}
           >
-            alfred
+            {assistantName.toLowerCase()}
           </span>
         </div>
         <p
