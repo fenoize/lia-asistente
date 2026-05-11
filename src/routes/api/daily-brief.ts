@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/daily-brief")({
     handlers: {
       POST: async ({ request }) => {
         const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
+        if (!apiKey) return jsonError(500, "Algo salió mal en LIA. Intenta de nuevo.");
 
         const authHeader = request.headers.get("authorization");
         if (!authHeader?.startsWith("Bearer ")) {
@@ -48,12 +48,12 @@ export const Route = createFileRoute("/api/daily-brief")({
         } catch (e: any) {
           const msg = String(e?.message ?? e);
           if (/429|rate/i.test(msg)) {
-            return jsonError(429, "Alfred está ocupado ahora, intenta en un momento.");
+            return jsonError(429, "LIA está ocupada ahora, intenta en un momento.");
           }
           if (/402|credit/i.test(msg)) {
             return jsonError(402, "Sin créditos en Lovable AI.");
           }
-          return jsonError(500, "Algo salió mal en Alfred. Intenta de nuevo.");
+          return jsonError(500, "Algo salió mal en LIA. Intenta de nuevo.");
         }
       },
     },

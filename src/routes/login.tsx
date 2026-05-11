@@ -58,7 +58,7 @@ function LoginPage() {
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 mb-4">
             <span className="text-primary font-semibold">A</span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Alfred</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">LIA</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {mode === "signin" ? "Bienvenido de vuelta." : "Crea tu cuenta."}
           </p>

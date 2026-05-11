@@ -440,7 +440,7 @@ function AlfredBubble({
 
 function TypingDots() {
   return (
-    <div className="flex gap-1 py-1" aria-label="Alfred está escribiendo">
+    <div className="flex gap-1 py-1" aria-label="Escribiendo">
       {[0, 1, 2].map((i) => (
         <span
           key={i}

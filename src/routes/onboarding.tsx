@@ -42,7 +42,7 @@ function Onboarding() {
   }, [user, loading, navigate]);
 
   const firstName = name.trim().split(" ")[0] || "tú";
-  const finalAssistantName = assistantName.trim() || "Alfred";
+  const finalAssistantName = assistantName.trim() || "Lia";
 
   const canNext =
     (step === 0 && name.trim().length > 0) ||
@@ -116,7 +116,7 @@ function Onboarding() {
         <StepShell key={step}>
           {step === 0 && (
             <Step
-              title="Hola. Soy Alfred."
+              title="Hola. Soy LIA."
               subtitle="Tu asistente ejecutivo personal. ¿Cómo te llamas?"
             >
               <BareInput

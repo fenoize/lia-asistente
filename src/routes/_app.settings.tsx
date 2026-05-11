@@ -16,8 +16,8 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userName, setUserName] = useState("");
-  const [name, setName] = useState("Alfred");
-  const [gender, setGender] = useState<Gender>("masculine");
+  const [name, setName] = useState("Lia");
+  const [gender, setGender] = useState<Gender>("feminine");
 
   useEffect(() => {
     if (!user) return;
@@ -29,8 +29,8 @@ function SettingsPage() {
         .maybeSingle();
       if (data) {
         setUserName(((data as any).name ?? "").split(" ")[0] || "");
-        setName((data as any).assistant_name || "Alfred");
-        setGender(((data as any).assistant_gender === "feminine" ? "feminine" : "masculine"));
+        setName((data as any).assistant_name || "Lia");
+        setGender(((data as any).assistant_gender === "masculine" ? "masculine" : "feminine"));
       }
       setLoading(false);
     })();
@@ -38,7 +38,7 @@ function SettingsPage() {
 
   const save = async () => {
     if (!user) return;
-    const finalName = name.trim() || "Alfred";
+    const finalName = name.trim() || "Lia";
     setSaving(true);
     const { error } = await supabase
       .from("profiles")
@@ -51,8 +51,8 @@ function SettingsPage() {
 
   const greetingPreview =
     gender === "feminine"
-      ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy lista para ayudarte a organizar tu semana.`
-      : `Hola ${userName || "tú"}. Soy ${name.trim() || "Alfred"} y estoy listo para ayudarte a organizar tu semana.`;
+      ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy lista para ayudarte a organizar tu semana.`
+      : `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy listo para ayudarte a organizar tu semana.`;
 
   return (
     <div className="mx-auto" style={{ maxWidth: 640, padding: "40px 24px" }}>
