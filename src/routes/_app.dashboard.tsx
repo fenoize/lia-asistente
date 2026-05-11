@@ -425,23 +425,31 @@ function TaskRow({
   onToggle: () => void;
 }) {
   const done = task.status === "done";
+  const high = task.priority === "high";
   return (
     <div
       className="flex items-center gap-3 group"
       style={{
-        padding: "8px 4px",
+        padding: "8px 10px",
+        borderRadius: 8,
         opacity: done ? 0.4 : 1,
-        transition: "opacity 0.3s",
+        transition: "opacity 0.3s, background-color 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#111111";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
       }}
     >
       <button
         onClick={onToggle}
         aria-label="Completar tarea"
         style={{
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           borderRadius: "50%",
-          border: `1.5px solid ${done ? "var(--accent-color)" : "var(--border)"}`,
+          border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
           background: done ? "var(--accent-color)" : "transparent",
           flexShrink: 0,
           display: "flex",
@@ -453,33 +461,45 @@ function TaskRow({
           if (!done) e.currentTarget.style.borderColor = "var(--accent-color)";
         }}
         onMouseLeave={(e) => {
-          if (!done) e.currentTarget.style.borderColor = "var(--border)";
+          if (!done) e.currentTarget.style.borderColor = "#333";
         }}
       >
-        {done && <IconCheck size={10} stroke={3} color="white" />}
+        {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
       <span
         className="flex-1 truncate"
         style={{
           fontSize: 14,
-          color: "var(--text-primary)",
+          color: "#d0d0d0",
           textDecoration: done ? "line-through" : "none",
         }}
       >
         {task.title}
       </span>
-      {overdue && !done && (
+      {high && !done && (
         <span
           style={{
-            fontSize: 10,
-            background: "oklch(0.65 0.21 25 / 16%)",
-            color: "oklch(0.75 0.18 25)",
-            borderRadius: "var(--radius-pill)",
-            padding: "2px 8px",
-            fontWeight: 500,
+            fontSize: 11,
+            background: "rgba(220,38,38,0.12)",
+            color: "#f87171",
+            borderRadius: 100,
+            padding: "2px 10px",
           }}
         >
-          atrasada
+          Alta
+        </span>
+      )}
+      {overdue && !done && !high && (
+        <span
+          style={{
+            fontSize: 11,
+            background: "rgba(220,38,38,0.12)",
+            color: "#f87171",
+            borderRadius: 100,
+            padding: "2px 10px",
+          }}
+        >
+          Atrasada
         </span>
       )}
     </div>
