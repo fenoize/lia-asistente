@@ -101,15 +101,7 @@ export function ChatInterface() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    const lineH = 22;
-    const max = lineH * 5 + 16;
-    ta.style.height = Math.min(ta.scrollHeight, max) + "px";
-  }, [input]);
+  // (auto-resize handled inside MentionInput)
 
   const sendText = async (text: string) => {
     if (!text.trim() || !user || streaming) return;
