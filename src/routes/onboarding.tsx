@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { IconVenus, IconMars } from "@tabler/icons-react";
 
 export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
@@ -17,8 +18,10 @@ const GOALS = [
   "Gestión del tiempo",
 ] as const;
 
-const FINAL_TEXT = (name: string) =>
-  `Perfecto, ${name}.\nYa tengo tu contexto.\nEstoy listo para ayudarte a organizar tu semana.`;
+const FINAL_TEXT = (userName: string, assistantName: string, gender: "feminine" | "masculine") =>
+  gender === "feminine"
+    ? `Hola ${userName}.\nSoy ${assistantName} y estoy lista\npara ayudarte a organizar tu semana.`
+    : `Hola ${userName}.\nSoy ${assistantName} y estoy listo\npara ayudarte a organizar tu semana.`;
 
 function Onboarding() {
   const navigate = useNavigate();
@@ -27,20 +30,25 @@ function Onboarding() {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [roleOther, setRoleOther] = useState("");
+  const [assistantName, setAssistantName] = useState("");
+  const [assistantGender, setAssistantGender] = useState<"feminine" | "masculine" | "">("");
   const [goals, setGoals] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
   const firstName = name.trim().split(" ")[0] || "tú";
+  const finalAssistantName = assistantName.trim() || "Alfred";
 
   const canNext =
     (step === 0 && name.trim().length > 0) ||
     (step === 1 && (role.trim() || roleOther.trim()).length > 0) ||
-    (step === 2 && goals.length > 0);
+    (step === 2 && assistantName.trim().length > 0 && assistantGender !== "") ||
+    (step === 3 && goals.length > 0);
 
   const finish = async () => {
     if (!user) return;
@@ -52,6 +60,8 @@ function Onboarding() {
         name: name.trim(),
         role: finalRole,
         goals: goals.join(", "),
+        assistant_name: finalAssistantName,
+        assistant_gender: assistantGender || "masculine",
         onboarding_completed: true,
       })
       .eq("id", user.id);
@@ -65,11 +75,37 @@ function Onboarding() {
 
   const handleNext = () => {
     if (!canNext) return;
-    if (step === 2) finish();
-    else setStep((s) => s + 1);
+    if (step === 3) {
+      finish();
+    } else if (step === 2) {
+      setTransitioning(true);
+    } else {
+      setStep((s) => s + 1);
+    }
   };
 
-  if (done) return <Completion name={firstName} onDone={() => navigate({ to: "/dashboard" })} />;
+  if (done)
+    return (
+      <Completion
+        userName={firstName}
+        assistantName={finalAssistantName}
+        gender={(assistantGender || "masculine") as "feminine" | "masculine"}
+        onDone={() => navigate({ to: "/dashboard" })}
+      />
+    );
+
+  if (transitioning)
+    return (
+      <AssistantIntro
+        assistantName={finalAssistantName}
+        gender={(assistantGender || "masculine") as "feminine" | "masculine"}
+        onDone={() => {
+          setTransitioning(false);
+          setStep(3);
+        }}
+      />
+    );
+
 
   return (
     <div
