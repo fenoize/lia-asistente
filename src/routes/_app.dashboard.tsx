@@ -368,7 +368,7 @@ function Dashboard() {
         ) : (
           <div className="space-y-2">
             {meetings.slice(0, 3).map((m) => (
-              <MeetingRow key={m.id} meeting={m} />
+              <MeetingRow key={m.id} meeting={m} onClick={() => setEditingMeeting(m)} />
             ))}
           </div>
         )}
