@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
