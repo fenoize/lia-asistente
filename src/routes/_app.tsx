@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_app")({
 function AppLayout() {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/login" });
@@ -34,7 +35,9 @@ function AppLayout() {
         className="flex-1 min-w-0 overflow-y-auto h-screen"
         style={{ background: "var(--bg-base)" }}
       >
-        <Outlet />
+        <div key={pathname} className="alfred-page h-full">
+          <Outlet />
+        </div>
       </main>
       <QuickCapture />
     </div>
