@@ -89,14 +89,7 @@ function Section({
 }) {
   return (
     <section>
-      <div
-        style={{
-          fontSize: 10, letterSpacing: "0.12em",
-          color: "var(--text-tertiary)", marginBottom: 10,
-        }}
-      >
-        {label}
-      </div>
+      <div className="alfred-section-label">{label}</div>
       {items.length === 0 && empty ? (
         <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{empty}</p>
       ) : (
