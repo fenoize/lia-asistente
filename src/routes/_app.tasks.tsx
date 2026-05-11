@@ -229,15 +229,24 @@ function TaskRow({
 
   return (
     <li
-      className="group flex items-center gap-3"
-      style={{ padding: "8px 4px" }}
+      className="group flex items-center gap-3 transition-colors"
+      style={{
+        padding: "10px 12px",
+        borderRadius: 8,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#0f0f0f";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
     >
       <button
         onClick={onToggle}
         aria-label={done ? "Marcar pendiente" : "Marcar completada"}
         style={{
           width: 16, height: 16, borderRadius: "50%",
-          border: `1.5px solid ${done ? "var(--accent-color)" : "var(--border)"}`,
+          border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
           background: done ? "var(--accent-color)" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
@@ -259,15 +268,15 @@ function TaskRow({
             if (e.key === "Escape") onCancel();
           }}
           className="flex-1 bg-transparent border-0 outline-none"
-          style={{ fontSize: 14, color: "var(--text-primary)" }}
+          style={{ fontSize: 14, color: "#ccc" }}
         />
       ) : (
         <span
           onClick={onStartEdit}
-          className="flex-1 cursor-text"
+          className="flex-1 cursor-text truncate"
           style={{
             fontSize: 14,
-            color: done ? "var(--text-tertiary)" : "var(--text-primary)",
+            color: done ? "#444" : "#ccc",
             textDecoration: done ? "line-through" : "none",
           }}
         >
@@ -277,23 +286,11 @@ function TaskRow({
 
       <PriorityBadge priority={task.priority} />
 
-      {task.project && (
-        <span
-          style={{
-            fontSize: 11, padding: "2px 8px", borderRadius: "var(--radius-pill)",
-            background: "var(--bg-hover, var(--bg-elevated))",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {task.project}
-        </span>
-      )}
-
       {task.due_date && (
         <span
           style={{
             fontSize: 12,
-            color: overdue ? "#f87171" : "var(--text-tertiary)",
+            color: overdue ? "#f87171" : "#555",
           }}
         >
           {new Date(task.due_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
@@ -302,11 +299,11 @@ function TaskRow({
 
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
         <button onClick={onStartEdit} aria-label="Editar"
-          style={{ color: "var(--text-tertiary)", padding: 4 }}>
+          style={{ color: "#666", padding: 4 }}>
           <IconPencil size={14} />
         </button>
         <button onClick={onRemove} aria-label="Eliminar"
-          style={{ color: "var(--text-tertiary)", padding: 4 }}
+          style={{ color: "#666", padding: 4 }}
           className="hover:text-red-400">
           <IconTrash size={14} />
         </button>
@@ -316,20 +313,46 @@ function TaskRow({
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const map: Record<string, { label: string; bg: string; color: string; border?: string }> = {
-    urgent: { label: "Urgente", bg: "rgba(248,113,113,0.12)", color: "#fca5a5" },
-    high: { label: "Alta", bg: "rgba(251,191,36,0.12)", color: "#fcd34d" },
-    medium: { label: "Media", bg: "transparent", color: "var(--text-secondary)", border: "var(--border)" },
-    low: { label: "Baja", bg: "transparent", color: "var(--text-tertiary)" },
+  const map: Record<
+    string,
+    { label: string; bg: string; color: string; border: string }
+  > = {
+    urgent: {
+      label: "Alta",
+      bg: "rgba(220,38,38,0.1)",
+      color: "#f87171",
+      border: "1px solid rgba(220,38,38,0.2)",
+    },
+    high: {
+      label: "Alta",
+      bg: "rgba(220,38,38,0.1)",
+      color: "#f87171",
+      border: "1px solid rgba(220,38,38,0.2)",
+    },
+    medium: {
+      label: "Media",
+      bg: "rgba(217,119,6,0.1)",
+      color: "#fbbf24",
+      border: "1px solid rgba(217,119,6,0.2)",
+    },
+    low: {
+      label: "Baja",
+      bg: "transparent",
+      color: "#444",
+      border: "1px solid #222",
+    },
   };
   const m = map[priority] ?? map.medium;
   return (
     <span
       style={{
-        fontSize: 11, padding: "2px 8px",
-        borderRadius: "var(--radius-pill)",
-        background: m.bg, color: m.color,
-        border: m.border ? `1px solid ${m.border}` : "none",
+        fontSize: 11,
+        padding: "2px 10px",
+        borderRadius: 100,
+        background: m.bg,
+        color: m.color,
+        border: m.border,
+        whiteSpace: "nowrap",
       }}
     >
       {m.label}
