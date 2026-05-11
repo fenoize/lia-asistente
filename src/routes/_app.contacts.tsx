@@ -116,7 +116,7 @@ function ContactsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="alfred-h1">Contactos</h1>
-          <p style={{ fontSize: 13, color: "var(--text-tertiary)" }}>
+          <p style={{ fontSize: 13, color: "#444", marginTop: 4 }}>
             Tu CRM personal.
           </p>
         </div>
