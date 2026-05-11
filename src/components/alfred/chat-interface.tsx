@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
+import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
+import { MentionText } from "@/components/mentions/mention-text";
 
 type Action = {
   type: "task" | "meeting" | "reminder" | "note";
@@ -55,7 +57,7 @@ export function ChatInterface() {
   const [name, setName] = useState("");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
 
   // Load history + context
@@ -99,15 +101,7 @@ export function ChatInterface() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    const ta = taRef.current;
-    if (!ta) return;
-    ta.style.height = "auto";
-    const lineH = 22;
-    const max = lineH * 5 + 16;
-    ta.style.height = Math.min(ta.scrollHeight, max) + "px";
-  }, [input]);
+  // (auto-resize handled inside MentionInput)
 
   const sendText = async (text: string) => {
     if (!text.trim() || !user || streaming) return;
@@ -358,7 +352,7 @@ function UserBubble({ text }: { text: string }) {
           lineHeight: 1.5,
         }}
       >
-        {text}
+        <MentionText text={text} />
       </div>
     </div>
   );
@@ -567,7 +561,7 @@ function InputBar({
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
-  taRef: React.RefObject<HTMLTextAreaElement | null>;
+  taRef: React.RefObject<MentionInputHandle | null>;
   placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
@@ -599,28 +593,29 @@ function InputBar({
       >
         A
       </div>
-      <textarea
-        ref={taRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            if (hasText && !disabled) onSend();
-          }
-        }}
-        rows={1}
-        placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
-        className="flex-1 bg-transparent resize-none focus:outline-none alfred-chat-input"
-        style={{
-          fontSize: 14,
-          lineHeight: "22px",
-          color: "var(--text-primary)",
-          minHeight: 22,
-        }}
-      />
+      <div className="flex-1 min-w-0">
+        <MentionInput
+          ref={taRef}
+          value={value}
+          onChange={onChange}
+          onSubmit={() => { if (hasText && !disabled) onSend(); }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          multiline
+          rows={1}
+          maxRows={5}
+          placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
+          className="w-full bg-transparent resize-none focus:outline-none alfred-chat-input"
+          style={{
+            fontSize: 14,
+            lineHeight: "22px",
+            color: "var(--text-primary)",
+            minHeight: 22,
+            border: "none",
+            outline: "none",
+          }}
+        />
+      </div>
       <button
         onClick={onSend}
         disabled={!hasText || disabled}

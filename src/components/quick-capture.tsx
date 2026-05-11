@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 
 type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea";
 
@@ -70,7 +71,7 @@ export function QuickCapture() {
   const [noteKind, setNoteKind] = useState<"note" | "idea" | "highlight">("note");
   const [dt, setDt] = useState<{ date: string; time: string }>(toDateInputs(null));
   const [dtTouched, setDtTouched] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<MentionInputHandle>(null);
   const { user } = useAuth();
 
   const detected = useMemo(() => detectType(text), [text]);
@@ -166,12 +167,6 @@ export function QuickCapture() {
     }
   }
 
-  function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      save();
-    }
-  }
 
   if (!open) return null;
 
@@ -204,17 +199,21 @@ export function QuickCapture() {
         }}
       >
         {/* Input */}
-        <input
+        <MentionInput
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKeyDown}
+          onChange={setText}
+          onSubmit={save}
           placeholder="¿Qué quieres capturar?"
+          autoFocus
           className="bg-transparent border-0 outline-none w-full"
           style={{
             padding: "20px 24px",
             fontSize: 18,
             color: "var(--text-primary)",
+            background: "transparent",
+            border: "none",
+            outline: "none",
           }}
         />
 
