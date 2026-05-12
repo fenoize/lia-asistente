@@ -180,6 +180,16 @@ function ProjectsPage() {
           userId={user?.id ?? ""}
         />
       )}
+
+      {openProject && (
+        <ProjectDetailModal
+          project={openProject}
+          contacts={contacts}
+          tasks={tasks}
+          onClose={() => setOpenProject(null)}
+          onChanged={reload}
+        />
+      )}
     </div>
   );
 }
