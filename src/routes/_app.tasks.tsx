@@ -208,12 +208,7 @@ function TasksPage() {
                     <TaskRow
                       key={t.id}
                       task={t}
-                      editing={editingId === t.id}
-                      editValue={editValue}
-                      onEditChange={setEditValue}
-                      onCommit={() => commitEdit(t)}
-                      onCancel={() => setEditingId(null)}
-                      onStartEdit={() => startEdit(t)}
+                      onOpen={() => setEditing(t)}
                       onToggle={() => toggle(t)}
                       onRemove={() => remove(t.id)}
                     />
@@ -223,6 +218,24 @@ function TasksPage() {
             );
           })}
         </div>
+      )}
+
+      {editing && (
+        <EditTaskModal
+          task={{
+            id: editing.id,
+            title: editing.title,
+            description: editing.description,
+            priority: editing.priority,
+            due_date: editing.due_date,
+            project_id: editing.project_id,
+            status: editing.status,
+          }}
+          projects={projects}
+          onClose={() => setEditing(null)}
+          onSaved={updateTask}
+          onDeleted={removeTask}
+        />
       )}
     </div>
   );
