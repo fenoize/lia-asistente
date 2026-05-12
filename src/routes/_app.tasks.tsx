@@ -117,15 +117,24 @@ function TasksPage() {
     if (error) toast.error(error.message);
   };
 
-  const startEdit = (t: Task) => { setEditingId(t.id); setEditValue(t.title); };
-  const commitEdit = async (t: Task) => {
-    const v = editValue.trim();
-    setEditingId(null);
-    if (!v || v === t.title) return;
-    setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, title: v } : x)));
-    const { error } = await supabase.from("tasks").update({ title: v }).eq("id", t.id);
-    if (error) toast.error(error.message);
+  const updateTask = (updated: EditableTask) => {
+    setTasks((prev) =>
+      prev.map((x) =>
+        x.id === updated.id
+          ? {
+              ...x,
+              title: updated.title,
+              description: updated.description,
+              priority: updated.priority,
+              due_date: updated.due_date,
+              project_id: updated.project_id,
+            }
+          : x,
+      ),
+    );
   };
+  const removeTask = (id: string) => setTasks((prev) => prev.filter((x) => x.id !== id));
+
 
   const counts = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
 
