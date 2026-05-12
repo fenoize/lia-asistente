@@ -198,10 +198,12 @@ function ProjectCard({
   project,
   contacts,
   tasks,
+  onOpen,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
+  onOpen: () => void;
 }) {
   const client = contacts.find((c) => c.id === project.client_id);
   const projTasks = tasks.filter((t) => t.project_id === project.id);
