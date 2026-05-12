@@ -159,6 +159,7 @@ function ProjectsPage() {
                       project={p}
                       contacts={contacts}
                       tasks={tasks}
+                      onOpen={() => setOpenProject(p)}
                     />
                   ))}
                 </div>
