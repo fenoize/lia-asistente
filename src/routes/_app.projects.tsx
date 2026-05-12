@@ -51,12 +51,14 @@ function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
 
+  const [openProject, setOpenProject] = useState<Project | null>(null);
+
   const reload = async () => {
     if (!user) return;
     const [p, c, t] = await Promise.all([
       supabase.from("projects").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id,name,type"),
-      supabase.from("tasks").select("id,status,project_id,assigned_to"),
+      supabase.from("tasks").select("id,title,status,priority,due_date,description,project_id,assigned_to"),
     ]);
     setProjects((p.data as Project[]) ?? []);
     setContacts((c.data as Contact[]) ?? []);
