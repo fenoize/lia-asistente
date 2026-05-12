@@ -116,11 +116,11 @@ export function ChatInterface() {
     setInput("");
     setStreaming(true);
 
-    supabase.from("chat_messages").insert({
+    void supabase.from("chat_messages").insert({
       user_id: user.id,
       role: "user",
       content: userMsg.content,
-    });
+    }).then(({ error }) => { if (error) console.error("save user msg", error); });
 
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", createdAt: Date.now() }]);
@@ -160,12 +160,12 @@ export function ChatInterface() {
         ? { ...msg, content: clean, action, actionStatus: action ? "pending" : undefined }
         : msg));
 
-      supabase.from("chat_messages").insert({
+      void supabase.from("chat_messages").insert({
         user_id: user.id,
         role: "assistant",
         content: raw,
         metadata: action ? { actionStatus: "pending" } : null,
-      } as any);
+      } as any).then(({ error }) => { if (error) console.error("save assistant msg", error); });
     } catch {
       toast.error(`${assistant.name} no pudo responder.`);
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
@@ -224,7 +224,7 @@ export function ChatInterface() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-full" style={{ background: "var(--bg-base)" }}>
+    <div className="flex flex-col h-full min-h-0 w-full" style={{ background: "var(--bg-base)" }}>
       <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "24px 24px 16px" }}>
           {isEmpty && (
