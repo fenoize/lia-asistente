@@ -95,6 +95,8 @@
   --accent-subtle: oklch(0.58 0.22 295 / 14%);
   --radius-pill: 999px;
   --bg-elevated: oklch(0.195 0.005 285);
+  --alfred-mobile-top-bar-height: 52px;
+  --alfred-mobile-bottom-nav-height: calc(64px + env(safe-area-inset-bottom));
 }
 
 @keyframes alfredShimmer {
@@ -130,9 +132,16 @@
   padding: 36px 48px 48px;
 }
 
+.alfred-chat-route-frame {
+  height: 100%;
+}
+
 @media (max-width: 767px) {
   .alfred-page-shell {
     padding: 20px 24px 96px;
+  }
+  .alfred-chat-route-frame {
+    height: calc(100dvh - var(--alfred-mobile-top-bar-height) - var(--alfred-mobile-bottom-nav-height));
   }
   .alfred-h1 {
     font-size: 22px;
