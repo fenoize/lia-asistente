@@ -22,7 +22,11 @@ type Project = {
 type Contact = { id: string; name: string; type: string };
 type TaskRow = {
   id: string;
+  title: string;
   status: string;
+  priority: string;
+  due_date: string | null;
+  description: string | null;
   project_id: string | null;
   assigned_to: string | null;
 };
