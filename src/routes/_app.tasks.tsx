@@ -242,16 +242,10 @@ function TasksPage() {
 }
 
 function TaskRow({
-  task, editing, editValue, onEditChange, onCommit, onCancel,
-  onStartEdit, onToggle, onRemove,
+  task, onOpen, onToggle, onRemove,
 }: {
   task: Task;
-  editing: boolean;
-  editValue: string;
-  onEditChange: (v: string) => void;
-  onCommit: () => void;
-  onCancel: () => void;
-  onStartEdit: () => void;
+  onOpen: () => void;
   onToggle: () => void;
   onRemove: () => void;
 }) {
@@ -260,11 +254,12 @@ function TaskRow({
 
   return (
     <li
-      className="group flex items-center gap-3 transition-colors"
+      className="group flex items-center gap-3 transition-colors cursor-pointer"
       style={{
         padding: "10px 12px",
         borderRadius: 8,
       }}
+      onClick={onOpen}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "#0f0f0f";
       }}
@@ -273,7 +268,7 @@ function TaskRow({
       }}
     >
       <button
-        onClick={onToggle}
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-label={done ? "Marcar pendiente" : "Marcar completada"}
         style={{
           width: 16, height: 16, borderRadius: "50%",
@@ -288,32 +283,16 @@ function TaskRow({
         {done && <IconCheck size={10} stroke={3} color="white" />}
       </button>
 
-      {editing ? (
-        <input
-          autoFocus
-          value={editValue}
-          onChange={(e) => onEditChange(e.target.value)}
-          onBlur={onCommit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onCommit();
-            if (e.key === "Escape") onCancel();
-          }}
-          className="flex-1 bg-transparent border-0 outline-none"
-          style={{ fontSize: 14, color: "#ccc" }}
-        />
-      ) : (
-        <span
-          onClick={onStartEdit}
-          className="flex-1 cursor-text truncate"
-          style={{
-            fontSize: 14,
-            color: done ? "#444" : "#ccc",
-            textDecoration: done ? "line-through" : "none",
-          }}
-        >
-          {task.title}
-        </span>
-      )}
+      <span
+        className="flex-1 truncate"
+        style={{
+          fontSize: 14,
+          color: done ? "#444" : "#ccc",
+          textDecoration: done ? "line-through" : "none",
+        }}
+      >
+        {task.title}
+      </span>
 
       <PriorityBadge priority={task.priority} />
 
@@ -329,13 +308,12 @@ function TaskRow({
       )}
 
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-        <button onClick={onStartEdit} aria-label="Editar"
-          style={{ color: "#666", padding: 4 }}>
-          <IconPencil size={14} />
-        </button>
-        <button onClick={onRemove} aria-label="Eliminar"
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          aria-label="Eliminar"
           style={{ color: "#666", padding: 4 }}
-          className="hover:text-red-400">
+          className="hover:text-red-400"
+        >
           <IconTrash size={14} />
         </button>
       </div>
