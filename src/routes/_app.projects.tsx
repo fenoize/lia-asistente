@@ -22,7 +22,11 @@ type Project = {
 type Contact = { id: string; name: string; type: string };
 type TaskRow = {
   id: string;
+  title: string;
   status: string;
+  priority: string;
+  due_date: string | null;
+  description: string | null;
   project_id: string | null;
   assigned_to: string | null;
 };
@@ -47,12 +51,14 @@ function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
 
+  const [openProject, setOpenProject] = useState<Project | null>(null);
+
   const reload = async () => {
     if (!user) return;
     const [p, c, t] = await Promise.all([
       supabase.from("projects").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id,name,type"),
-      supabase.from("tasks").select("id,status,project_id,assigned_to"),
+      supabase.from("tasks").select("id,title,status,priority,due_date,description,project_id,assigned_to"),
     ]);
     setProjects((p.data as Project[]) ?? []);
     setContacts((c.data as Contact[]) ?? []);
@@ -153,6 +159,7 @@ function ProjectsPage() {
                       project={p}
                       contacts={contacts}
                       tasks={tasks}
+                      onOpen={() => setOpenProject(p)}
                     />
                   ))}
                 </div>
@@ -173,6 +180,16 @@ function ProjectsPage() {
           userId={user?.id ?? ""}
         />
       )}
+
+      {openProject && (
+        <ProjectDetailModal
+          project={openProject}
+          contacts={contacts}
+          tasks={tasks}
+          onClose={() => setOpenProject(null)}
+          onChanged={reload}
+        />
+      )}
     </div>
   );
 }
@@ -181,10 +198,12 @@ function ProjectCard({
   project,
   contacts,
   tasks,
+  onOpen,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
+  onOpen: () => void;
 }) {
   const client = contacts.find((c) => c.id === project.client_id);
   const projTasks = tasks.filter((t) => t.project_id === project.id);
@@ -200,11 +219,13 @@ function ProjectCard({
 
   return (
     <div
+      onClick={onOpen}
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: 16,
+        background: "#0e0e0e",
+        border: "1px solid #141414",
+        borderRadius: 12,
+        padding: "16px 18px",
+        cursor: "pointer",
       }}
     >
       {client && (
@@ -510,6 +531,241 @@ function NewProjectModal({
             }}
           >
             {busy ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectDetailModal({
+  project,
+  contacts,
+  tasks,
+  onClose,
+  onChanged,
+}: {
+  project: Project;
+  contacts: Contact[];
+  tasks: TaskRow[];
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const client = contacts.find((c) => c.id === project.client_id);
+  const linked = tasks.filter((t) => t.project_id === project.id);
+  const unassigned = tasks.filter((t) => t.project_id == null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = unassigned.filter((t) =>
+    t.title.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const link = async (taskId: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ project_id: project.id })
+      .eq("id", taskId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Vinculada ✓");
+      setShowAdd(false);
+      setSearch("");
+      onChanged();
+    }
+  };
+
+  const unlink = async (taskId: string) => {
+    const { error } = await supabase
+      .from("tasks")
+      .update({ project_id: null })
+      .eq("id", taskId);
+    if (error) toast.error(error.message);
+    else onChanged();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 560,
+          maxWidth: "100%",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          background: "#111111",
+          border: "1px solid #1e1e1e",
+          borderRadius: 16,
+          padding: 24,
+        }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          {client && (
+            <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+              {client.name}
+            </div>
+          )}
+          <div style={{ fontSize: 18, fontWeight: 500, color: "#eaeaea" }}>
+            {project.name}
+          </div>
+          <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+            {linked.length} {linked.length === 1 ? "tarea" : "tareas"}
+          </div>
+        </div>
+
+        <div className="alfred-section-label" style={{ marginBottom: 8 }}>
+          TAREAS DEL PROYECTO
+        </div>
+
+        {linked.length === 0 ? (
+          <div style={{ fontSize: 13, color: "#555", padding: "12px 0 16px" }}>
+            Aún no hay tareas vinculadas.
+          </div>
+        ) : (
+          <ul style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 12 }}>
+            {linked.map((t) => (
+              <li
+                key={t.id}
+                className="group flex items-center gap-3"
+                style={{ padding: "8px 10px", borderRadius: 8, background: "#0d0d0d" }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: t.status === "done" ? "var(--accent-color)" : "#444",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  className="flex-1 truncate"
+                  style={{
+                    fontSize: 13,
+                    color: t.status === "done" ? "#444" : "#ccc",
+                    textDecoration: t.status === "done" ? "line-through" : "none",
+                  }}
+                >
+                  {t.title}
+                </span>
+                {t.due_date && (
+                  <span style={{ fontSize: 11, color: "#555" }}>
+                    {new Date(t.due_date).toLocaleDateString("es-CL", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
+                )}
+                <button
+                  onClick={() => unlink(t.id)}
+                  className="opacity-0 group-hover:opacity-100"
+                  style={{ fontSize: 11, color: "#666", padding: "2px 8px" }}
+                  title="Desvincular"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {!showAdd ? (
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{
+              fontSize: 12,
+              color: "#818cf8",
+              padding: "6px 0",
+              background: "transparent",
+            }}
+          >
+            + Agregar tarea existente
+          </button>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar tarea sin proyecto..."
+              className="w-full focus:outline-none"
+              style={{
+                fontSize: 13,
+                color: "#eaeaea",
+                background: "#0d0d0d",
+                border: "1px solid #1e1e1e",
+                borderRadius: 8,
+                padding: "8px 12px",
+                marginBottom: 6,
+              }}
+            />
+            <div
+              style={{
+                maxHeight: 200,
+                overflowY: "auto",
+                background: "#0d0d0d",
+                border: "1px solid #1e1e1e",
+                borderRadius: 8,
+              }}
+            >
+              {filtered.length === 0 ? (
+                <div style={{ fontSize: 12, color: "#555", padding: 12 }}>
+                  No hay tareas sin proyecto.
+                </div>
+              ) : (
+                filtered.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => link(t.id)}
+                    className="w-full text-left"
+                    style={{
+                      fontSize: 13,
+                      color: "#ccc",
+                      padding: "8px 12px",
+                      borderBottom: "1px solid #161616",
+                      background: "transparent",
+                    }}
+                  >
+                    {t.title}
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={() => { setShowAdd(false); setSearch(""); }}
+                style={{ fontSize: 12, color: "#666", padding: "4px 10px" }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={onClose}
+            style={{
+              fontSize: 13,
+              color: "#555",
+              border: "1px solid #1e1e1e",
+              borderRadius: 100,
+              padding: "7px 16px",
+              background: "transparent",
+            }}
+          >
+            Cerrar
           </button>
         </div>
       </div>

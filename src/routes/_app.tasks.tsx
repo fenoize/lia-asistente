@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconPencil, IconTrash, IconCheck } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCheck } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 
 export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
@@ -16,7 +17,11 @@ type Task = {
   priority: string;
   due_date: string | null;
   project: string | null;
+  project_id: string | null;
+  description: string | null;
 };
+
+type ProjectOption = { id: string; name: string };
 
 type Filter = "all" | "urgent" | "today" | "week" | "done";
 
@@ -45,20 +50,24 @@ function openCapture() {
 function TasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [editing, setEditing] = useState<Task | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("due_date", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      setTasks((data as Task[]) ?? []);
+      const [t, p] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("*")
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false }),
+        supabase.from("projects").select("id,name").order("name"),
+      ]);
+      setTasks((t.data as Task[]) ?? []);
+      setProjects((p.data as ProjectOption[]) ?? []);
       setLoading(false);
     })();
   }, [user]);
@@ -108,15 +117,24 @@ function TasksPage() {
     if (error) toast.error(error.message);
   };
 
-  const startEdit = (t: Task) => { setEditingId(t.id); setEditValue(t.title); };
-  const commitEdit = async (t: Task) => {
-    const v = editValue.trim();
-    setEditingId(null);
-    if (!v || v === t.title) return;
-    setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, title: v } : x)));
-    const { error } = await supabase.from("tasks").update({ title: v }).eq("id", t.id);
-    if (error) toast.error(error.message);
+  const updateTask = (updated: EditableTask) => {
+    setTasks((prev) =>
+      prev.map((x) =>
+        x.id === updated.id
+          ? {
+              ...x,
+              title: updated.title,
+              description: updated.description,
+              priority: updated.priority,
+              due_date: updated.due_date,
+              project_id: updated.project_id,
+            }
+          : x,
+      ),
+    );
   };
+  const removeTask = (id: string) => setTasks((prev) => prev.filter((x) => x.id !== id));
+
 
   const counts = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
 
@@ -190,12 +208,7 @@ function TasksPage() {
                     <TaskRow
                       key={t.id}
                       task={t}
-                      editing={editingId === t.id}
-                      editValue={editValue}
-                      onEditChange={setEditValue}
-                      onCommit={() => commitEdit(t)}
-                      onCancel={() => setEditingId(null)}
-                      onStartEdit={() => startEdit(t)}
+                      onOpen={() => setEditing(t)}
                       onToggle={() => toggle(t)}
                       onRemove={() => remove(t.id)}
                     />
@@ -206,21 +219,33 @@ function TasksPage() {
           })}
         </div>
       )}
+
+      {editing && (
+        <EditTaskModal
+          task={{
+            id: editing.id,
+            title: editing.title,
+            description: editing.description,
+            priority: editing.priority,
+            due_date: editing.due_date,
+            project_id: editing.project_id,
+            status: editing.status,
+          }}
+          projects={projects}
+          onClose={() => setEditing(null)}
+          onSaved={updateTask}
+          onDeleted={removeTask}
+        />
+      )}
     </div>
   );
 }
 
 function TaskRow({
-  task, editing, editValue, onEditChange, onCommit, onCancel,
-  onStartEdit, onToggle, onRemove,
+  task, onOpen, onToggle, onRemove,
 }: {
   task: Task;
-  editing: boolean;
-  editValue: string;
-  onEditChange: (v: string) => void;
-  onCommit: () => void;
-  onCancel: () => void;
-  onStartEdit: () => void;
+  onOpen: () => void;
   onToggle: () => void;
   onRemove: () => void;
 }) {
@@ -229,11 +254,12 @@ function TaskRow({
 
   return (
     <li
-      className="group flex items-center gap-3 transition-colors"
+      className="group flex items-center gap-3 transition-colors cursor-pointer"
       style={{
         padding: "10px 12px",
         borderRadius: 8,
       }}
+      onClick={onOpen}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = "#0f0f0f";
       }}
@@ -242,7 +268,7 @@ function TaskRow({
       }}
     >
       <button
-        onClick={onToggle}
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-label={done ? "Marcar pendiente" : "Marcar completada"}
         style={{
           width: 16, height: 16, borderRadius: "50%",
@@ -257,32 +283,16 @@ function TaskRow({
         {done && <IconCheck size={10} stroke={3} color="white" />}
       </button>
 
-      {editing ? (
-        <input
-          autoFocus
-          value={editValue}
-          onChange={(e) => onEditChange(e.target.value)}
-          onBlur={onCommit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onCommit();
-            if (e.key === "Escape") onCancel();
-          }}
-          className="flex-1 bg-transparent border-0 outline-none"
-          style={{ fontSize: 14, color: "#ccc" }}
-        />
-      ) : (
-        <span
-          onClick={onStartEdit}
-          className="flex-1 cursor-text truncate"
-          style={{
-            fontSize: 14,
-            color: done ? "#444" : "#ccc",
-            textDecoration: done ? "line-through" : "none",
-          }}
-        >
-          {task.title}
-        </span>
-      )}
+      <span
+        className="flex-1 truncate"
+        style={{
+          fontSize: 14,
+          color: done ? "#444" : "#ccc",
+          textDecoration: done ? "line-through" : "none",
+        }}
+      >
+        {task.title}
+      </span>
 
       <PriorityBadge priority={task.priority} />
 
@@ -298,13 +308,12 @@ function TaskRow({
       )}
 
       <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-        <button onClick={onStartEdit} aria-label="Editar"
-          style={{ color: "#666", padding: 4 }}>
-          <IconPencil size={14} />
-        </button>
-        <button onClick={onRemove} aria-label="Eliminar"
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          aria-label="Eliminar"
           style={{ color: "#666", padding: 4 }}
-          className="hover:text-red-400">
+          className="hover:text-red-400"
+        >
           <IconTrash size={14} />
         </button>
       </div>
