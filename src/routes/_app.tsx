@@ -110,7 +110,10 @@ function AppLayout() {
           />
         )}
         <MobileTopBar />
-        <div key={pathname} className="alfred-page h-full">
+        <div
+          key={pathname}
+          className={pathname === "/chat" ? "alfred-page alfred-chat-route-frame" : "alfred-page h-full"}
+        >
           {pathname === "/chat" ? (
             <Outlet />
           ) : (
