@@ -50,20 +50,24 @@ function openCapture() {
 function TasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
+  const [editing, setEditing] = useState<Task | null>(null);
 
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("tasks")
-        .select("*")
-        .order("due_date", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
-      setTasks((data as Task[]) ?? []);
+      const [t, p] = await Promise.all([
+        supabase
+          .from("tasks")
+          .select("*")
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .order("created_at", { ascending: false }),
+        supabase.from("projects").select("id,name").order("name"),
+      ]);
+      setTasks((t.data as Task[]) ?? []);
+      setProjects((p.data as ProjectOption[]) ?? []);
       setLoading(false);
     })();
   }, [user]);
