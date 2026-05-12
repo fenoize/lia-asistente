@@ -111,9 +111,13 @@ function AppLayout() {
         )}
         <MobileTopBar />
         <div key={pathname} className="alfred-page h-full">
-          <div className="alfred-page-shell">
+          {pathname === "/chat" ? (
             <Outlet />
-          </div>
+          ) : (
+            <div className="alfred-page-shell">
+              <Outlet />
+            </div>
+          )}
         </div>
       </main>
       <QuickCapture />
