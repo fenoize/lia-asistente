@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconPencil, IconTrash, IconCheck } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCheck } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 
 export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
@@ -16,7 +17,11 @@ type Task = {
   priority: string;
   due_date: string | null;
   project: string | null;
+  project_id: string | null;
+  description: string | null;
 };
+
+type ProjectOption = { id: string; name: string };
 
 type Filter = "all" | "urgent" | "today" | "week" | "done";
 
