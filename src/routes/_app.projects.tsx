@@ -219,11 +219,13 @@ function ProjectCard({
 
   return (
     <div
+      onClick={onOpen}
       style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-md)",
-        padding: 16,
+        background: "#0e0e0e",
+        border: "1px solid #141414",
+        borderRadius: 12,
+        padding: "16px 18px",
+        cursor: "pointer",
       }}
     >
       {client && (
