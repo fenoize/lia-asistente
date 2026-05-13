@@ -622,7 +622,7 @@ function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; 
         >
           {meeting.duration_minutes}m
         </span>
-      )}
+      ) : null}
     </button>
   );
 }
