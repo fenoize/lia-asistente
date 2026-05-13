@@ -144,7 +144,7 @@ export function QuickCapture() {
 
       // Try AI parsing first for better title/description/datetime extraction
       let ai: {
-        type: "task" | "meeting" | "reminder" | "note";
+        type: "task" | "meeting" | "reminder" | "note" | "project";
         title: string;
         description?: string | null;
         datetime?: string | null;
