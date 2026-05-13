@@ -6,7 +6,7 @@ import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway"
 const SYSTEM = `Eres un clasificador. Recibes texto crudo del usuario en español de Chile.
 Devuelve EXCLUSIVAMENTE un JSON válido con esta forma exacta:
 {
-  "type": "task" | "meeting" | "reminder" | "note",
+  "type": "task" | "meeting" | "reminder" | "note" | "project",
   "title": string (corto, claro, máx 80 chars),
   "description": string | null,
   "datetime": ISO8601 string | null,
@@ -18,6 +18,7 @@ Reglas:
 - "meeting" si menciona reunión, cita, llamada, junta o "call" con alguien.
 - "reminder" si dice "recuérdame" o es una alerta puntual sin acción compleja.
 - "note" si es una idea, observación o pensamiento sin acción.
+- "project" si el texto indica crear o iniciar un nuevo proyecto o iniciativa grande.
 - title: resumen MUY breve y específico. Para reuniones usa formato "Reunión con <persona/empresa>". NO incluyas la fecha/hora ni la descripción de lo que se hará en el título.
 - description: redacta en una frase clara lo que se hará o se tratará. Reformula el texto del usuario en tercera persona o impersonal (ej: "Se revisará la configuración..."). NO repitas el título ni incluyas la fecha. Si no hay nada que describir, null.
 - datetime: parsea fechas y horas en español ("hoy a las 16:00", "mañana 3pm", "el viernes", "en 2 horas") a ISO8601 con offset de America/Santiago. "hoy a las HH:MM" SIEMPRE significa hoy en esa hora exacta, nunca la hora actual. Si no hay fecha/hora explícita, null.
