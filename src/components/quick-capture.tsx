@@ -160,7 +160,7 @@ export function QuickCapture() {
         // fall back to local heuristics
       }
 
-      const type = ai?.type ?? detected;
+      const type = manualType ?? ai?.type ?? detected;
       const fallbackTitle = text.trim().split("\n")[0].slice(0, 140);
       const title = (ai?.title?.trim() || fallbackTitle).slice(0, 200);
       const description = ai?.description?.trim() || (text.length > title.length ? text : null);
