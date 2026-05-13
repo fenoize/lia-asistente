@@ -27,6 +27,7 @@ const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
 function detectType(raw: string): CaptureType {
   const t = raw.toLowerCase().trim();
   if (!t) return "task";
+  if (/(proyecto|nuevo proyecto)/.test(t)) return "project";
   if (/(reuni[oó]n|llama|llamada|\bcall\b|meeting|junta)/.test(t)) return "meeting";
   if (/(recu[eé]rdame|recordar|recordatorio|ma[ñn]ana a las|hoy a las)/.test(t)) return "reminder";
   if (TIME_RE.test(t)) return "reminder";
