@@ -426,16 +426,32 @@ function Dashboard() {
 
       {/* Meetings */}
       <Block label="HOY">
-        {meetings.length === 0 ? (
-          <Empty>Sin reuniones hoy. Buen día para ejecutar.</Empty>
+        {upcomingMeetings.length === 0 ? (
+          <Empty>Sin reuniones próximas. Buen día para ejecutar.</Empty>
         ) : (
           <div className="space-y-2">
-            {meetings.slice(0, 3).map((m) => (
+            {upcomingMeetings.slice(0, 3).map((m) => (
               <MeetingRow key={m.id} meeting={m} onClick={() => setEditingMeeting(m)} />
             ))}
           </div>
         )}
       </Block>
+
+      {/* Pendientes de resumen */}
+      {pastMeetingsWithoutNotes.length > 0 && (
+        <Block label="PENDIENTE DE RESUMEN">
+          <div className="space-y-2">
+            {pastMeetingsWithoutNotes.map((m) => (
+              <MeetingRow
+                key={m.id}
+                meeting={m}
+                onClick={() => setEditingMeeting(m)}
+                isPastNeedsNotes
+              />
+            ))}
+          </div>
+        </Block>
+      )}
 
       {/* Urgent tasks */}
       <Block label="URGENTE">
