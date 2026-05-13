@@ -258,19 +258,37 @@ export function QuickCapture() {
         {/* Type chip */}
         {text.trim() && (
           <div style={{ padding: "0 24px 12px" }}>
-            <span
-              className="inline-flex items-center gap-1.5"
-              style={{
-                background: "var(--accent-subtle)",
-                color: "var(--accent-color)",
-                border: "1px solid rgba(99,102,241,0.3)",
-                borderRadius: "var(--radius-pill)",
-                padding: "4px 10px",
-                fontSize: 13,
-              }}
-            >
-              <span>{meta.emoji}</span> {meta.label}
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="inline-flex items-center gap-1.5 outline-none hover:opacity-80 transition-opacity"
+                  style={{
+                    background: "var(--accent-subtle)",
+                    color: "var(--accent-color)",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    borderRadius: "var(--radius-pill)",
+                    padding: "4px 10px",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span>{meta.emoji}</span> {meta.label}
+                  <ChevronDown className="h-3 w-3 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40 border-border bg-background">
+                {(Object.keys(typeMeta) as CaptureType[]).map((t) => (
+                  <DropdownMenuItem 
+                    key={t} 
+                    onClick={() => setManualType(t)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <span>{typeMeta[t].emoji}</span>
+                    <span>{typeMeta[t].label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
