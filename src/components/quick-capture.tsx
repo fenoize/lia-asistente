@@ -218,7 +218,7 @@ export function QuickCapture() {
   if (!open) return null;
 
   const meta = typeMeta[detected];
-  const showDateTime = detected === "meeting" || detected === "reminder";
+  const showDateTime = detected === "meeting" || detected === "reminder" || detected === "project";
 
   return (
     <div
