@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 
-type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea";
+type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea" | "project";
 
 const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
   task: { label: "Tarea", emoji: "📋" },
@@ -19,6 +19,7 @@ const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
   reminder: { label: "Recordatorio", emoji: "🔔" },
   note: { label: "Nota", emoji: "📝" },
   idea: { label: "Idea", emoji: "💡" },
+  project: { label: "Proyecto", emoji: "🚀" },
 };
 
 const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
