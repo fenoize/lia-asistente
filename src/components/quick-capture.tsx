@@ -191,6 +191,13 @@ export function QuickCapture() {
           title,
           datetime,
         });
+      } else if (type === "project") {
+        await supabase.from("projects").insert({
+          user_id: user.id,
+          name: title,
+          notes: description,
+          due_date: userOverrideDt || ai?.datetime || null,
+        });
       } else {
         await supabase.from("notes").insert({
           user_id: user.id,
