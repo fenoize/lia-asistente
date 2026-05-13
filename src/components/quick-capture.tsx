@@ -3,6 +3,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
 type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea";
 
@@ -71,10 +78,12 @@ export function QuickCapture() {
   const [noteKind, setNoteKind] = useState<"note" | "idea" | "highlight">("note");
   const [dt, setDt] = useState<{ date: string; time: string }>(toDateInputs(null));
   const [dtTouched, setDtTouched] = useState(false);
+  const [manualType, setManualType] = useState<CaptureType | null>(null);
   const inputRef = useRef<MentionInputHandle>(null);
   const { user } = useAuth();
 
-  const detected = useMemo(() => detectType(text), [text]);
+  const autoDetected = useMemo(() => detectType(text), [text]);
+  const detected = manualType ?? autoDetected;
 
   // Open via custom event or ⌘K / Ctrl+K
   useEffect(() => {
@@ -121,6 +130,7 @@ export function QuickCapture() {
       setNoteKind("note");
       setDt(toDateInputs(null));
       setDtTouched(false);
+      setManualType(null);
     }, 160);
   }
 
@@ -150,7 +160,7 @@ export function QuickCapture() {
         // fall back to local heuristics
       }
 
-      const type = ai?.type ?? detected;
+      const type = manualType ?? ai?.type ?? detected;
       const fallbackTitle = text.trim().split("\n")[0].slice(0, 140);
       const title = (ai?.title?.trim() || fallbackTitle).slice(0, 200);
       const description = ai?.description?.trim() || (text.length > title.length ? text : null);
@@ -248,19 +258,37 @@ export function QuickCapture() {
         {/* Type chip */}
         {text.trim() && (
           <div style={{ padding: "0 24px 12px" }}>
-            <span
-              className="inline-flex items-center gap-1.5"
-              style={{
-                background: "var(--accent-subtle)",
-                color: "var(--accent-color)",
-                border: "1px solid rgba(99,102,241,0.3)",
-                borderRadius: "var(--radius-pill)",
-                padding: "4px 10px",
-                fontSize: 13,
-              }}
-            >
-              <span>{meta.emoji}</span> {meta.label}
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="inline-flex items-center gap-1.5 outline-none hover:opacity-80 transition-opacity"
+                  style={{
+                    background: "var(--accent-subtle)",
+                    color: "var(--accent-color)",
+                    border: "1px solid rgba(99,102,241,0.3)",
+                    borderRadius: "var(--radius-pill)",
+                    padding: "4px 10px",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  <span>{meta.emoji}</span> {meta.label}
+                  <ChevronDown className="h-3 w-3 opacity-70" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40 border-border bg-background">
+                {(Object.keys(typeMeta) as CaptureType[]).map((t) => (
+                  <DropdownMenuItem 
+                    key={t} 
+                    onClick={() => setManualType(t)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <span>{typeMeta[t].emoji}</span>
+                    <span>{typeMeta[t].label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 
