@@ -555,7 +555,7 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => void }) {
+function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; onClick?: () => void; isPastNeedsNotes?: boolean }) {
   const time = new Date(meeting.datetime).toLocaleTimeString("es-CL", {
     hour: "2-digit",
     minute: "2-digit",
@@ -567,23 +567,23 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
       onClick={onClick}
       className="flex items-center gap-4 transition-colors w-full text-left"
       style={{
-        background: "#111111",
-        border: "1px solid #1e1e1e",
+        background: isPastNeedsNotes ? "rgba(251, 146, 60, 0.05)" : "#111111",
+        border: isPastNeedsNotes ? "1px solid rgba(251, 146, 60, 0.2)" : "1px solid #1e1e1e",
         borderRadius: 10,
         padding: "12px 16px",
         cursor: onClick ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "var(--accent-subtle)";
+        e.currentTarget.style.borderColor = isPastNeedsNotes ? "rgba(251, 146, 60, 0.4)" : "var(--accent-subtle)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#1e1e1e";
+        e.currentTarget.style.borderColor = isPastNeedsNotes ? "rgba(251, 146, 60, 0.2)" : "#1e1e1e";
       }}
     >
       <span
         style={{
           fontSize: 13,
-          color: "#6366f1",
+          color: isPastNeedsNotes ? "#fbbf24" : "#6366f1",
           fontWeight: 600,
           fontVariantNumeric: "tabular-nums",
         }}
@@ -592,11 +592,24 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
       </span>
       <span
         className="flex-1 truncate"
-        style={{ fontSize: 14, color: "#e0e0e0" }}
+        style={{ fontSize: 14, color: isPastNeedsNotes ? "#f3f4f6" : "#e0e0e0" }}
       >
         {meeting.title}
       </span>
-      {meeting.duration_minutes && (
+      {isPastNeedsNotes ? (
+        <span
+          style={{
+            fontSize: 11,
+            background: "rgba(251, 146, 60, 0.1)",
+            border: "1px solid rgba(251, 146, 60, 0.2)",
+            color: "#fbbf24",
+            borderRadius: 100,
+            padding: "2px 10px",
+          }}
+        >
+          Agregar resumen →
+        </span>
+      ) : meeting.duration_minutes ? (
         <span
           style={{
             fontSize: 11,
