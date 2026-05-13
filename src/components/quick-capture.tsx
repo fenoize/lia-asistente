@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
 
-type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea";
+type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea" | "project";
 
 const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
   task: { label: "Tarea", emoji: "📋" },
@@ -19,6 +19,7 @@ const typeMeta: Record<CaptureType, { label: string; emoji: string }> = {
   reminder: { label: "Recordatorio", emoji: "🔔" },
   note: { label: "Nota", emoji: "📝" },
   idea: { label: "Idea", emoji: "💡" },
+  project: { label: "Proyecto", emoji: "🚀" },
 };
 
 const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
@@ -26,6 +27,7 @@ const TIME_RE = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i;
 function detectType(raw: string): CaptureType {
   const t = raw.toLowerCase().trim();
   if (!t) return "task";
+  if (/(proyecto|nuevo proyecto)/.test(t)) return "project";
   if (/(reuni[oó]n|llama|llamada|\bcall\b|meeting|junta)/.test(t)) return "meeting";
   if (/(recu[eé]rdame|recordar|recordatorio|ma[ñn]ana a las|hoy a las)/.test(t)) return "reminder";
   if (TIME_RE.test(t)) return "reminder";
@@ -142,7 +144,7 @@ export function QuickCapture() {
 
       // Try AI parsing first for better title/description/datetime extraction
       let ai: {
-        type: "task" | "meeting" | "reminder" | "note";
+        type: "task" | "meeting" | "reminder" | "note" | "project";
         title: string;
         description?: string | null;
         datetime?: string | null;
@@ -189,6 +191,13 @@ export function QuickCapture() {
           title,
           datetime,
         });
+      } else if (type === "project") {
+        await supabase.from("projects").insert({
+          user_id: user.id,
+          name: title,
+          notes: description,
+          due_date: userOverrideDt || ai?.datetime || null,
+        });
       } else {
         await supabase.from("notes").insert({
           user_id: user.id,
@@ -209,7 +218,7 @@ export function QuickCapture() {
   if (!open) return null;
 
   const meta = typeMeta[detected];
-  const showDateTime = detected === "meeting" || detected === "reminder";
+  const showDateTime = detected === "meeting" || detected === "reminder" || detected === "project";
 
   return (
     <div
