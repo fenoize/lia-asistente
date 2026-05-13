@@ -236,6 +236,14 @@ function Dashboard() {
   );
   const visibleTasks = showAllTasks ? urgentTasks : urgentTasks.slice(0, 4);
 
+  const upcomingMeetings = meetings.filter(
+    (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 > Date.now()
+  );
+  
+  const pastMeetingsWithoutNotes = meetings.filter(
+    (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 <= Date.now() && (!m.notes || m.notes.trim() === "")
+  );
+
   const toggleTask = async (task: Task) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
