@@ -236,6 +236,14 @@ function Dashboard() {
   );
   const visibleTasks = showAllTasks ? urgentTasks : urgentTasks.slice(0, 4);
 
+  const upcomingMeetings = meetings.filter(
+    (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 > Date.now()
+  );
+  
+  const pastMeetingsWithoutNotes = meetings.filter(
+    (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 <= Date.now() && (!m.notes || m.notes.trim() === "")
+  );
+
   const toggleTask = async (task: Task) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
@@ -418,16 +426,32 @@ function Dashboard() {
 
       {/* Meetings */}
       <Block label="HOY">
-        {meetings.length === 0 ? (
-          <Empty>Sin reuniones hoy. Buen día para ejecutar.</Empty>
+        {upcomingMeetings.length === 0 ? (
+          <Empty>Sin reuniones próximas. Buen día para ejecutar.</Empty>
         ) : (
           <div className="space-y-2">
-            {meetings.slice(0, 3).map((m) => (
+            {upcomingMeetings.slice(0, 3).map((m) => (
               <MeetingRow key={m.id} meeting={m} onClick={() => setEditingMeeting(m)} />
             ))}
           </div>
         )}
       </Block>
+
+      {/* Pendientes de resumen */}
+      {pastMeetingsWithoutNotes.length > 0 && (
+        <Block label="PENDIENTE DE RESUMEN">
+          <div className="space-y-2">
+            {pastMeetingsWithoutNotes.map((m) => (
+              <MeetingRow
+                key={m.id}
+                meeting={m}
+                onClick={() => setEditingMeeting(m)}
+                isPastNeedsNotes
+              />
+            ))}
+          </div>
+        </Block>
+      )}
 
       {/* Urgent tasks */}
       <Block label="URGENTE">
@@ -531,7 +555,7 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => void }) {
+function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; onClick?: () => void; isPastNeedsNotes?: boolean }) {
   const time = new Date(meeting.datetime).toLocaleTimeString("es-CL", {
     hour: "2-digit",
     minute: "2-digit",
@@ -543,23 +567,23 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
       onClick={onClick}
       className="flex items-center gap-4 transition-colors w-full text-left"
       style={{
-        background: "#111111",
-        border: "1px solid #1e1e1e",
+        background: isPastNeedsNotes ? "rgba(251, 146, 60, 0.05)" : "#111111",
+        border: isPastNeedsNotes ? "1px solid rgba(251, 146, 60, 0.2)" : "1px solid #1e1e1e",
         borderRadius: 10,
         padding: "12px 16px",
         cursor: onClick ? "pointer" : "default",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "var(--accent-subtle)";
+        e.currentTarget.style.borderColor = isPastNeedsNotes ? "rgba(251, 146, 60, 0.4)" : "var(--accent-subtle)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#1e1e1e";
+        e.currentTarget.style.borderColor = isPastNeedsNotes ? "rgba(251, 146, 60, 0.2)" : "#1e1e1e";
       }}
     >
       <span
         style={{
           fontSize: 13,
-          color: "#6366f1",
+          color: isPastNeedsNotes ? "#fbbf24" : "#6366f1",
           fontWeight: 600,
           fontVariantNumeric: "tabular-nums",
         }}
@@ -568,11 +592,24 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
       </span>
       <span
         className="flex-1 truncate"
-        style={{ fontSize: 14, color: "#e0e0e0" }}
+        style={{ fontSize: 14, color: isPastNeedsNotes ? "#f3f4f6" : "#e0e0e0" }}
       >
         {meeting.title}
       </span>
-      {meeting.duration_minutes && (
+      {isPastNeedsNotes ? (
+        <span
+          style={{
+            fontSize: 11,
+            background: "rgba(251, 146, 60, 0.1)",
+            border: "1px solid rgba(251, 146, 60, 0.2)",
+            color: "#fbbf24",
+            borderRadius: 100,
+            padding: "2px 10px",
+          }}
+        >
+          Agregar resumen →
+        </span>
+      ) : meeting.duration_minutes ? (
         <span
           style={{
             fontSize: 11,
@@ -585,7 +622,7 @@ function MeetingRow({ meeting, onClick }: { meeting: Meeting; onClick?: () => vo
         >
           {meeting.duration_minutes}m
         </span>
-      )}
+      ) : null}
     </button>
   );
 }
