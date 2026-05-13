@@ -130,6 +130,7 @@ export function QuickCapture() {
       setNoteKind("note");
       setDt(toDateInputs(null));
       setDtTouched(false);
+      setManualType(null);
     }, 160);
   }
 
