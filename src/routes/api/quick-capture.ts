@@ -26,7 +26,7 @@ Reglas:
 - Sin texto extra. Solo JSON, sin code fences.`;
 
 const Schema = z.object({
-  type: z.enum(["task", "meeting", "reminder", "note"]),
+  type: z.enum(["task", "meeting", "reminder", "note", "project"]),
   title: z.string().min(1).max(300),
   description: z.string().nullable().optional(),
   datetime: z.string().nullable().optional(),
