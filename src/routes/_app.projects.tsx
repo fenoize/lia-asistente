@@ -282,6 +282,7 @@ function ProjectCard({
   return (
     <div
       onClick={onOpen}
+      className="group relative"
       style={{
         background: "#0e0e0e",
         border: "1px solid #141414",
@@ -290,6 +291,25 @@ function ProjectCard({
         cursor: "pointer",
       }}
     >
+      <div
+        className="absolute flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ top: 10, right: 10 }}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label="Editar"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconPencil size={14} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          aria-label="Eliminar"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
       {client && (
         <div className="flex items-center gap-2 mb-2">
           <span
