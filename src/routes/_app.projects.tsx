@@ -1,10 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { IconBriefcase, IconPlus } from "@tabler/icons-react";
+import { IconBriefcase, IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EditProjectModal } from "@/components/projects/edit-project-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -17,6 +28,7 @@ type Project = {
   status: "active" | "paused" | "completed";
   due_date: string | null;
   budget: number | null;
+  notes: string | null;
 };
 
 type Contact = { id: string; name: string; type: string };
@@ -52,6 +64,8 @@ function ProjectsPage() {
   const [showNew, setShowNew] = useState(false);
 
   const [openProject, setOpenProject] = useState<Project | null>(null);
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState<Project | null>(null);
 
   const reload = async () => {
     if (!user) return;
@@ -160,6 +174,8 @@ function ProjectsPage() {
                       contacts={contacts}
                       tasks={tasks}
                       onOpen={() => setOpenProject(p)}
+                      onEdit={() => setEditing(p)}
+                      onDelete={() => setDeleting(p)}
                     />
                   ))}
                 </div>
@@ -190,6 +206,48 @@ function ProjectsPage() {
           onChanged={reload}
         />
       )}
+
+      {editing && (
+        <EditProjectModal
+          project={editing}
+          contacts={contacts}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            reload();
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. "{deleting?.name}" se eliminará permanentemente.
+              Las tareas vinculadas no se borran, sólo se desvinculan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleting) return;
+                const id = deleting.id;
+                setDeleting(null);
+                const { error } = await supabase.from("projects").delete().eq("id", id);
+                if (error) toast.error(error.message);
+                else {
+                  toast.success("Eliminado");
+                  reload();
+                }
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -199,11 +257,15 @@ function ProjectCard({
   contacts,
   tasks,
   onOpen,
+  onEdit,
+  onDelete,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
   onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const client = contacts.find((c) => c.id === project.client_id);
   const projTasks = tasks.filter((t) => t.project_id === project.id);
@@ -220,6 +282,7 @@ function ProjectCard({
   return (
     <div
       onClick={onOpen}
+      className="group relative"
       style={{
         background: "#0e0e0e",
         border: "1px solid #141414",
@@ -228,6 +291,25 @@ function ProjectCard({
         cursor: "pointer",
       }}
     >
+      <div
+        className="absolute flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ top: 10, right: 10 }}
+      >
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          aria-label="Editar"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconPencil size={14} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          aria-label="Eliminar"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
       {client && (
         <div className="flex items-center gap-2 mb-2">
           <span
