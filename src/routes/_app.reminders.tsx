@@ -3,8 +3,19 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
-import { IconBell, IconCheck, IconPlus } from "@tabler/icons-react";
+import { IconBell, IconCheck, IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/reminders")({
   component: RemindersPage,
@@ -18,7 +29,9 @@ type Reminder = {
 };
 
 function openCapture() {
-  window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
+  window.dispatchEvent(
+    new CustomEvent("alfred:quick-capture", { detail: { type: "reminder" } }),
+  );
 }
 
 function RemindersPage() {
@@ -26,6 +39,8 @@ function RemindersPage() {
   const assistant = useAssistant();
   const [items, setItems] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Reminder | null>(null);
+  const [deleting, setDeleting] = useState<Reminder | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -43,6 +58,15 @@ function RemindersPage() {
     const next = !r.done;
     setItems((prev) => prev.map((x) => (x.id === r.id ? { ...x, done: next } : x)));
     const { error } = await supabase.from("reminders").update({ done: next }).eq("id", r.id);
+    if (error) toast.error(error.message);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    const id = deleting.id;
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    setDeleting(null);
+    const { error } = await supabase.from("reminders").delete().eq("id", id);
     if (error) toast.error(error.message);
   };
 
@@ -66,6 +90,8 @@ function RemindersPage() {
             label="PRÓXIMOS"
             items={upcoming}
             onToggle={toggle}
+            onEdit={setEditing}
+            onDelete={setDeleting}
             empty={`Sin recordatorios pendientes. ${assistant.name} te avisará cuando tengas uno.`}
           />
           {completed.length > 0 && (
@@ -73,20 +99,48 @@ function RemindersPage() {
               label="COMPLETADOS"
               items={completed}
               onToggle={toggle}
+              onEdit={setEditing}
+              onDelete={setDeleting}
             />
           )}
         </div>
       )}
+
+      <EditReminderModal
+        reminder={editing}
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        onSaved={(updated) =>
+          setItems((prev) => prev.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)))
+        }
+      />
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar recordatorio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. "{deleting?.title}" se eliminará para siempre.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
 function Section({
-  label, items, onToggle, empty,
+  label, items, onToggle, onEdit, onDelete, empty,
 }: {
   label: string;
   items: Reminder[];
   onToggle: (r: Reminder) => void;
+  onEdit: (r: Reminder) => void;
+  onDelete: (r: Reminder) => void;
   empty?: string;
 }) {
   return (
@@ -97,7 +151,13 @@ function Section({
       ) : (
         <ul className="space-y-2">
           {items.map((r) => (
-            <ReminderRow key={r.id} reminder={r} onToggle={() => onToggle(r)} />
+            <ReminderRow
+              key={r.id}
+              reminder={r}
+              onToggle={() => onToggle(r)}
+              onEdit={() => onEdit(r)}
+              onDelete={() => onDelete(r)}
+            />
           ))}
         </ul>
       )}
@@ -105,7 +165,14 @@ function Section({
   );
 }
 
-function ReminderRow({ reminder: r, onToggle }: { reminder: Reminder; onToggle: () => void }) {
+function ReminderRow({
+  reminder: r, onToggle, onEdit, onDelete,
+}: {
+  reminder: Reminder;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const dt = new Date(r.datetime);
   const fmt = dt.toLocaleString("es-CL", {
     weekday: "short", day: "numeric", month: "short",
@@ -114,7 +181,7 @@ function ReminderRow({ reminder: r, onToggle }: { reminder: Reminder; onToggle: 
 
   return (
     <li
-      className="flex items-center gap-3"
+      className="group flex items-center gap-3"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--border)",
@@ -136,20 +203,40 @@ function ReminderRow({ reminder: r, onToggle }: { reminder: Reminder; onToggle: 
         </div>
         <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{fmt}</div>
       </div>
-      <button
-        onClick={onToggle}
-        aria-label={r.done ? "Desmarcar" : "Marcar completado"}
-        style={{
-          width: 22, height: 22, borderRadius: "50%",
-          border: `1.5px solid ${r.done ? "var(--accent-color)" : "var(--border)"}`,
-          background: r.done ? "var(--accent-color)" : "transparent",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-        }}
-        className="hover:scale-110 transition-transform"
-      >
-        {r.done && <IconCheck size={12} stroke={3} color="white" />}
-      </button>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onEdit}
+          aria-label="Editar"
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconPencil size={14} />
+        </button>
+        <button
+          onClick={onDelete}
+          aria-label="Eliminar"
+          className="opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: "var(--text-tertiary)", padding: 4 }}
+        >
+          <IconTrash size={14} />
+        </button>
+        <button
+          onClick={onToggle}
+          aria-label={r.done ? "Desmarcar" : "Marcar completado"}
+          style={{
+            width: 22, height: 22, borderRadius: "50%",
+            border: `1.5px solid ${r.done ? "var(--accent-color)" : "var(--border)"}`,
+            background: r.done ? "var(--accent-color)" : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+            marginLeft: 4,
+          }}
+          className="hover:scale-110 transition-transform"
+        >
+          {r.done && <IconCheck size={12} stroke={3} color="white" />}
+        </button>
+      </div>
     </li>
   );
 }
