@@ -174,6 +174,8 @@ function ProjectsPage() {
                       contacts={contacts}
                       tasks={tasks}
                       onOpen={() => setOpenProject(p)}
+                      onEdit={() => setEditing(p)}
+                      onDelete={() => setDeleting(p)}
                     />
                   ))}
                 </div>
