@@ -1,10 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { IconBriefcase, IconPlus } from "@tabler/icons-react";
+import { IconBriefcase, IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EditProjectModal } from "@/components/projects/edit-project-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/projects")({
   component: ProjectsPage,
@@ -17,6 +28,7 @@ type Project = {
   status: "active" | "paused" | "completed";
   due_date: string | null;
   budget: number | null;
+  notes: string | null;
 };
 
 type Contact = { id: string; name: string; type: string };
