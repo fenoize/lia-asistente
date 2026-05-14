@@ -100,7 +100,12 @@ export function QuickCapture() {
         close();
       }
     };
-    const opener = () => { setClosing(false); setOpen(true); };
+    const opener = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { type?: CaptureType } | undefined;
+      if (detail?.type) setManualType(detail.type);
+      setClosing(false);
+      setOpen(true);
+    };
     window.addEventListener("keydown", handler);
     window.addEventListener("alfred:quick-capture", opener);
     return () => {
