@@ -64,6 +64,8 @@ function ProjectsPage() {
   const [showNew, setShowNew] = useState(false);
 
   const [openProject, setOpenProject] = useState<Project | null>(null);
+  const [editing, setEditing] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState<Project | null>(null);
 
   const reload = async () => {
     if (!user) return;
