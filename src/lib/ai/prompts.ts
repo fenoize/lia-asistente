@@ -28,8 +28,23 @@ function personalityBlock(c: AlfredContext): string {
 Personalidad: ${persona}`;
 }
 
+function todayLine(timezone: string): string {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("es-CL", {
+    timeZone: timezone,
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `Hoy es ${get("weekday")}, ${get("day")} de ${get("month")} de ${get("year")}.`;
+}
+
 export function buildSystemPrompt(c: AlfredContext): string {
-  return `Eres ${c.assistantName}, el asistente ejecutivo personal de ${c.name}.
+  return `${todayLine(c.timezone)}
+
+Eres ${c.assistantName}, el asistente ejecutivo personal de ${c.name}.
 
 ${personalityBlock(c)}
 
