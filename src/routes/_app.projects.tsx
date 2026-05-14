@@ -206,6 +206,48 @@ function ProjectsPage() {
           onChanged={reload}
         />
       )}
+
+      {editing && (
+        <EditProjectModal
+          project={editing}
+          contacts={contacts}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            reload();
+          }}
+        />
+      )}
+
+      <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar proyecto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. "{deleting?.name}" se eliminará permanentemente.
+              Las tareas vinculadas no se borran, sólo se desvinculan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleting) return;
+                const id = deleting.id;
+                setDeleting(null);
+                const { error } = await supabase.from("projects").delete().eq("id", id);
+                if (error) toast.error(error.message);
+                else {
+                  toast.success("Eliminado");
+                  reload();
+                }
+              }}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -215,11 +257,15 @@ function ProjectCard({
   contacts,
   tasks,
   onOpen,
+  onEdit,
+  onDelete,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
   onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const client = contacts.find((c) => c.id === project.client_id);
   const projTasks = tasks.filter((t) => t.project_id === project.id);
