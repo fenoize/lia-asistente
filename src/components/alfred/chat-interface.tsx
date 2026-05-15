@@ -324,9 +324,9 @@ export function ChatInterface() {
   );
 }
 
-function UserBubble({ text }: { text: string }) {
+function UserBubble({ text, time }: { text: string; time?: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end">
       <div
         style={{
           maxWidth: "75%",
@@ -342,6 +342,11 @@ function UserBubble({ text }: { text: string }) {
       >
         <MentionText text={text} />
       </div>
+      {time && (
+        <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4, marginRight: 4 }}>
+          {time}
+        </div>
+      )}
     </div>
   );
 }
