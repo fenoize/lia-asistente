@@ -427,6 +427,11 @@ function AlfredBubble({
             onDecline={onDecline!}
           />
         )}
+        {time && !streaming && (
+          <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4, marginLeft: 4 }}>
+            {time}
+          </div>
+        )}
         <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } }`}</style>
       </div>
     </div>
