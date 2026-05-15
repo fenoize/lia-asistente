@@ -247,23 +247,15 @@ export function ChatInterface() {
 
           <div className="space-y-4">
             {messages.map((m, idx) => {
-              const prev = messages[idx - 1];
-              const showTime = hoveredId === m.id && (!prev || m.createdAt - prev.createdAt > 60_000);
+              const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
-                <div key={m.id} onMouseEnter={() => setHoveredId(m.id)} onMouseLeave={() => setHoveredId(null)}>
-                  {showTime && (
-                    <div
-                      className="text-center mb-2"
-                      style={{ fontSize: 11, color: "var(--text-tertiary)" }}
-                    >
-                      {new Date(m.createdAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  )}
+                <div key={m.id}>
                   {m.role === "user" ? (
-                    <UserBubble text={m.content} />
+                    <UserBubble text={m.content} time={time} />
                   ) : (
                     <AlfredBubble
                       text={m.content}
+                      time={time}
                       streaming={streaming && idx === messages.length - 1 && !m.action}
                       action={m.action ?? null}
                       actionStatus={m.actionStatus}
