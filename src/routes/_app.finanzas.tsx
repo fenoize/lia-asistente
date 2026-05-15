@@ -53,22 +53,36 @@ function FinanzasPage() {
   const [tab, setTab] = useState<Tab>("resumen");
   const [modalKind, setModalKind] = useState<FinanceKind | null>(null);
   const [modalRecord, setModalRecord] = useState<FinanceRecord | null>(null);
-  const [items, setItems] = useState<Record<string, FinanceRecord[]>>({});
+  const [items, setItems] = useState<Record<string, FinanceRecord[]>>({
+    cobros: [],
+    gastos: [],
+    subs: [],
+    cuentas: [],
+  });
 
-  const load = useCallback(async (t: Tab) => {
-    if (t === "resumen") return;
-    const table = TAB_TO_TABLE[t];
+  const loadAll = useCallback(async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const { data } = await (supabase.from(table as never) as unknown as {
-      select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: FinanceRecord[] | null }> } };
-    }).select("*").eq("user_id", u.user.id).order("created_at", { ascending: false });
-    setItems((prev) => ({ ...prev, [t]: data ?? [] }));
+    const uid = u.user.id;
+    const fetchTab = async (t: Exclude<Tab, "resumen">) => {
+      const table = TAB_TO_TABLE[t];
+      const { data } = await (supabase.from(table as never) as unknown as {
+        select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: FinanceRecord[] | null }> } };
+      }).select("*").eq("user_id", uid).order("created_at", { ascending: false });
+      return [t, data ?? []] as const;
+    };
+    const results = await Promise.all([
+      fetchTab("cobros"),
+      fetchTab("gastos"),
+      fetchTab("subs"),
+      fetchTab("cuentas"),
+    ]);
+    setItems(Object.fromEntries(results) as Record<string, FinanceRecord[]>);
   }, []);
 
   useEffect(() => {
-    void load(tab);
-  }, [tab, load]);
+    void loadAll();
+  }, [loadAll]);
 
   const openNew = () => {
     if (tab === "resumen") return;
@@ -84,7 +98,7 @@ function FinanzasPage() {
   const onSaved = async () => {
     setModalKind(null);
     setModalRecord(null);
-    await load(tab);
+    await loadAll();
   };
 
   return (
@@ -125,7 +139,13 @@ function FinanzasPage() {
         })}
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
+      {tab === "resumen" && (
+        <ResumenTab
+          incomes={items.cobros ?? []}
+          expenses={items.gastos ?? []}
+          accounts={items.cuentas ?? []}
+        />
+      )}
 
       {tab === "cobros" && (
         <ListOrEmpty
@@ -266,13 +286,46 @@ function ListOrEmpty({
   );
 }
 
-function ResumenTab() {
-  const cards: { label: string; value: string; hint: string }[] = [
-    { label: "INGRESOS DEL MES", value: "—", hint: "Sin datos aún" },
-    { label: "GASTOS DEL MES", value: "—", hint: "Sin datos aún" },
-    { label: "BALANCE", value: "—", hint: "Configura cuentas para ver" },
-    { label: "POR COBRAR", value: "—", hint: "Sin cobros pendientes" },
+function ResumenTab({
+  incomes,
+  expenses,
+  accounts,
+}: {
+  incomes: FinanceRecord[];
+  expenses: FinanceRecord[];
+  accounts: FinanceRecord[];
+}) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const inMonth = (iso?: string | null) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    return d.getFullYear() === y && d.getMonth() === m;
+  };
+
+  const incomeMonth = incomes
+    .filter((r) => r.status === "paid" && inMonth(r.paid_at ?? null))
+    .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const expenseMonth = expenses
+    .filter((r) => inMonth(r.expense_date ?? null))
+    .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const balance = accounts.reduce((s, r) => s + (Number(r.balance) || 0), 0);
+  const pending = incomes
+    .filter((r) => r.status !== "paid" && r.status !== "cancelled")
+    .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
+  const currency =
+    accounts[0]?.currency ?? incomes[0]?.currency ?? expenses[0]?.currency ?? "CLP";
+
+  const cards = [
+    { label: "INGRESOS DEL MES", value: fmt(incomeMonth, currency), hint: incomeMonth ? "Cobros pagados este mes" : "Sin cobros pagados" },
+    { label: "GASTOS DEL MES", value: fmt(expenseMonth, currency), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
+    { label: "BALANCE", value: fmt(balance, currency), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
+    { label: "POR COBRAR", value: fmt(pending, currency), hint: pending ? "Cobros pendientes" : "Sin cobros pendientes" },
   ];
+
+  const hasData = incomes.length || expenses.length || accounts.length;
 
   return (
     <div>
@@ -306,23 +359,27 @@ function ResumenTab() {
         ))}
       </div>
 
-      <div className="alfred-section-label">ESTE MES</div>
-      <div
-        className="text-center"
-        style={{
-          padding: "60px 24px",
-          border: "1px dashed #1e1e1e",
-          borderRadius: 14,
-        }}
-      >
-        <IconChartPie size={28} stroke={1.5} color="#444" style={{ margin: "0 auto 12px" }} />
-        <p style={{ fontSize: 14, color: "#666", maxWidth: 380, margin: "0 auto 6px" }}>
-          Aún no tienes datos financieros.
-        </p>
-        <p style={{ fontSize: 12, color: "#444", maxWidth: 380, margin: "0 auto" }}>
-          Configura tus cuentas o registra un cobro para ver tu resumen mensual aquí.
-        </p>
-      </div>
+      {!hasData && (
+        <>
+          <div className="alfred-section-label">ESTE MES</div>
+          <div
+            className="text-center"
+            style={{
+              padding: "60px 24px",
+              border: "1px dashed #1e1e1e",
+              borderRadius: 14,
+            }}
+          >
+            <IconChartPie size={28} stroke={1.5} color="#444" style={{ margin: "0 auto 12px" }} />
+            <p style={{ fontSize: 14, color: "#666", maxWidth: 380, margin: "0 auto 6px" }}>
+              Aún no tienes datos financieros.
+            </p>
+            <p style={{ fontSize: 12, color: "#444", maxWidth: 380, margin: "0 auto" }}>
+              Configura tus cuentas o registra un cobro para ver tu resumen mensual aquí.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
