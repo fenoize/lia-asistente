@@ -353,6 +353,7 @@ function UserBubble({ text, time }: { text: string; time?: string }) {
 
 function AlfredBubble({
   text,
+  time,
   streaming,
   action,
   actionStatus,
@@ -361,6 +362,7 @@ function AlfredBubble({
   assistantInitial,
 }: {
   text: string;
+  time?: string;
   streaming: boolean;
   action: Action | null;
   actionStatus?: "pending" | "accepted" | "declined";
