@@ -4,27 +4,10 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useChatStore, type ChatAction as Action, type ChatMsg as Msg } from "@/hooks/use-chat-store";
 import { supabase } from "@/integrations/supabase/client";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 import { MentionText } from "@/components/mentions/mention-text";
-
-type Action = {
-  type: "task" | "meeting" | "reminder" | "note";
-  title: string;
-  description?: string | null;
-  datetime?: string | null;
-  priority?: "low" | "medium" | "high" | null;
-  duration_minutes?: number | null;
-};
-
-type Msg = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  action?: Action | null;
-  actionStatus?: "pending" | "accepted" | "declined";
-  createdAt: number;
-};
 
 const SUGGESTIONS = [
   "¿Qué debería hacer ahora?",
@@ -51,28 +34,40 @@ function parseAction(text: string): { clean: string; action: Action | null } {
 export function ChatInterface() {
   const { user } = useAuth();
   const assistant = useAssistant();
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const { messages, setMessages, loadedForUser } = useChatStore();
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [name, setName] = useState("");
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
 
-  // Load history + context
+  // Load history + context once per user (kept in memory across navigations)
   useEffect(() => {
     if (!user) return;
+    const alreadyLoaded = loadedForUser.current === user.id;
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const [history, profile, t, m, r] = await Promise.all([
-        supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+      const tasks: any[] = [
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase.from("tasks").select("title,due_date,priority,status").eq("status", "pending").limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
-      ]);
-      if (history.data) {
+      ];
+      if (!alreadyLoaded) {
+        tasks.unshift(
+          supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+        );
+      }
+      const results = await Promise.all(tasks);
+      const offset = alreadyLoaded ? 0 : 1;
+      const history = alreadyLoaded ? null : results[0];
+      const profile = results[offset];
+      const t = results[offset + 1];
+      const m = results[offset + 2];
+      const r = results[offset + 3];
+
+      if (history?.data) {
         setMessages(history.data.map((row: any) => {
           const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
           return {
@@ -84,6 +79,7 @@ export function ChatInterface() {
             createdAt: new Date(row.created_at).getTime(),
           };
         }));
+        loadedForUser.current = user.id;
       }
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       contextRef.current = {
@@ -94,7 +90,7 @@ export function ChatInterface() {
         reminders: r.data ?? [],
       };
     })();
-  }, [user]);
+  }, [user, loadedForUser, setMessages]);
 
   // Auto-scroll
   useEffect(() => {
@@ -251,23 +247,15 @@ export function ChatInterface() {
 
           <div className="space-y-4">
             {messages.map((m, idx) => {
-              const prev = messages[idx - 1];
-              const showTime = hoveredId === m.id && (!prev || m.createdAt - prev.createdAt > 60_000);
+              const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
-                <div key={m.id} onMouseEnter={() => setHoveredId(m.id)} onMouseLeave={() => setHoveredId(null)}>
-                  {showTime && (
-                    <div
-                      className="text-center mb-2"
-                      style={{ fontSize: 11, color: "var(--text-tertiary)" }}
-                    >
-                      {new Date(m.createdAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  )}
+                <div key={m.id}>
                   {m.role === "user" ? (
-                    <UserBubble text={m.content} />
+                    <UserBubble text={m.content} time={time} />
                   ) : (
                     <AlfredBubble
                       text={m.content}
+                      time={time}
                       streaming={streaming && idx === messages.length - 1 && !m.action}
                       action={m.action ?? null}
                       actionStatus={m.actionStatus}
@@ -336,9 +324,9 @@ export function ChatInterface() {
   );
 }
 
-function UserBubble({ text }: { text: string }) {
+function UserBubble({ text, time }: { text: string; time?: string }) {
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end">
       <div
         style={{
           maxWidth: "75%",
@@ -354,12 +342,18 @@ function UserBubble({ text }: { text: string }) {
       >
         <MentionText text={text} />
       </div>
+      {time && (
+        <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4, marginRight: 4 }}>
+          {time}
+        </div>
+      )}
     </div>
   );
 }
 
 function AlfredBubble({
   text,
+  time,
   streaming,
   action,
   actionStatus,
@@ -368,6 +362,7 @@ function AlfredBubble({
   assistantInitial,
 }: {
   text: string;
+  time?: string;
   streaming: boolean;
   action: Action | null;
   actionStatus?: "pending" | "accepted" | "declined";
@@ -431,6 +426,11 @@ function AlfredBubble({
             onConfirm={onConfirm!}
             onDecline={onDecline!}
           />
+        )}
+        {time && !streaming && (
+          <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4, marginLeft: 4 }}>
+            {time}
+          </div>
         )}
         <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } }`}</style>
       </div>
