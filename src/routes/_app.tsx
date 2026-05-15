@@ -7,6 +7,7 @@ import { QuickCapture } from "@/components/quick-capture";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { MobileTopBar } from "@/components/mobile-top-bar";
+import { ChatStoreProvider } from "@/hooks/use-chat-store";
 
 // In-memory cache: once we've confirmed onboarding for a user in this tab,
 // skip the DB roundtrip on every subsequent module navigation.
