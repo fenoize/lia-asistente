@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useChatStore, type ChatAction as Action, type ChatMsg as Msg } from "@/hooks/use-chat-store";
 import { supabase } from "@/integrations/supabase/client";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 import { MentionText } from "@/components/mentions/mention-text";
