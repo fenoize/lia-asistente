@@ -48,7 +48,7 @@ export function ChatInterface() {
     const alreadyLoaded = loadedForUser.current === user.id;
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const tasks: Promise<any>[] = [
+      const tasks: any[] = [
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase.from("tasks").select("title,due_date,priority,status").eq("status", "pending").limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
