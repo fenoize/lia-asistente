@@ -53,22 +53,36 @@ function FinanzasPage() {
   const [tab, setTab] = useState<Tab>("resumen");
   const [modalKind, setModalKind] = useState<FinanceKind | null>(null);
   const [modalRecord, setModalRecord] = useState<FinanceRecord | null>(null);
-  const [items, setItems] = useState<Record<string, FinanceRecord[]>>({});
+  const [items, setItems] = useState<Record<string, FinanceRecord[]>>({
+    cobros: [],
+    gastos: [],
+    subs: [],
+    cuentas: [],
+  });
 
-  const load = useCallback(async (t: Tab) => {
-    if (t === "resumen") return;
-    const table = TAB_TO_TABLE[t];
+  const loadAll = useCallback(async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const { data } = await (supabase.from(table as never) as unknown as {
-      select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: FinanceRecord[] | null }> } };
-    }).select("*").eq("user_id", u.user.id).order("created_at", { ascending: false });
-    setItems((prev) => ({ ...prev, [t]: data ?? [] }));
+    const uid = u.user.id;
+    const fetchTab = async (t: Exclude<Tab, "resumen">) => {
+      const table = TAB_TO_TABLE[t];
+      const { data } = await (supabase.from(table as never) as unknown as {
+        select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: FinanceRecord[] | null }> } };
+      }).select("*").eq("user_id", uid).order("created_at", { ascending: false });
+      return [t, data ?? []] as const;
+    };
+    const results = await Promise.all([
+      fetchTab("cobros"),
+      fetchTab("gastos"),
+      fetchTab("subs"),
+      fetchTab("cuentas"),
+    ]);
+    setItems(Object.fromEntries(results) as Record<string, FinanceRecord[]>);
   }, []);
 
   useEffect(() => {
-    void load(tab);
-  }, [tab, load]);
+    void loadAll();
+  }, [loadAll]);
 
   const openNew = () => {
     if (tab === "resumen") return;
