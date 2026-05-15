@@ -92,40 +92,42 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
-      <AppSidebar />
-      <main
-        className="flex-1 min-w-0 overflow-y-auto h-screen relative"
-        style={{ background: "var(--bg-base)" }}
-      >
-        {isLoading && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0, left: 0, right: 0,
-              height: 2,
-              background: "linear-gradient(90deg, transparent, #6366f1, transparent)",
-              animation: "alfredTopBar 1s linear infinite",
-              zIndex: 50,
-            }}
-          />
-        )}
-        <MobileTopBar />
-        <div
-          key={pathname}
-          className={pathname === "/chat" ? "alfred-page alfred-chat-route-frame" : "alfred-page h-full"}
+    <ChatStoreProvider>
+      <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
+        <AppSidebar />
+        <main
+          className="flex-1 min-w-0 overflow-y-auto h-screen relative"
+          style={{ background: "var(--bg-base)" }}
         >
-          {pathname === "/chat" ? (
-            <Outlet />
-          ) : (
-            <div className="alfred-page-shell">
-              <Outlet />
-            </div>
+          {isLoading && (
+            <div
+              style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0,
+                height: 2,
+                background: "linear-gradient(90deg, transparent, #6366f1, transparent)",
+                animation: "alfredTopBar 1s linear infinite",
+                zIndex: 50,
+              }}
+            />
           )}
-        </div>
-      </main>
-      <QuickCapture />
-      <MobileBottomNav />
-    </div>
+          <MobileTopBar />
+          <div
+            key={pathname}
+            className={pathname === "/chat" ? "alfred-page alfred-chat-route-frame" : "alfred-page h-full"}
+          >
+            {pathname === "/chat" ? (
+              <Outlet />
+            ) : (
+              <div className="alfred-page-shell">
+                <Outlet />
+              </div>
+            )}
+          </div>
+        </main>
+        <QuickCapture />
+        <MobileBottomNav />
+      </div>
+    </ChatStoreProvider>
   );
 }
