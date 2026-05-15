@@ -139,7 +139,13 @@ function FinanzasPage() {
         })}
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
+      {tab === "resumen" && (
+        <ResumenTab
+          incomes={items.cobros ?? []}
+          expenses={items.gastos ?? []}
+          accounts={items.cuentas ?? []}
+        />
+      )}
 
       {tab === "cobros" && (
         <ListOrEmpty
