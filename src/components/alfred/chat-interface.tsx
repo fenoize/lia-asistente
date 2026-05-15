@@ -9,24 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 import { MentionText } from "@/components/mentions/mention-text";
 
-type Action = {
-  type: "task" | "meeting" | "reminder" | "note";
-  title: string;
-  description?: string | null;
-  datetime?: string | null;
-  priority?: "low" | "medium" | "high" | null;
-  duration_minutes?: number | null;
-};
-
-type Msg = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  action?: Action | null;
-  actionStatus?: "pending" | "accepted" | "declined";
-  createdAt: number;
-};
-
 const SUGGESTIONS = [
   "¿Qué debería hacer ahora?",
   "¿Tengo reuniones mañana?",
