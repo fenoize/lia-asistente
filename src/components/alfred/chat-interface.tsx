@@ -34,28 +34,40 @@ function parseAction(text: string): { clean: string; action: Action | null } {
 export function ChatInterface() {
   const { user } = useAuth();
   const assistant = useAssistant();
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const { messages, setMessages, loadedForUser } = useChatStore();
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [name, setName] = useState("");
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
 
-  // Load history + context
+  // Load history + context once per user (kept in memory across navigations)
   useEffect(() => {
     if (!user) return;
+    const alreadyLoaded = loadedForUser.current === user.id;
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const [history, profile, t, m, r] = await Promise.all([
-        supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+      const tasks: Promise<any>[] = [
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase.from("tasks").select("title,due_date,priority,status").eq("status", "pending").limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
-      ]);
-      if (history.data) {
+      ];
+      if (!alreadyLoaded) {
+        tasks.unshift(
+          supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+        );
+      }
+      const results = await Promise.all(tasks);
+      const offset = alreadyLoaded ? 0 : 1;
+      const history = alreadyLoaded ? null : results[0];
+      const profile = results[offset];
+      const t = results[offset + 1];
+      const m = results[offset + 2];
+      const r = results[offset + 3];
+
+      if (history?.data) {
         setMessages(history.data.map((row: any) => {
           const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
           return {
@@ -67,6 +79,7 @@ export function ChatInterface() {
             createdAt: new Date(row.created_at).getTime(),
           };
         }));
+        loadedForUser.current = user.id;
       }
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       contextRef.current = {
@@ -77,7 +90,7 @@ export function ChatInterface() {
         reminders: r.data ?? [],
       };
     })();
-  }, [user]);
+  }, [user, loadedForUser, setMessages]);
 
   // Auto-scroll
   useEffect(() => {
