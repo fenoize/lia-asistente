@@ -98,7 +98,7 @@ function FinanzasPage() {
   const onSaved = async () => {
     setModalKind(null);
     setModalRecord(null);
-    await load(tab);
+    await loadAll();
   };
 
   return (
