@@ -112,9 +112,8 @@ function Dashboard() {
         supabase
           .from("tasks")
           .select("*")
-          .eq("status", "pending")
           .order("due_date", { ascending: true })
-          .limit(20),
+          .limit(80),
         supabase
           .from("meetings")
           .select("*")
