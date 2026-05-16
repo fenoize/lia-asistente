@@ -41,6 +41,28 @@ function todayLine(timezone: string): string {
   return `Hoy es ${get("weekday")}, ${get("day")} de ${get("month")} de ${get("year")}.`;
 }
 
+// Returns the current offset of `timezone` as "-03:00" / "+02:00".
+function tzOffset(timezone: string): string {
+  const now = new Date();
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  const parts = Object.fromEntries(dtf.formatToParts(now).map(p => [p.type, p.value]));
+  const asUTC = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
+  );
+  const diffMin = Math.round((asUTC - now.getTime()) / 60000);
+  const sign = diffMin >= 0 ? "+" : "-";
+  const abs = Math.abs(diffMin);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
 export function buildSystemPrompt(c: AlfredContext): string {
   return `${todayLine(c.timezone)}
 
