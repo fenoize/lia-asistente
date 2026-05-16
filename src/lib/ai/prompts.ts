@@ -79,8 +79,8 @@ CONTEXTO DEL USUARIO
 - Nombre: ${c.name}
 - Qué hace: ${c.role}
 - Objetivos: ${c.goals}
-- Zona horaria: ${c.timezone}
-- Fecha y hora ahora: ${c.currentTime}
+- Zona horaria: ${c.timezone} (offset actual UTC${tzOffset(c.timezone)})
+- Fecha y hora ahora: ${c.currentTime} (${c.timezone}, UTC${tzOffset(c.timezone)})
 
 CONTEXTO OPERATIVO
 Tareas pendientes:
