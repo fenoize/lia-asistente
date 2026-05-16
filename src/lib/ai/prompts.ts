@@ -149,6 +149,13 @@ Al final del mensaje agrega un bloque:
 {"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
 \`\`\`
 
+REGLAS CRÍTICAS PARA datetime:
+- SIEMPRE en ISO 8601 con offset explícito de la zona horaria del usuario (${c.timezone}, UTC${tzOffset(c.timezone)}).
+- Ejemplo correcto para "hoy a las 20:00": "${new Date().toISOString().slice(0,10)}T20:00:00${tzOffset(c.timezone)}".
+- NUNCA uses "Z" ni asumas UTC. La hora que escribe el usuario es hora local (${c.timezone}).
+- Si el usuario dice "mañana 9am", interpreta como 09:00 en ${c.timezone} y agrega el offset.
+- Si no hay fecha/hora explícita, usa null.
+
 El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
 }
 
