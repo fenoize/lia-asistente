@@ -13,9 +13,7 @@ import {
   IconClock,
   IconCurrencyDollar,
   IconSparkles,
-  IconCalendarEvent,
 } from "@tabler/icons-react";
-import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
