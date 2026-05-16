@@ -799,3 +799,115 @@ function Skeleton() {
     </div>
   );
 }
+
+function BriefCompact({ text }: { text: string }) {
+  // Headline = first non-empty line. Context = next up to 2 lines, max ~180 chars.
+  const lines = text
+    .split("\n")
+    .map((l) => l.replace(/^[#>*\-\s]+/, "").trim())
+    .filter(Boolean);
+  const headline = lines[0] ?? "";
+  const rest = lines.slice(1).join(" ").trim();
+  const context = rest.length > 180 ? rest.slice(0, 178).trimEnd() + "…" : rest;
+  return (
+    <div>
+      <div
+        style={{
+          fontSize: 15,
+          color: "#f2f2f2",
+          fontWeight: 600,
+          lineHeight: 1.35,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {headline}
+      </div>
+      {context && (
+        <div
+          style={{
+            fontSize: 13,
+            color: "#999",
+            marginTop: 6,
+            lineHeight: 1.5,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {context}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AttentionCard({
+  to, icon, bg, border, accent, label, value, hint,
+}: {
+  to: string;
+  icon: React.ReactNode;
+  bg: string;
+  border: string;
+  accent: string;
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      style={{
+        display: "block",
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        textDecoration: "none",
+        transition: "transform 0.15s, border-color 0.15s",
+      }}
+      className="hover:scale-[1.01]"
+    >
+      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+        {icon}
+        <span
+          style={{
+            fontSize: 11,
+            color: accent,
+            letterSpacing: "0.08em",
+            fontWeight: 600,
+            textTransform: "uppercase",
+          }}
+        >
+          {label}
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 22,
+          color: "#f2f2f2",
+          fontWeight: 600,
+          letterSpacing: "-0.02em",
+          fontVariantNumeric: "tabular-nums",
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </div>
+      {hint && (
+        <div
+          style={{
+            fontSize: 12,
+            color: "#888",
+            marginTop: 4,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hint}
+        </div>
+      )}
+    </Link>
+  );
+}
