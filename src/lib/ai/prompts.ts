@@ -41,6 +41,28 @@ function todayLine(timezone: string): string {
   return `Hoy es ${get("weekday")}, ${get("day")} de ${get("month")} de ${get("year")}.`;
 }
 
+// Returns the current offset of `timezone` as "-03:00" / "+02:00".
+function tzOffset(timezone: string): string {
+  const now = new Date();
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour12: false,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+  const parts = Object.fromEntries(dtf.formatToParts(now).map(p => [p.type, p.value]));
+  const asUTC = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
+  );
+  const diffMin = Math.round((asUTC - now.getTime()) / 60000);
+  const sign = diffMin >= 0 ? "+" : "-";
+  const abs = Math.abs(diffMin);
+  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+  const mm = String(abs % 60).padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
 export function buildSystemPrompt(c: AlfredContext): string {
   return `${todayLine(c.timezone)}
 
@@ -57,8 +79,8 @@ CONTEXTO DEL USUARIO
 - Nombre: ${c.name}
 - Qué hace: ${c.role}
 - Objetivos: ${c.goals}
-- Zona horaria: ${c.timezone}
-- Fecha y hora ahora: ${c.currentTime}
+- Zona horaria: ${c.timezone} (offset actual UTC${tzOffset(c.timezone)})
+- Fecha y hora ahora: ${c.currentTime} (${c.timezone}, UTC${tzOffset(c.timezone)})
 
 CONTEXTO OPERATIVO
 Tareas pendientes:
@@ -126,6 +148,13 @@ Al final del mensaje agrega un bloque:
 \`\`\`action
 {"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
 \`\`\`
+
+REGLAS CRÍTICAS PARA datetime:
+- SIEMPRE en ISO 8601 con offset explícito de la zona horaria del usuario (${c.timezone}, UTC${tzOffset(c.timezone)}).
+- Ejemplo correcto para "hoy a las 20:00": "${new Date().toISOString().slice(0,10)}T20:00:00${tzOffset(c.timezone)}".
+- NUNCA uses "Z" ni asumas UTC. La hora que escribe el usuario es hora local (${c.timezone}).
+- Si el usuario dice "mañana 9am", interpreta como 09:00 en ${c.timezone} y agrega el offset.
+- Si no hay fecha/hora explícita, usa null.
 
 El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
 }
