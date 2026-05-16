@@ -235,18 +235,40 @@ function Dashboard() {
     new Date(d).getTime() >= startOfDay.getTime() &&
     new Date(d).getTime() <= endOfDay.getTime();
 
-  const urgentTasks = tasks.filter(
-    (t) => t.priority === "high" || isToday(t.due_date) || isOverdue(t.due_date),
-  );
-  const visibleTasks = showAllTasks ? urgentTasks : urgentTasks.slice(0, 4);
+  // Tasks for today's view: due today, overdue (pending), or pending high priority
+  const todayTasks = tasks.filter((t) => {
+    if (isToday(t.due_date)) return true;
+    if (t.status !== "done") {
+      if (isOverdue(t.due_date)) return true;
+      if (t.priority === "high") return true;
+    }
+    return false;
+  });
+  const pendingTodayTasks = todayTasks.filter((t) => t.status !== "done");
+  const doneTodayTasks = todayTasks.filter((t) => t.status === "done");
+  const overdueCount = tasks.filter(
+    (t) => t.status !== "done" && isOverdue(t.due_date),
+  ).length;
+
+  const visiblePending = showAllTasks ? pendingTodayTasks : pendingTodayTasks.slice(0, 4);
 
   const upcomingMeetings = meetings.filter(
     (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 > Date.now()
   );
+  const nextMeeting = upcomingMeetings[0] ?? null;
   
   const pastMeetingsWithoutNotes = meetings.filter(
     (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 <= Date.now() && (!m.notes || m.notes.trim() === "")
   );
+
+  // Combined timeline: reminders + meetings sorted chronologically
+  type TimelineItem =
+    | { kind: "reminder"; id: string; datetime: string; data: Reminder }
+    | { kind: "meeting"; id: string; datetime: string; data: Meeting };
+  const timeline: TimelineItem[] = [
+    ...reminders.map((r) => ({ kind: "reminder" as const, id: r.id, datetime: r.datetime, data: r })),
+    ...upcomingMeetings.map((m) => ({ kind: "meeting" as const, id: m.id, datetime: m.datetime, data: m })),
+  ].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   const toggleTask = async (task: Task) => {
     setTasks((prev) =>
