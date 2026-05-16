@@ -316,32 +316,30 @@ function Dashboard() {
         </p>
       </header>
 
-      {/* Daily Brief */}
+      {/* 1. Resumen de LIA */}
       <section
         style={{
           background: "#111111",
           border: "1px solid #1e1e1e",
           borderLeft: "3px solid #6366f1",
           borderRadius: 12,
-          padding: "20px 24px",
-          marginBottom: 8,
+          padding: "18px 22px",
+          marginBottom: 24,
           position: "relative",
         }}
       >
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-baseline gap-3">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2">
+            <IconSparkles size={16} stroke={1.75} style={{ color: "#a78bfa" }} />
             <span
               style={{
                 fontSize: 10,
-                color: "#6366f1",
-                letterSpacing: "0.1em",
+                color: "#a78bfa",
+                letterSpacing: "0.12em",
                 fontWeight: 700,
               }}
             >
               {assistant.name.toUpperCase()}
-            </span>
-            <span style={{ fontSize: 13, color: "#555" }}>
-              Resumen del día
             </span>
           </div>
           {(briefStaleness.hasChanges || !briefStaleness.hasBrief || briefLoading) && (
@@ -355,20 +353,18 @@ function Dashboard() {
                 gap: 6,
                 fontSize: 11,
                 fontWeight: 500,
-                color: "#6366f1",
-                background: "rgba(99,102,241,0.1)",
-                border: "1px solid rgba(99,102,241,0.25)",
+                color: "#a78bfa",
+                background: "rgba(139,92,246,0.1)",
+                border: "1px solid rgba(139,92,246,0.25)",
                 borderRadius: 999,
-                padding: "4px 10px",
+                padding: "3px 10px",
                 cursor: briefLoading ? "not-allowed" : "pointer",
                 opacity: briefLoading ? 0.7 : 1,
-                transition: "background 0.15s",
               }}
-              className="hover:bg-[rgba(99,102,241,0.18)]"
             >
-              {briefLoading ? "Actualizando…" : "Actualizar"}
+              {briefLoading ? "…" : "Actualizar"}
               <IconRefresh
-                size={12}
+                size={11}
                 stroke={2}
                 style={briefLoading ? { animation: "alfredSpin 0.9s linear infinite" } : undefined}
               />
@@ -377,28 +373,17 @@ function Dashboard() {
         </div>
 
         {brief ? (
-          <div
-            className="prose prose-invert prose-sm max-w-none prose-p:my-2 prose-headings:mt-3"
-            style={{
-              opacity: briefLoading ? 0.5 : 1,
-              transition: "opacity 0.2s",
-              color: "#ccc",
-              fontSize: 14,
-              lineHeight: 1.7,
-            }}
-          >
-            <ReactMarkdown>{brief}</ReactMarkdown>
-          </div>
+          <BriefCompact text={brief} />
         ) : briefLoading ? (
           <Skeleton />
         ) : (
-          <p style={{ fontSize: 14, color: "#555", lineHeight: 1.7 }}>
-            Sin resumen aún. Toca el ícono para generarlo.
+          <p style={{ fontSize: 13, color: "#666" }}>
+            Sin resumen aún.
           </p>
         )}
       </section>
 
-      {/* Birthday alerts */}
+      {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
           b.daysUntil === 0
@@ -406,64 +391,101 @@ function Dashboard() {
             : b.daysUntil === 1
               ? `Mañana es el cumpleaños de ${b.name}.`
               : `En ${b.daysUntil} días es el cumpleaños de ${b.name}.`;
-        const firstLine = (b.context ?? "").split("\n")[0]?.trim();
         return (
           <div
             key={b.id}
-            className="flex items-start gap-3"
+            className="flex items-center gap-3"
             style={{
               background: "rgba(217,119,6,0.05)",
               border: "1px solid rgba(217,119,6,0.15)",
-              borderRadius: 12,
-              padding: "14px 18px",
-              marginTop: 12,
+              borderRadius: 10,
+              padding: "10px 14px",
+              marginBottom: 12,
             }}
           >
-            <IconCake size={16} stroke={1.75} color="#fbbf24" style={{ marginTop: 2 }} />
-            <div className="flex-1">
-              <div style={{ fontSize: 14, color: "#e0e0e0" }}>{when}</div>
-              {firstLine && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#666",
-                    marginTop: 4,
-                    fontStyle: "italic",
-                  }}
-                >
-                  {firstLine}
-                </div>
-              )}
-            </div>
-            <Link
-              to="/meetings"
-              style={{
-                fontSize: 12,
-                color: "#fbbf24",
-                whiteSpace: "nowrap",
-                alignSelf: "center",
-              }}
-            >
-              Agendar algo →
+            <IconCake size={14} stroke={1.75} color="#fbbf24" />
+            <span style={{ fontSize: 13, color: "#e0e0e0", flex: 1 }}>{when}</span>
+            <Link to="/meetings" style={{ fontSize: 12, color: "#fbbf24", whiteSpace: "nowrap" }}>
+              Agendar →
             </Link>
           </div>
         );
       })}
 
-      {/* Meetings */}
-      <Block label="HOY">
-        {upcomingMeetings.length === 0 ? (
-          <Empty>Sin reuniones próximas. Buen día para ejecutar.</Empty>
+      {/* 2. Requiere atención */}
+      {(overdueCount > 0 || nextMeeting || (finance && finance.pending > 0)) && (
+        <Block label="REQUIERE ATENCIÓN">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {overdueCount > 0 && (
+              <AttentionCard
+                to="/tasks"
+                icon={<IconAlertTriangle size={16} stroke={1.75} color="#f87171" />}
+                bg="rgba(220,38,38,0.08)"
+                border="rgba(220,38,38,0.25)"
+                accent="#f87171"
+                label="Tareas vencidas"
+                value={`${overdueCount}`}
+                hint={overdueCount === 1 ? "tarea atrasada" : "tareas atrasadas"}
+              />
+            )}
+            {nextMeeting && (
+              <AttentionCard
+                to="/meetings"
+                icon={<IconClock size={16} stroke={1.75} color="#fbbf24" />}
+                bg="rgba(217,119,6,0.08)"
+                border="rgba(217,119,6,0.25)"
+                accent="#fbbf24"
+                label="Próxima reunión"
+                value={new Date(nextMeeting.datetime).toLocaleTimeString("es-CL", {
+                  hour: "2-digit", minute: "2-digit", hour12: false,
+                })}
+                hint={nextMeeting.title}
+              />
+            )}
+            {finance && finance.pending > 0 && (
+              <AttentionCard
+                to="/finanzas"
+                icon={<IconCurrencyDollar size={16} stroke={1.75} color="#34d399" />}
+                bg="rgba(16,185,129,0.08)"
+                border="rgba(16,185,129,0.25)"
+                accent="#34d399"
+                label="Cobros pendientes"
+                value={fmtMoney(finance.pending, finance.currency)}
+                hint="por cobrar"
+              />
+            )}
+          </div>
+        </Block>
+      )}
+
+      {/* 3. Recordatorios y eventos (combinado) */}
+      <Block label="RECORDATORIOS Y EVENTOS">
+        {timeline.length === 0 ? (
+          <Empty>Sin recordatorios ni eventos para hoy.</Empty>
         ) : (
           <div className="space-y-2">
-            {upcomingMeetings.slice(0, 3).map((m) => (
-              <MeetingRow key={m.id} meeting={m} onClick={() => setEditingMeeting(m)} />
-            ))}
+            {timeline.map((item) =>
+              item.kind === "reminder" ? (
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} />
+              ) : (
+                <MeetingRow
+                  key={`m-${item.id}`}
+                  meeting={item.data}
+                  onClick={() => setEditingMeeting(item.data)}
+                />
+              ),
+            )}
           </div>
         )}
       </Block>
 
-      {/* Pendientes de resumen */}
+      {/* Pendiente de resumen (kept) */}
       {pastMeetingsWithoutNotes.length > 0 && (
         <Block label="PENDIENTE DE RESUMEN">
           <div className="space-y-2">
@@ -479,69 +501,53 @@ function Dashboard() {
         </Block>
       )}
 
-      {/* Urgent tasks */}
-      <Block label="URGENTE">
-        {urgentTasks.length === 0 ? (
-          <Empty>Cero urgencias. Bien.</Empty>
+      {/* 4. Tareas del día */}
+      <Block label="TAREAS DEL DÍA">
+        {pendingTodayTasks.length === 0 && doneTodayTasks.length === 0 ? (
+          <Empty>Sin tareas urgentes para hoy. Buen día para enfocarte.</Empty>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {visibleTasks.map((t) => (
-              <TaskRow
-                key={t.id}
-                task={t}
-                overdue={isOverdue(t.due_date)}
-                onToggle={() => toggleTask(t)}
-              />
-            ))}
-            {urgentTasks.length > 4 && !showAllTasks && (
-              <button
-                onClick={() => setShowAllTasks(true)}
-                style={{
-                  fontSize: 12,
-                  color: "var(--text-tertiary)",
-                  marginTop: 8,
-                  paddingLeft: 4,
-                }}
-                className="hover:text-foreground transition-colors"
-              >
-                + {urgentTasks.length - 4} más
-              </button>
-            )}
-          </div>
-        )}
-      </Block>
-
-      {/* Reminders */}
-      <Block label="RECORDATORIOS">
-        {reminders.length === 0 ? (
-          <Empty>Sin recordatorios para hoy.</Empty>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {reminders.map((r) => (
-              <ReminderPill key={r.id} reminder={r} />
-            ))}
-          </div>
-        )}
-      </Block>
-
-      {/* Finanzas */}
-      <Block label="FINANZAS">
-        {!finance || !finance.hasData ? (
-          <p style={{ fontSize: 13, color: "#444", fontStyle: "italic" }}>
-            Este mes: sin datos aún — {" "}
-            <Link to="/finanzas" style={{ color: "#6366f1", fontStyle: "normal" }}>
-              configurar →
-            </Link>
-          </p>
-        ) : (
-          <Link to="/finanzas" style={{ display: "block", textDecoration: "none" }}>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13, color: "#bbb" }}>
-              <span>Ingresos: <strong style={{ color: "#10b981" }}>{fmtMoney(finance.income, finance.currency)}</strong></span>
-              <span>Gastos: <strong style={{ color: "#ef4444" }}>{fmtMoney(finance.expense, finance.currency)}</strong></span>
-              <span>Balance: <strong style={{ color: finance.income - finance.expense >= 0 ? "#10b981" : "#ef4444" }}>{fmtMoney(finance.income - finance.expense, finance.currency)}</strong></span>
-              {finance.pending > 0 && <span>Por cobrar: <strong style={{ color: "#f59e0b" }}>{fmtMoney(finance.pending, finance.currency)}</strong></span>}
+          <div
+            style={{
+              background: "#111111",
+              border: "1px solid #1e1e1e",
+              borderRadius: 12,
+              padding: 8,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {visiblePending.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  overdue={isOverdue(t.due_date)}
+                  onToggle={() => toggleTask(t)}
+                />
+              ))}
+              {pendingTodayTasks.length > 4 && !showAllTasks && (
+                <button
+                  onClick={() => setShowAllTasks(true)}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--text-tertiary)",
+                    marginTop: 4,
+                    paddingLeft: 10,
+                    textAlign: "left",
+                  }}
+                  className="hover:text-foreground transition-colors"
+                >
+                  + {pendingTodayTasks.length - 4} más
+                </button>
+              )}
+              {doneTodayTasks.map((t) => (
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  overdue={false}
+                  onToggle={() => toggleTask(t)}
+                />
+              ))}
             </div>
-          </Link>
+          </div>
         )}
       </Block>
 
