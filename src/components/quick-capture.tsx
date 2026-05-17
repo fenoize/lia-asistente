@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
+import { localInputsToISO, nextDateAtLocal, normalizeDatetime } from "@/lib/timezone";
 
 type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea" | "project";
 
@@ -36,13 +37,6 @@ function detectType(raw: string): CaptureType {
   return "task";
 }
 
-function nextDateAt(hour: number, minute: number, daysAhead = 0): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + daysAhead);
-  d.setHours(hour, minute, 0, 0);
-  return d;
-}
-
 function parseDateTime(raw: string): string | null {
   const t = raw.toLowerCase();
   const m = t.match(TIME_RE);
@@ -55,20 +49,28 @@ function parseDateTime(raw: string): string | null {
     if (ap === "am" && h === 12) h = 0;
   }
   const days = /ma[ñn]ana/.test(t) ? 1 : 0;
-  return nextDateAt(h, min, days).toISOString();
+  return nextDateAtLocal(h, min, days);
 }
 
+// Renderiza la fecha/hora en hora local del usuario (America/Santiago)
+// para los inputs <input type="date"> / <input type="time">.
 function toDateInputs(iso: string | null): { date: string; time: string } {
   const d = iso ? new Date(iso) : new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Santiago",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(d).map(p => [p.type, p.value]),
+  );
   return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    time: `${parts.hour === "24" ? "00" : parts.hour}:${parts.minute}`,
   };
 }
 
 function fromDateInputs(date: string, time: string): string {
-  return new Date(`${date}T${time || "09:00"}`).toISOString();
+  return localInputsToISO(date, time);
 }
 
 export function QuickCapture() {
