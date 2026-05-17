@@ -174,7 +174,8 @@ export function QuickCapture() {
       const title = (ai?.title?.trim() || fallbackTitle).slice(0, 200);
       const description = ai?.description?.trim() || (text.length > title.length ? text : null);
       const userOverrideDt = dtTouched ? fromDateInputs(dt.date, dt.time) : null;
-      const datetime = userOverrideDt || ai?.datetime || fromDateInputs(dt.date, dt.time);
+      const aiDt = normalizeDatetime(ai?.datetime ?? null);
+      const datetime = userOverrideDt || aiDt || fromDateInputs(dt.date, dt.time);
 
       if (type === "task") {
         await supabase.from("tasks").insert({
@@ -182,7 +183,7 @@ export function QuickCapture() {
           title,
           description,
           priority: ai?.priority ?? priorityMap[priority],
-          due_date: userOverrideDt || ai?.datetime || null,
+          due_date: userOverrideDt || aiDt || null,
         });
       } else if (type === "meeting") {
         await supabase.from("meetings").insert({
@@ -203,7 +204,7 @@ export function QuickCapture() {
           user_id: user.id,
           name: title,
           notes: description,
-          due_date: userOverrideDt || ai?.datetime || null,
+          due_date: userOverrideDt || aiDt || null,
         });
       } else {
         await supabase.from("notes").insert({
