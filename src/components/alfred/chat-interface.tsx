@@ -8,6 +8,7 @@ import { useChatStore, type ChatAction as Action, type ChatMsg as Msg } from "@/
 import { supabase } from "@/integrations/supabase/client";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 import { MentionText } from "@/components/mentions/mention-text";
+import { normalizeDatetime } from "@/lib/timezone";
 
 const SUGGESTIONS = [
   "¿Qué debería hacer ahora?",
@@ -173,19 +174,20 @@ export function ChatInterface() {
   const confirmAction = async (msgId: string, action: Action) => {
     if (!user) return;
     try {
+      const dt = normalizeDatetime(action.datetime ?? null);
       if (action.type === "task") {
         await supabase.from("tasks").insert({
           user_id: user.id,
           title: action.title,
           description: action.description ?? null,
           priority: action.priority ?? "medium",
-          due_date: action.datetime ?? null,
+          due_date: dt,
         });
       } else if (action.type === "meeting") {
         await supabase.from("meetings").insert({
           user_id: user.id,
           title: action.title,
-          datetime: action.datetime ?? new Date().toISOString(),
+          datetime: dt ?? new Date().toISOString(),
           duration_minutes: action.duration_minutes ?? 60,
           notes: action.description ?? null,
         });
@@ -193,7 +195,7 @@ export function ChatInterface() {
         await supabase.from("reminders").insert({
           user_id: user.id,
           title: action.title,
-          datetime: action.datetime ?? new Date().toISOString(),
+          datetime: dt ?? new Date().toISOString(),
         });
       } else {
         await supabase.from("notes").insert({
