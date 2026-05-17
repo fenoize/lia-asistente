@@ -416,7 +416,7 @@ function Dashboard() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
               gap: 12,
             }}
           >
@@ -424,8 +424,8 @@ function Dashboard() {
               <AttentionCard
                 to="/tasks"
                 icon={<IconAlertTriangle size={16} stroke={1.75} color="#f87171" />}
-                bg="rgba(220,38,38,0.08)"
-                border="rgba(220,38,38,0.25)"
+                bg="#3d1515"
+                border="rgba(220,38,38,0.35)"
                 accent="#f87171"
                 label="Tareas vencidas"
                 value={`${overdueCount}`}
@@ -436,8 +436,8 @@ function Dashboard() {
               <AttentionCard
                 to="/meetings"
                 icon={<IconClock size={16} stroke={1.75} color="#fbbf24" />}
-                bg="rgba(217,119,6,0.08)"
-                border="rgba(217,119,6,0.25)"
+                bg="#2e1f00"
+                border="rgba(217,119,6,0.35)"
                 accent="#fbbf24"
                 label="Próxima reunión"
                 value={new Date(nextMeeting.datetime).toLocaleTimeString("es-CL", {
@@ -450,8 +450,8 @@ function Dashboard() {
               <AttentionCard
                 to="/finanzas"
                 icon={<IconCurrencyDollar size={16} stroke={1.75} color="#34d399" />}
-                bg="rgba(16,185,129,0.08)"
-                border="rgba(16,185,129,0.25)"
+                bg="#0e2e1a"
+                border="rgba(16,185,129,0.35)"
                 accent="#34d399"
                 label="Cobros pendientes"
                 value={fmtMoney(finance.pending, finance.currency)}
@@ -688,9 +688,9 @@ function TaskRow({
         onClick={onToggle}
         aria-label="Completar tarea"
         style={{
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
+          width: 16,
+          height: 16,
+          borderRadius: 4,
           border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
           background: done ? "var(--accent-color)" : "transparent",
           flexShrink: 0,
@@ -756,18 +756,19 @@ function ReminderPill({ reminder }: { reminder: Reminder }) {
   });
   return (
     <div
-      className="inline-flex items-center gap-2"
+      className="flex items-center gap-2"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-pill)",
-        padding: "6px 12px",
+        padding: "6px 14px",
         fontSize: 12,
-        color: "var(--text-secondary)",
       }}
     >
-      <IconBell size={12} stroke={1.75} style={{ color: "var(--accent-color)" }} />
-      <span style={{ color: "var(--text-primary)" }}>{reminder.title}</span>
+      <IconBell size={12} stroke={1.75} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
+      <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+        {reminder.title}
+      </span>
       <span style={{ color: "var(--text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
         {time}
       </span>
@@ -799,14 +800,13 @@ function Skeleton() {
 }
 
 function BriefCompact({ text }: { text: string }) {
-  // Headline = first non-empty line. Context = next up to 2 lines, max ~180 chars.
+  // Headline = primera línea no vacía. Contexto = el resto, clamp a 3 líneas vía CSS (sin "…" manual).
   const lines = text
     .split("\n")
     .map((l) => l.replace(/^[#>*\-\s]+/, "").trim())
     .filter(Boolean);
   const headline = lines[0] ?? "";
-  const rest = lines.slice(1).join(" ").trim();
-  const context = rest.length > 180 ? rest.slice(0, 178).trimEnd() + "…" : rest;
+  const context = lines.slice(1).join(" ").trim();
   return (
     <div>
       <div
@@ -828,7 +828,7 @@ function BriefCompact({ text }: { text: string }) {
             marginTop: 6,
             lineHeight: 1.5,
             display: "-webkit-box",
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
             overflow: "hidden",
           }}
