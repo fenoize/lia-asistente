@@ -800,13 +800,31 @@ function Skeleton() {
 }
 
 function BriefCompact({ text }: { text: string }) {
-  // Headline = primera línea no vacía. Contexto = el resto, clamp a 3 líneas vía CSS (sin "…" manual).
+  const [expanded, setExpanded] = useState(false);
+  const [needsClamp, setNeedsClamp] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   const lines = text
     .split("\n")
     .map((l) => l.replace(/^[#>*\-\s]+/, "").trim())
     .filter(Boolean);
   const headline = lines[0] ?? "";
   const context = lines.slice(1).join(" ").trim();
+
+  useEffect(() => {
+    if (!contentRef.current || !context) return;
+    const el = contentRef.current;
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight);
+    const savedMaxHeight = el.style.maxHeight;
+    const savedOverflow = el.style.overflow;
+    el.style.maxHeight = "none";
+    el.style.overflow = "visible";
+    const fullHeight = el.scrollHeight;
+    el.style.maxHeight = savedMaxHeight;
+    el.style.overflow = savedOverflow;
+    setNeedsClamp(fullHeight > lineHeight * 3 + 1);
+  }, [context]);
+
   return (
     <div>
       <div
@@ -821,20 +839,41 @@ function BriefCompact({ text }: { text: string }) {
         {headline}
       </div>
       {context && (
-        <div
-          style={{
-            fontSize: 13,
-            color: "#999",
-            marginTop: 6,
-            lineHeight: 1.5,
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {context}
-        </div>
+        <>
+          <div
+            ref={contentRef}
+            style={{
+              fontSize: 13,
+              color: "#999",
+              marginTop: 6,
+              lineHeight: 1.5,
+              maxHeight: needsClamp ? (expanded ? "200em" : "4.5em") : undefined,
+              overflow: needsClamp && !expanded ? "hidden" : undefined,
+              transition: needsClamp ? "max-height 0.35s ease" : undefined,
+            }}
+          >
+            {context}
+          </div>
+          {needsClamp && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              style={{
+                fontSize: 12,
+                color: "#a78bfa",
+                background: "transparent",
+                border: "none",
+                padding: "4px 0",
+                marginTop: 4,
+                cursor: "pointer",
+                display: "block",
+                marginLeft: "auto",
+              }}
+              className="hover:opacity-80 transition-opacity"
+            >
+              {expanded ? "Ver menos" : "Ver más"}
+            </button>
+          )}
+        </>
       )}
     </div>
   );
