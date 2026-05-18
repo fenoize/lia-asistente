@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { detectUserTimeZone, formatDateTimeInTimeZone, localInputsToUTCISOString, toDateInputs } from "@/lib/timezone";
 
 type Reminder = {
   id: string;
@@ -8,15 +9,6 @@ type Reminder = {
   datetime: string;
   done: boolean | null;
 };
-
-function toInputs(iso: string): { date: string; time: string } {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
-}
 
 export function EditReminderModal({
   reminder,
@@ -33,22 +25,27 @@ export function EditReminderModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [busy, setBusy] = useState(false);
+  const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
+
+  useEffect(() => {
+    setUserTimeZone(detectUserTimeZone());
+  }, []);
 
   useEffect(() => {
     if (reminder) {
       setTitle(reminder.title);
-      const i = toInputs(reminder.datetime);
+      const i = toDateInputs(reminder.datetime, userTimeZone);
       setDate(i.date);
       setTime(i.time);
     }
-  }, [reminder]);
+  }, [reminder, userTimeZone]);
 
   if (!open || !reminder) return null;
 
   async function save() {
     if (!reminder || !title.trim()) return;
     setBusy(true);
-    const datetime = new Date(`${date}T${time || "09:00"}`).toISOString();
+    const datetime = localInputsToUTCISOString(date, time || "09:00", userTimeZone);
     const { error } = await supabase
       .from("reminders")
       .update({ title: title.trim(), datetime })
@@ -79,9 +76,12 @@ export function EditReminderModal({
           padding: 24,
         }}
       >
-        <h2 style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16 }}>
+        <h2 style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 8 }}>
           Editar recordatorio
         </h2>
+        <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
+          Hora local: {formatDateTimeInTimeZone(reminder.datetime, userTimeZone)}
+        </p>
 
         <input
           value={title}
