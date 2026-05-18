@@ -5,6 +5,7 @@ import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway"
 import { buildContext } from "@/lib/ai/context-builder";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { extractMentions } from "@/lib/mentions";
+import { USER_TZ } from "@/lib/timezone";
 
 async function buildMentionsBlock(sb: any, lastUserText: string): Promise<string> {
   const mentions = extractMentions(lastUserText);
@@ -85,7 +86,7 @@ export const Route = createFileRoute("/api/ai")({
         const { data: userRes, error: userErr } = await sb.auth.getUser();
         if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
 
-        let body: { messages: { role: "user" | "assistant"; content: string }[] };
+        let body: { messages: { role: "user" | "assistant"; content: string }[]; timezone?: string };
         try {
           body = await request.json();
         } catch {
@@ -96,7 +97,8 @@ export const Route = createFileRoute("/api/ai")({
         }
 
         try {
-          const ctx = await buildContext(sb);
+          const timezone = body.timezone || USER_TZ;
+          const ctx = await buildContext(sb, timezone);
           const lastUser = [...body.messages].reverse().find((m) => m.role === "user")?.content ?? "";
           const mentionsBlock = await buildMentionsBlock(sb, lastUser);
           const system = buildSystemPrompt(ctx) + mentionsBlock;
