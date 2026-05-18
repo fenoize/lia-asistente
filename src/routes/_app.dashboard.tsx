@@ -15,6 +15,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
+import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -66,6 +67,7 @@ function fmtMoney(amount: number, currency: string) {
 function Dashboard() {
   const { user } = useAuth();
   const assistant = useAssistant();
+  const userTimeZone = detectUserTimeZone();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -81,13 +83,12 @@ function Dashboard() {
 
   const reloadMeetings = async () => {
     if (!user) return;
-    const start = new Date(); start.setHours(0, 0, 0, 0);
-    const end = new Date(); end.setHours(23, 59, 59, 999);
+    const todayRange = getDayRangeUTC(userTimeZone);
     const { data } = await supabase
       .from("meetings")
       .select("*")
-      .gte("datetime", start.toISOString())
-      .lte("datetime", end.toISOString())
+      .gte("datetime", todayRange.startIso)
+      .lt("datetime", todayRange.endExclusiveIso)
       .order("datetime");
     setMeetings((data as Meeting[]) ?? []);
   };
@@ -97,10 +98,9 @@ function Dashboard() {
   const greeting =
     hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(today);
-  endOfDay.setHours(23, 59, 59, 999);
+  const todayRange = getDayRangeUTC(userTimeZone);
+  const startOfDay = new Date(todayRange.startIso);
+  const endOfDay = new Date(todayRange.endExclusiveIso);
 
   useEffect(() => {
     if (!user) return;
@@ -115,15 +115,15 @@ function Dashboard() {
         supabase
           .from("meetings")
           .select("*")
-          .gte("datetime", startOfDay.toISOString())
-          .lte("datetime", endOfDay.toISOString())
+          .gte("datetime", todayRange.startIso)
+          .lt("datetime", todayRange.endExclusiveIso)
           .order("datetime"),
         supabase
           .from("reminders")
           .select("*")
           .eq("done", false)
-          .gte("datetime", startOfDay.toISOString())
-          .lte("datetime", endOfDay.toISOString())
+          .gte("datetime", todayRange.startIso)
+          .lt("datetime", todayRange.endExclusiveIso)
           .order("datetime"),
         supabase
           .from("contacts")
@@ -164,7 +164,7 @@ function Dashboard() {
       const hasData = incomes.length > 0 || expenses.length > 0 || accounts.length > 0;
       setFinance({ income, expense, pending, currency, hasData });
 
-      const todayStr = today.toISOString().slice(0, 10);
+      const todayStr = currentDateInTimeZone(userTimeZone);
       const { data: existing } = await supabase
         .from("daily_briefs")
         .select("content,generated_at")
@@ -189,7 +189,7 @@ function Dashboard() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, userTimeZone]);
 
   const generateBrief = async () => {
     if (!user) return;
@@ -213,7 +213,7 @@ function Dashboard() {
         acc += decoder.decode(value, { stream: true });
         setBrief(acc);
       }
-      const todayStr = today.toISOString().slice(0, 10);
+      const todayStr = currentDateInTimeZone(userTimeZone);
       await supabase.from("daily_briefs").upsert(
         { user_id: user.id, content: acc, date: todayStr } as any,
         { onConflict: "user_id,date" } as any,
@@ -440,9 +440,7 @@ function Dashboard() {
                 border="rgba(217,119,6,0.35)"
                 accent="#fbbf24"
                 label="Próxima reunión"
-                value={new Date(nextMeeting.datetime).toLocaleTimeString("es-CL", {
-                  hour: "2-digit", minute: "2-digit", hour12: false,
-                })}
+                value={formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
                 hint={nextMeeting.title}
               />
             )}
@@ -586,11 +584,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 }
 
 function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; onClick?: () => void; isPastNeedsNotes?: boolean }) {
-  const time = new Date(meeting.datetime).toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const time = formatTimeInTimeZone(meeting.datetime, detectUserTimeZone());
   return (
     <button
       type="button"
@@ -749,11 +743,7 @@ function TaskRow({
 }
 
 function ReminderPill({ reminder }: { reminder: Reminder }) {
-  const time = new Date(reminder.datetime).toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
   return (
     <div
       className="flex items-center gap-2"
