@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { IconPlus, IconMapPin, IconVideo, IconBolt } from "@tabler/icons-react";
 import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
+import { detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/meetings")({
   component: MeetingsPage,
@@ -37,14 +38,9 @@ function openCapture() {
   window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
 }
 
-// Format Date -> "YYYY-MM-DDTHH:mm" for datetime-local input (local tz)
-function toLocalInputValue(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function MeetingsPage() {
   const { user } = useAuth();
+  const userTimeZone = detectUserTimeZone();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Meeting | null>(null);
@@ -62,19 +58,20 @@ function MeetingsPage() {
 
   const load = async () => {
     if (!user) return;
-    const start = new Date(weekStart);
-    const end = new Date(weekStart); end.setDate(end.getDate() + 7);
+    const startDayOffset = Math.round((weekStart.getTime() - startOfWeek(new Date()).getTime()) / 86_400_000);
+    const startRange = getDayRangeUTC(userTimeZone, startDayOffset);
+    const endRange = getDayRangeUTC(userTimeZone, startDayOffset + 7);
     const { data } = await supabase
       .from("meetings")
       .select("*")
-      .gte("datetime", start.toISOString())
-      .lt("datetime", end.toISOString())
+      .gte("datetime", startRange.startIso)
+      .lt("datetime", endRange.startIso)
       .order("datetime", { ascending: true });
     setMeetings((data as Meeting[]) ?? []);
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, weekStart]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, weekStart, userTimeZone]);
 
   const dayMeetings = useMemo(
     () => meetings.filter((m) => sameDay(new Date(m.datetime), selected)),
@@ -162,12 +159,7 @@ function MeetingsPage() {
 }
 
 function MeetingCard({ meeting: m, onClick }: { meeting: Meeting; onClick: () => void }) {
-  const t = new Date(m.datetime);
-  const time = t.toLocaleTimeString("es-CL", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  const time = formatTimeInTimeZone(m.datetime, detectUserTimeZone());
   const isLink = !!m.location && /^https?:\/\//.test(m.location);
 
   return (

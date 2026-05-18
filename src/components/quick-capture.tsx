@@ -10,7 +10,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
-import { localInputsToISO, nextDateAtLocal, normalizeDatetime } from "@/lib/timezone";
+import {
+  detectUserTimeZone,
+  localInputsToUTCISOString,
+  nextDateAtLocal,
+  toDateInputs,
+  toUTCISOString,
+} from "@/lib/timezone";
 
 type CaptureType = "task" | "meeting" | "reminder" | "note" | "idea" | "project";
 
@@ -52,27 +58,6 @@ function parseDateTime(raw: string): string | null {
   return nextDateAtLocal(h, min, days);
 }
 
-// Renderiza la fecha/hora en hora local del usuario (America/Santiago)
-// para los inputs <input type="date"> / <input type="time">.
-function toDateInputs(iso: string | null): { date: string; time: string } {
-  const d = iso ? new Date(iso) : new Date();
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Santiago",
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hour12: false,
-    }).formatToParts(d).map(p => [p.type, p.value]),
-  );
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    time: `${parts.hour === "24" ? "00" : parts.hour}:${parts.minute}`,
-  };
-}
-
-function fromDateInputs(date: string, time: string): string {
-  return localInputsToISO(date, time);
-}
-
 export function QuickCapture() {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -83,11 +68,16 @@ export function QuickCapture() {
   const [dt, setDt] = useState<{ date: string; time: string }>(toDateInputs(null));
   const [dtTouched, setDtTouched] = useState(false);
   const [manualType, setManualType] = useState<CaptureType | null>(null);
+  const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
   const inputRef = useRef<MentionInputHandle>(null);
   const { user } = useAuth();
 
   const autoDetected = useMemo(() => detectType(text), [text]);
   const detected = manualType ?? autoDetected;
+
+  useEffect(() => {
+    setUserTimeZone(detectUserTimeZone());
+  }, []);
 
   // Open via custom event or ⌘K / Ctrl+K
   useEffect(() => {
@@ -124,9 +114,9 @@ export function QuickCapture() {
   // Auto-fill datetime from text when not manually edited
   useEffect(() => {
     if (dtTouched) return;
-    const iso = parseDateTime(text);
-    if (iso) setDt(toDateInputs(iso));
-  }, [text, dtTouched]);
+     const iso = parseDateTime(text);
+     if (iso) setDt(toDateInputs(iso, userTimeZone));
+   }, [text, dtTouched, userTimeZone]);
 
   function close() {
     setClosing(true);
@@ -137,7 +127,7 @@ export function QuickCapture() {
       setBusy(false);
       setPriority("medium");
       setNoteKind("note");
-      setDt(toDateInputs(null));
+      setDt(toDateInputs(null, userTimeZone));
       setDtTouched(false);
       setManualType(null);
     }, 160);
@@ -162,7 +152,7 @@ export function QuickCapture() {
         const res = await fetch("/api/quick-capture", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, timezone: userTimeZone }),
         });
         if (res.ok) ai = await res.json();
       } catch {
@@ -173,9 +163,9 @@ export function QuickCapture() {
       const fallbackTitle = text.trim().split("\n")[0].slice(0, 140);
       const title = (ai?.title?.trim() || fallbackTitle).slice(0, 200);
       const description = ai?.description?.trim() || (text.length > title.length ? text : null);
-      const userOverrideDt = dtTouched ? fromDateInputs(dt.date, dt.time) : null;
-      const aiDt = normalizeDatetime(ai?.datetime ?? null);
-      const datetime = userOverrideDt || aiDt || fromDateInputs(dt.date, dt.time);
+      const userOverrideDt = dtTouched ? localInputsToUTCISOString(dt.date, dt.time, userTimeZone) : null;
+      const aiDt = toUTCISOString(ai?.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
+      const datetime = userOverrideDt || aiDt || localInputsToUTCISOString(dt.date, dt.time, userTimeZone);
 
       if (type === "task") {
         await supabase.from("tasks").insert({

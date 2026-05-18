@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { detectUserTimeZone, formatDateTimeInTimeZone } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/reminders")({
   component: RemindersPage,
@@ -37,6 +38,7 @@ function openCapture() {
 function RemindersPage() {
   const { user } = useAuth();
   const assistant = useAssistant();
+  const userTimeZone = detectUserTimeZone();
   const [items, setItems] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Reminder | null>(null);
@@ -52,7 +54,7 @@ function RemindersPage() {
       setItems((data as Reminder[]) ?? []);
       setLoading(false);
     })();
-  }, [user]);
+  }, [user, userTimeZone]);
 
   const toggle = async (r: Reminder) => {
     const next = !r.done;
@@ -173,11 +175,7 @@ function ReminderRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const dt = new Date(r.datetime);
-  const fmt = dt.toLocaleString("es-CL", {
-    weekday: "short", day: "numeric", month: "short",
-    hour: "2-digit", minute: "2-digit",
-  });
+  const fmt = formatDateTimeInTimeZone(r.datetime, detectUserTimeZone());
 
   return (
     <li

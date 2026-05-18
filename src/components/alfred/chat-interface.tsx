@@ -8,7 +8,7 @@ import { useChatStore, type ChatAction as Action, type ChatMsg as Msg } from "@/
 import { supabase } from "@/integrations/supabase/client";
 import { MentionInput, type MentionInputHandle } from "@/components/mentions/mention-input";
 import { MentionText } from "@/components/mentions/mention-text";
-import { normalizeDatetime } from "@/lib/timezone";
+import { detectUserTimeZone, formatDateTimeInTimeZone, toUTCISOString } from "@/lib/timezone";
 
 const SUGGESTIONS = [
   "¿Qué debería hacer ahora?",
@@ -39,9 +39,14 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [name, setName] = useState("");
+  const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
+
+  useEffect(() => {
+    setUserTimeZone(detectUserTimeZone());
+  }, []);
 
   // Load history + context once per user (kept in memory across navigations)
   useEffect(() => {
@@ -131,6 +136,7 @@ export function ChatInterface() {
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
         body: JSON.stringify({
+          timezone: userTimeZone,
           messages: next.slice(-20).map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -174,7 +180,7 @@ export function ChatInterface() {
   const confirmAction = async (msgId: string, action: Action) => {
     if (!user) return;
     try {
-      const dt = normalizeDatetime(action.datetime ?? null);
+      const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
       if (action.type === "task") {
         await supabase.from("tasks").insert({
           user_id: user.id,
@@ -506,7 +512,7 @@ function ActionCard({
       </p>
       {action.datetime && (
         <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-          {new Date(action.datetime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+          {formatDateTimeInTimeZone(action.datetime, detectUserTimeZone())}
         </p>
       )}
       {action.description && (
