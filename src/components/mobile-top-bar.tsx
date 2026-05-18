@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { IconBell, IconUser, IconX } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { detectUserTimeZone, formatDateTimeInTimeZone } from "@/lib/timezone";
 
 type Reminder = {
   id: string;
@@ -12,14 +13,7 @@ type Reminder = {
 };
 
 function formatWhen(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("es-CL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDateTimeInTimeZone(iso, detectUserTimeZone());
 }
 
 export function MobileTopBar() {

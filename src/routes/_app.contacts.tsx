@@ -1264,13 +1264,14 @@ function ContactPanel({
                   >
                     <div style={{ fontSize: 13, color: "#e0e0e0" }}>{m.title}</div>
                     <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
-                      {new Date(m.datetime).toLocaleString("es-CL", {
+                      {new Intl.DateTimeFormat("es-CL", {
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago",
                         day: "numeric",
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
                         hour12: false,
-                      })}
+                      }).format(new Date(m.datetime))}
                     </div>
                   </div>
                 ))

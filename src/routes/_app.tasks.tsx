@@ -303,7 +303,11 @@ function TaskRow({
             color: overdue ? "#f87171" : "#555",
           }}
         >
-          {new Date(task.due_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+          {new Intl.DateTimeFormat("es-CL", {
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago",
+            day: "numeric",
+            month: "short",
+          }).format(new Date(task.due_date))}
         </span>
       )}
 
