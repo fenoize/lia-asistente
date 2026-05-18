@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { generateText } from "ai";
 import { z } from "zod";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
+import { USER_TZ, currentDateInTimeZone, tzOffset } from "@/lib/timezone";
 
 const SYSTEM = `Eres un clasificador. Recibes texto crudo del usuario en español de Chile.
 Devuelve EXCLUSIVAMENTE un JSON válido con esta forma exacta:
@@ -21,7 +22,7 @@ Reglas:
 - "project" si el texto indica crear o iniciar un nuevo proyecto o iniciativa grande.
 - title: resumen MUY breve y específico. Para reuniones usa formato "Reunión con <persona/empresa>". NO incluyas la fecha/hora ni la descripción de lo que se hará en el título.
 - description: redacta en una frase clara lo que se hará o se tratará. Reformula el texto del usuario en tercera persona o impersonal (ej: "Se revisará la configuración..."). NO repitas el título ni incluyas la fecha. Si no hay nada que describir, null.
-- datetime: parsea fechas y horas en español ("hoy a las 16:00", "mañana 3pm", "el viernes", "en 2 horas") a ISO8601 con offset de America/Santiago. "hoy a las HH:MM" SIEMPRE significa hoy en esa hora exacta, nunca la hora actual. Si no hay fecha/hora explícita, null.
+- datetime: parsea fechas y horas en español ("hoy a las 16:00", "mañana 3pm", "el viernes", "en 2 horas") a ISO8601 con offset explícito de la zona horaria del usuario. "hoy a las HH:MM" SIEMPRE significa hoy en esa hora exacta, nunca la hora actual. Si no hay fecha/hora explícita, null.
 - priority solo aplica a "task". Default "medium".
 - Sin texto extra. Solo JSON, sin code fences.`;
 
@@ -41,19 +42,22 @@ export const Route = createFileRoute("/api/quick-capture")({
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
-        const { text } = await request.json() as { text: string };
+        const { text, timezone } = await request.json() as { text: string; timezone?: string };
         if (!text?.trim()) return new Response("Empty", { status: 400 });
 
         const gateway = createLovableAiGatewayProvider(apiKey);
-        const nowSantiago = new Intl.DateTimeFormat("sv-SE", {
-          timeZone: "America/Santiago",
+        const userTimeZone = timezone || USER_TZ;
+        const nowLocal = new Intl.DateTimeFormat("sv-SE", {
+          timeZone: userTimeZone,
           year: "numeric", month: "2-digit", day: "2-digit",
           hour: "2-digit", minute: "2-digit", second: "2-digit",
           hour12: false,
         }).format(new Date()).replace(" ", "T");
+        const todayLocal = currentDateInTimeZone(userTimeZone);
+        const offset = tzOffset(userTimeZone);
         const { text: raw } = await generateText({
           model: gateway(DEFAULT_MODEL),
-          system: SYSTEM + `\nFecha y hora actual en America/Santiago (zona del usuario): ${nowSantiago}-03:00. Usa este offset al generar datetimes.`,
+          system: SYSTEM + `\nZona horaria detectada del usuario: ${userTimeZone}. Si falla la detección, usa ${USER_TZ}.\nFecha local actual: ${todayLocal}.\nFecha y hora actual en la zona del usuario: ${nowLocal}${offset}. Interpreta SIEMPRE las horas que escriba el usuario en esa zona horaria y nunca en UTC. No uses Z.`,
           prompt: text,
         });
 
