@@ -69,9 +69,10 @@ export async function buildContext(
   const contacts = contactsRes.data ?? [];
   const projects = projectsRes.data ?? [];
   const relations = relationsRes.data ?? [];
+  const todayStart = new Date(todayRange.startIso);
 
   const overdue = tasks.filter(
-    (t: any) => t.due_date && new Date(t.due_date) < startOfToday,
+    (t: any) => t.due_date && new Date(t.due_date) < todayStart,
   );
   const pending = tasks.filter(
     (t: any) => !overdue.includes(t),
@@ -79,7 +80,7 @@ export async function buildContext(
 
   const fmtTask = (t: any) =>
     `- [${PRIORITY_LABEL[t.priority] ?? "media"}] ${t.title}${
-      t.due_date ? ` (vence: ${fmtDate(t.due_date)})` : ""
+      t.due_date ? ` (vence: ${fmtDate(t.due_date, timezone)})` : ""
     }`;
 
   const fmtMeeting = (m: any) =>
@@ -124,7 +125,7 @@ export async function buildContext(
       projects
         .filter(
           (p: any) =>
-            p.status === "active" && p.due_date && new Date(p.due_date) < startOfToday,
+            p.status === "active" && p.due_date && new Date(p.due_date) < todayStart,
         )
         .map((p: any) => {
           const client = contacts.find((c: any) => c.id === p.client_id);
