@@ -1,6 +1,136 @@
-// Zona horaria fija del usuario. Si en el futuro queremos leerla del profile,
-// reemplazar este export por un hook/contexto.
 export const USER_TZ = "America/Santiago";
+
+type DateInputParts = {
+  date: string;
+  time: string;
+};
+
+type NormalizeDatetimeOptions = {
+  treatZuluAsLocal?: boolean;
+};
+
+export function detectUserTimeZone(fallback: string = USER_TZ): string {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone) {
+      new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
+      return timezone;
+    }
+  } catch {
+    // no-op
+  }
+  return fallback;
+}
+
+function zonedParts(value: Date | string, timezone: string = USER_TZ) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: parts.year,
+    month: parts.month,
+    day: parts.day,
+    hour: parts.hour === "24" ? "00" : parts.hour,
+    minute: parts.minute,
+    second: parts.second,
+  };
+}
+
+function shiftDateString(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day));
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
+
+export function formatInTimeZone(
+  value: Date | string,
+  options: Intl.DateTimeFormatOptions,
+  timezone: string = USER_TZ,
+  locale = "es-CL",
+): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: timezone }).format(date);
+}
+
+export function formatTimeInTimeZone(value: Date | string, timezone: string = USER_TZ): string {
+  return formatInTimeZone(value, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }, timezone);
+}
+
+export function formatDateTimeInTimeZone(value: Date | string, timezone: string = USER_TZ): string {
+  return formatInTimeZone(value, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }, timezone);
+}
+
+export function currentDateInTimeZone(timezone: string = USER_TZ, at: Date = new Date()): string {
+  const { year, month, day } = zonedParts(at, timezone);
+  return `${year}-${month}-${day}`;
+}
+
+export function toDateInputs(iso: string | null, timezone: string = USER_TZ): DateInputParts {
+  const { year, month, day, hour, minute } = zonedParts(iso ?? new Date(), timezone);
+  return {
+    date: `${year}-${month}-${day}`,
+    time: `${hour}:${minute}`,
+  };
+}
+
+export function toDateTimeLocalInput(iso: string, timezone: string = USER_TZ): string {
+  const { date, time } = toDateInputs(iso, timezone);
+  return `${date}T${time}`;
+}
+
+export function localInputsToUTCISOString(
+  date: string,
+  time: string,
+  timezone: string = USER_TZ,
+): string {
+  return new Date(localInputsToISO(date, time, timezone)).toISOString();
+}
+
+export function localDateTimeToUTCISOString(
+  localDateTime: string,
+  timezone: string = USER_TZ,
+): string {
+  const match = localDateTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  if (!match) return new Date(localDateTime).toISOString();
+  return localInputsToUTCISOString(match[1], match[2], timezone);
+}
+
+export function getDayRangeUTC(
+  timezone: string = USER_TZ,
+  dayOffset = 0,
+  baseDate: Date = new Date(),
+): { date: string; startIso: string; endExclusiveIso: string } {
+  const date = shiftDateString(currentDateInTimeZone(timezone, baseDate), dayOffset);
+  const nextDate = shiftDateString(date, 1);
+  return {
+    date,
+    startIso: localInputsToUTCISOString(date, "00:00", timezone),
+    endExclusiveIso: localInputsToUTCISOString(nextDate, "00:00", timezone),
+  };
+}
 
 /**
  * Offset actual de una zona horaria en formato "+HH:MM" / "-HH:MM",
@@ -80,12 +210,28 @@ export function nextDateAtLocal(
 export function normalizeDatetime(
   iso: string | null | undefined,
   timezone: string = USER_TZ,
+  options: NormalizeDatetimeOptions = {},
 ): string | null {
   if (!iso) return null;
   const trimmed = iso.trim();
-  // Ya tiene Z o ±HH:MM al final.
-  if (/Z$/i.test(trimmed) || /[+-]\d{2}:?\d{2}$/.test(trimmed)) return trimmed;
+  if (/[+-]\d{2}:?\d{2}$/.test(trimmed)) return trimmed;
+  if (/Z$/i.test(trimmed)) {
+    if (!options.treatZuluAsLocal) return trimmed;
+    const withoutZulu = trimmed.replace(/Z$/i, "");
+    const zuluMatch = withoutZulu.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (!zuluMatch) return trimmed;
+    return localInputsToISO(zuluMatch[1], zuluMatch[2], timezone);
+  }
   const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
   if (!match) return trimmed;
   return localInputsToISO(match[1], match[2], timezone);
+}
+
+export function toUTCISOString(
+  iso: string | null | undefined,
+  timezone: string = USER_TZ,
+  options: NormalizeDatetimeOptions = {},
+): string | null {
+  const normalized = normalizeDatetime(iso, timezone, options);
+  return normalized ? new Date(normalized).toISOString() : null;
 }
