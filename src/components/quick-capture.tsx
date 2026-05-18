@@ -166,7 +166,7 @@ export function QuickCapture() {
       const description = ai?.description?.trim() || (text.length > title.length ? text : null);
       const userOverrideDt = dtTouched ? localInputsToUTCISOString(dt.date, dt.time, userTimeZone) : null;
       const aiDt = toUTCISOString(ai?.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
-      const datetime = userOverrideDt || aiDt || fromDateInputs(dt.date, dt.time);
+      const datetime = userOverrideDt || aiDt || localInputsToUTCISOString(dt.date, dt.time, userTimeZone);
 
       if (type === "task") {
         await supabase.from("tasks").insert({
