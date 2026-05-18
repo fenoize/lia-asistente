@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { detectUserTimeZone, formatDateTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
+import { detectUserTimeZone, formatDateTimeInTimeZone } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/reminders")({
   component: RemindersPage,
@@ -47,11 +47,9 @@ function RemindersPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const todayRange = getDayRangeUTC(userTimeZone);
       const { data } = await supabase
         .from("reminders")
         .select("*")
-        .gte("datetime", todayRange.startIso)
         .order("datetime", { ascending: true });
       setItems((data as Reminder[]) ?? []);
       setLoading(false);
