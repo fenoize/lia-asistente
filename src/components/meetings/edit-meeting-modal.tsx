@@ -1,6 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { IconX, IconTrash } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
+import { detectUserTimeZone, formatDateTimeInTimeZone, localDateTimeToUTCISOString, toDateTimeLocalInput } from "@/lib/timezone";
 
 export type EditableMeeting = {
   id: string;
@@ -12,11 +13,6 @@ export type EditableMeeting = {
   preparation_needed: boolean | null;
 };
 
-function toLocalInputValue(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export function EditMeetingModal({
   meeting,
   onClose,
@@ -26,8 +22,9 @@ export function EditMeetingModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const userTimeZone = detectUserTimeZone();
   const [title, setTitle] = useState(meeting.title);
-  const [datetime, setDatetime] = useState(toLocalInputValue(new Date(meeting.datetime)));
+  const [datetime, setDatetime] = useState(toDateTimeLocalInput(meeting.datetime, userTimeZone));
   const [duration, setDuration] = useState<string>(meeting.duration_minutes?.toString() ?? "60");
   const [location, setLocation] = useState(meeting.location ?? "");
   const [notes, setNotes] = useState(meeting.notes ?? "");
@@ -41,7 +38,7 @@ export function EditMeetingModal({
       .from("meetings")
       .update({
         title: title.trim(),
-        datetime: new Date(datetime).toISOString(),
+          datetime: localDateTimeToUTCISOString(datetime, userTimeZone),
         duration_minutes: duration ? parseInt(duration, 10) : null,
         location: location.trim() || null,
         notes: notes.trim() || null,
@@ -87,6 +84,9 @@ export function EditMeetingModal({
           </Field>
           <Field label="Fecha y hora">
             <input type="datetime-local" value={datetime} onChange={(e) => setDatetime(e.target.value)} style={inputStyle} />
+            <div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>
+              Hora local: {formatDateTimeInTimeZone(meeting.datetime, userTimeZone)}
+            </div>
           </Field>
           <Field label="Duración (min)">
             <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} style={inputStyle} />
