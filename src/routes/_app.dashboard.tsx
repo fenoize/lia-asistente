@@ -199,9 +199,10 @@ function Dashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/daily-brief", {
         method: "POST",
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
+        headers: {
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          "x-user-timezone": userTimeZone,
+        },
       });
       if (!res.ok) throw new Error(await res.text());
       const reader = res.body?.getReader();
