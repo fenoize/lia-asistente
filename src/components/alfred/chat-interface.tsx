@@ -512,7 +512,7 @@ function ActionCard({
       </p>
       {action.datetime && (
         <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-          {new Date(action.datetime).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}
+          {formatDateTimeInTimeZone(action.datetime, detectUserTimeZone())}
         </p>
       )}
       {action.description && (
