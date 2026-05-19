@@ -167,23 +167,28 @@ export function getDayRangeUTC(
  * calculado en `at` (default: ahora). Maneja DST correctamente.
  */
 export function tzOffset(timezone: string = USER_TZ, at: Date = new Date()): string {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
-  const parts = Object.fromEntries(dtf.formatToParts(at).map(p => [p.type, p.value]));
-  const asUTC = Date.UTC(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
-  );
-  const diffMin = Math.round((asUTC - at.getTime()) / 60000);
-  const sign = diffMin >= 0 ? "+" : "-";
-  const abs = Math.abs(diffMin);
-  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
-  const mm = String(abs % 60).padStart(2, "0");
-  return `${sign}${hh}:${mm}`;
+  try {
+    const safeAt = isValidDate(at) ? at : new Date();
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const parts = Object.fromEntries(dtf.formatToParts(safeAt).map(p => [p.type, p.value]));
+    const asUTC = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
+    );
+    const diffMin = Math.round((asUTC - safeAt.getTime()) / 60000);
+    const sign = diffMin >= 0 ? "+" : "-";
+    const abs = Math.abs(diffMin);
+    const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+    const mm = String(abs % 60).padStart(2, "0");
+    return `${sign}${hh}:${mm}`;
+  } catch {
+    return "+00:00";
+  }
 }
 
 /**
