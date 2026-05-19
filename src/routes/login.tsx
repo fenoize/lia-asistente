@@ -56,7 +56,7 @@ function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-            <span className="text-primary font-semibold">A</span>
+            <span className="text-primary font-semibold">L</span>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">LIA</h1>
           <p className="mt-2 text-sm text-muted-foreground">
