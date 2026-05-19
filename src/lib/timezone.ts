@@ -22,29 +22,42 @@ export function detectUserTimeZone(fallback: string = USER_TZ): string {
   return fallback;
 }
 
-function zonedParts(value: Date | string, timezone: string = USER_TZ) {
-  const date = typeof value === "string" ? new Date(value) : value;
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).formatToParts(date).map((part) => [part.type, part.value]),
-  );
+function isValidDate(d: Date): boolean {
+  return d instanceof Date && !isNaN(d.getTime()) && isFinite(d.getTime());
+}
 
-  return {
-    year: parts.year,
-    month: parts.month,
-    day: parts.day,
-    hour: parts.hour === "24" ? "00" : parts.hour,
-    minute: parts.minute,
-    second: parts.second,
-  };
+function zonedParts(value: Date | string, timezone: string = USER_TZ) {
+  let date = typeof value === "string" ? new Date(value) : value;
+  if (!isValidDate(date)) date = new Date();
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).formatToParts(date).map((part) => [part.type, part.value]),
+    );
+
+    return {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: parts.hour === "24" ? "00" : parts.hour,
+      minute: parts.minute,
+      second: parts.second,
+    };
+  } catch {
+    const fallback = new Date();
+    const y = fallback.getUTCFullYear();
+    const m = String(fallback.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(fallback.getUTCDate()).padStart(2, "0");
+    return { year: String(y), month: m, day: d, hour: "00", minute: "00", second: "00" };
+  }
 }
 
 function shiftDateString(date: string, days: number): string {
