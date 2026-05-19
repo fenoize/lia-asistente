@@ -22,29 +22,42 @@ export function detectUserTimeZone(fallback: string = USER_TZ): string {
   return fallback;
 }
 
-function zonedParts(value: Date | string, timezone: string = USER_TZ) {
-  const date = typeof value === "string" ? new Date(value) : value;
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).formatToParts(date).map((part) => [part.type, part.value]),
-  );
+function isValidDate(d: Date): boolean {
+  return d instanceof Date && !isNaN(d.getTime()) && isFinite(d.getTime());
+}
 
-  return {
-    year: parts.year,
-    month: parts.month,
-    day: parts.day,
-    hour: parts.hour === "24" ? "00" : parts.hour,
-    minute: parts.minute,
-    second: parts.second,
-  };
+function zonedParts(value: Date | string, timezone: string = USER_TZ) {
+  let date = typeof value === "string" ? new Date(value) : value;
+  if (!isValidDate(date)) date = new Date();
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).formatToParts(date).map((part) => [part.type, part.value]),
+    );
+
+    return {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: parts.hour === "24" ? "00" : parts.hour,
+      minute: parts.minute,
+      second: parts.second,
+    };
+  } catch {
+    const fallback = new Date();
+    const y = fallback.getUTCFullYear();
+    const m = String(fallback.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(fallback.getUTCDate()).padStart(2, "0");
+    return { year: String(y), month: m, day: d, hour: "00", minute: "00", second: "00" };
+  }
 }
 
 function shiftDateString(date: string, days: number): string {
@@ -60,8 +73,13 @@ export function formatInTimeZone(
   timezone: string = USER_TZ,
   locale = "es-CL",
 ): string {
-  const date = typeof value === "string" ? new Date(value) : value;
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: timezone }).format(date);
+  try {
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (!isValidDate(date)) return "";
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: timezone }).format(date);
+  } catch {
+    return "";
+  }
 }
 
 export function formatTimeInTimeZone(value: Date | string, timezone: string = USER_TZ): string {
@@ -106,7 +124,13 @@ export function localInputsToUTCISOString(
   time: string,
   timezone: string = USER_TZ,
 ): string {
-  return new Date(localInputsToISO(date, time, timezone)).toISOString();
+  try {
+    const d = new Date(localInputsToISO(date, time, timezone));
+    if (!isValidDate(d)) return new Date().toISOString();
+    return d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export function localDateTimeToUTCISOString(
@@ -114,8 +138,14 @@ export function localDateTimeToUTCISOString(
   timezone: string = USER_TZ,
 ): string {
   const match = localDateTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  if (!match) return new Date(localDateTime).toISOString();
-  return localInputsToUTCISOString(match[1], match[2], timezone);
+  if (match) return localInputsToUTCISOString(match[1], match[2], timezone);
+  try {
+    const d = new Date(localDateTime);
+    if (!isValidDate(d)) return new Date().toISOString();
+    return d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export function getDayRangeUTC(
@@ -137,23 +167,28 @@ export function getDayRangeUTC(
  * calculado en `at` (default: ahora). Maneja DST correctamente.
  */
 export function tzOffset(timezone: string = USER_TZ, at: Date = new Date()): string {
-  const dtf = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    hour12: false,
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
-  const parts = Object.fromEntries(dtf.formatToParts(at).map(p => [p.type, p.value]));
-  const asUTC = Date.UTC(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
-  );
-  const diffMin = Math.round((asUTC - at.getTime()) / 60000);
-  const sign = diffMin >= 0 ? "+" : "-";
-  const abs = Math.abs(diffMin);
-  const hh = String(Math.floor(abs / 60)).padStart(2, "0");
-  const mm = String(abs % 60).padStart(2, "0");
-  return `${sign}${hh}:${mm}`;
+  try {
+    const safeAt = isValidDate(at) ? at : new Date();
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const parts = Object.fromEntries(dtf.formatToParts(safeAt).map(p => [p.type, p.value]));
+    const asUTC = Date.UTC(
+      Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour) % 24, Number(parts.minute), Number(parts.second),
+    );
+    const diffMin = Math.round((asUTC - safeAt.getTime()) / 60000);
+    const sign = diffMin >= 0 ? "+" : "-";
+    const abs = Math.abs(diffMin);
+    const hh = String(Math.floor(abs / 60)).padStart(2, "0");
+    const mm = String(abs % 60).padStart(2, "0");
+    return `${sign}${hh}:${mm}`;
+  } catch {
+    return "+00:00";
+  }
 }
 
 /**
@@ -214,17 +249,26 @@ export function normalizeDatetime(
 ): string | null {
   if (!iso) return null;
   const trimmed = iso.trim();
-  if (/[+-]\d{2}:?\d{2}$/.test(trimmed)) return trimmed;
-  if (/Z$/i.test(trimmed)) {
-    if (!options.treatZuluAsLocal) return trimmed;
-    const withoutZulu = trimmed.replace(/Z$/i, "");
-    const zuluMatch = withoutZulu.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-    if (!zuluMatch) return trimmed;
-    return localInputsToISO(zuluMatch[1], zuluMatch[2], timezone);
+  if (!trimmed) return null;
+  try {
+    if (/[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+      return isValidDate(new Date(trimmed)) ? trimmed : null;
+    }
+    if (/Z$/i.test(trimmed)) {
+      if (!options.treatZuluAsLocal) {
+        return isValidDate(new Date(trimmed)) ? trimmed : null;
+      }
+      const withoutZulu = trimmed.replace(/Z$/i, "");
+      const zuluMatch = withoutZulu.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+      if (!zuluMatch) return isValidDate(new Date(trimmed)) ? trimmed : null;
+      return localInputsToISO(zuluMatch[1], zuluMatch[2], timezone);
+    }
+    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (!match) return null;
+    return localInputsToISO(match[1], match[2], timezone);
+  } catch {
+    return null;
   }
-  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-  if (!match) return trimmed;
-  return localInputsToISO(match[1], match[2], timezone);
 }
 
 export function toUTCISOString(
@@ -232,6 +276,13 @@ export function toUTCISOString(
   timezone: string = USER_TZ,
   options: NormalizeDatetimeOptions = {},
 ): string | null {
-  const normalized = normalizeDatetime(iso, timezone, options);
-  return normalized ? new Date(normalized).toISOString() : null;
+  try {
+    const normalized = normalizeDatetime(iso, timezone, options);
+    if (!normalized) return null;
+    const d = new Date(normalized);
+    if (!isValidDate(d)) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
 }
