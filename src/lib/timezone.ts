@@ -124,7 +124,13 @@ export function localInputsToUTCISOString(
   time: string,
   timezone: string = USER_TZ,
 ): string {
-  return new Date(localInputsToISO(date, time, timezone)).toISOString();
+  try {
+    const d = new Date(localInputsToISO(date, time, timezone));
+    if (!isValidDate(d)) return new Date().toISOString();
+    return d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export function localDateTimeToUTCISOString(
@@ -132,8 +138,14 @@ export function localDateTimeToUTCISOString(
   timezone: string = USER_TZ,
 ): string {
   const match = localDateTime.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
-  if (!match) return new Date(localDateTime).toISOString();
-  return localInputsToUTCISOString(match[1], match[2], timezone);
+  if (match) return localInputsToUTCISOString(match[1], match[2], timezone);
+  try {
+    const d = new Date(localDateTime);
+    if (!isValidDate(d)) return new Date().toISOString();
+    return d.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 export function getDayRangeUTC(
