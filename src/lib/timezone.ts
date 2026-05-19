@@ -73,8 +73,13 @@ export function formatInTimeZone(
   timezone: string = USER_TZ,
   locale = "es-CL",
 ): string {
-  const date = typeof value === "string" ? new Date(value) : value;
-  return new Intl.DateTimeFormat(locale, { ...options, timeZone: timezone }).format(date);
+  try {
+    const date = typeof value === "string" ? new Date(value) : value;
+    if (!isValidDate(date)) return "";
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone: timezone }).format(date);
+  } catch {
+    return "";
+  }
 }
 
 export function formatTimeInTimeZone(value: Date | string, timezone: string = USER_TZ): string {
