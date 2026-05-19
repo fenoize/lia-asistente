@@ -249,17 +249,26 @@ export function normalizeDatetime(
 ): string | null {
   if (!iso) return null;
   const trimmed = iso.trim();
-  if (/[+-]\d{2}:?\d{2}$/.test(trimmed)) return trimmed;
-  if (/Z$/i.test(trimmed)) {
-    if (!options.treatZuluAsLocal) return trimmed;
-    const withoutZulu = trimmed.replace(/Z$/i, "");
-    const zuluMatch = withoutZulu.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-    if (!zuluMatch) return trimmed;
-    return localInputsToISO(zuluMatch[1], zuluMatch[2], timezone);
+  if (!trimmed) return null;
+  try {
+    if (/[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+      return isValidDate(new Date(trimmed)) ? trimmed : null;
+    }
+    if (/Z$/i.test(trimmed)) {
+      if (!options.treatZuluAsLocal) {
+        return isValidDate(new Date(trimmed)) ? trimmed : null;
+      }
+      const withoutZulu = trimmed.replace(/Z$/i, "");
+      const zuluMatch = withoutZulu.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+      if (!zuluMatch) return isValidDate(new Date(trimmed)) ? trimmed : null;
+      return localInputsToISO(zuluMatch[1], zuluMatch[2], timezone);
+    }
+    const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+    if (!match) return null;
+    return localInputsToISO(match[1], match[2], timezone);
+  } catch {
+    return null;
   }
-  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
-  if (!match) return trimmed;
-  return localInputsToISO(match[1], match[2], timezone);
 }
 
 export function toUTCISOString(
@@ -267,6 +276,13 @@ export function toUTCISOString(
   timezone: string = USER_TZ,
   options: NormalizeDatetimeOptions = {},
 ): string | null {
-  const normalized = normalizeDatetime(iso, timezone, options);
-  return normalized ? new Date(normalized).toISOString() : null;
+  try {
+    const normalized = normalizeDatetime(iso, timezone, options);
+    if (!normalized) return null;
+    const d = new Date(normalized);
+    if (!isValidDate(d)) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
 }
