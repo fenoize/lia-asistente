@@ -1,6 +1,7 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { parseMentions, segmentOffsets } from "@/lib/mentions";
 
 type Suggestion =
   | { kind: "contact"; id: string; name: string; relationship_type?: string | null; type?: string | null }
@@ -210,20 +211,115 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     style,
   };
 
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  // Mirror computed styles from the input onto the overlay so chips align exactly with text.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    const ov = overlayRef.current;
+    if (!el || !ov) return;
+    const cs = window.getComputedStyle(el);
+    const props = [
+      "boxSizing","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing",
+      "textTransform","textIndent","lineHeight","paddingTop","paddingBottom","paddingLeft","paddingRight",
+      "borderTopWidth","borderBottomWidth","borderLeftWidth","borderRightWidth","wordSpacing","wordWrap","textAlign",
+    ];
+    props.forEach((p) => { (ov.style as any)[p] = (cs as any)[p]; });
+    ov.style.borderStyle = "solid";
+    ov.style.borderColor = "transparent";
+  }, [value, multiline, className, style]);
+
+  function removeMentionAt(start: number, raw: string) {
+    let end = start + raw.length;
+    // also eat one trailing space we inserted, or one leading space if no trailing
+    if (value[end] === " ") end += 1;
+    else if (start > 0 && value[start - 1] === " ") {
+      const newVal = value.slice(0, start - 1) + value.slice(end);
+      onChange(newVal);
+      requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
+    const newVal = value.slice(0, start) + value.slice(end);
+    onChange(newVal);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  const overlaySegments = useMemo(() => {
+    const segs = parseMentions(value);
+    const offsets = segmentOffsets(segs);
+    return { segs, offsets };
+  }, [value]);
+
+  const hasMentions = overlaySegments.segs.some((s) => s.kind === "mention");
+
+  const inputStyleOverride: CSSProperties = hasMentions
+    ? { ...(style ?? {}), color: "transparent", caretColor: "var(--text-primary)", WebkitTextFillColor: "transparent" }
+    : (style ?? {});
+
+  const sharedPropsFinal = {
+    ...sharedProps,
+    style: inputStyleOverride,
+    onScroll: (e: any) => { setScrollTop(e.target.scrollTop); setScrollLeft(e.target.scrollLeft); },
+  };
+
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
       {multiline ? (
         <textarea
           ref={(el) => { inputRef.current = el; }}
           rows={rows}
-          {...sharedProps}
+          {...sharedPropsFinal}
         />
       ) : (
         <input
           ref={(el) => { inputRef.current = el; }}
           type="text"
-          {...sharedProps}
+          {...sharedPropsFinal}
         />
+      )}
+      {hasMentions && (
+        <div
+          ref={overlayRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+            whiteSpace: multiline ? "pre-wrap" : "pre",
+            wordWrap: "break-word",
+            color: "var(--text-primary)",
+          }}
+        >
+          <div style={{ transform: `translate(${-scrollLeft}px, ${-scrollTop}px)` }}>
+            {overlaySegments.segs.map((s, i) => {
+              if (s.kind === "text") return <span key={i}>{s.value}</span>;
+              const start = overlaySegments.offsets[i];
+              return (
+                <span
+                  key={i}
+                  className="alfred-mention-pill"
+                  style={{ pointerEvents: "auto" }}
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  @{s.mention.name}
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${s.mention.name}`}
+                    onClick={() => removeMentionAt(start, s.raw)}
+                    className="alfred-mention-pill-x"
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+            {/* trailing space so wrap matches when value ends with newline */}
+            <span style={{ display: "inline-block", width: 0 }}>&#8203;</span>
+          </div>
+        </div>
       )}
       <div ref={mirrorRef} aria-hidden="true" />
       {open && coords && (
