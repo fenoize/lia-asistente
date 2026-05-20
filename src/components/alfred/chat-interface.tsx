@@ -19,17 +19,55 @@ const SUGGESTIONS = [
   "¿Cómo voy financieramente?",
 ];
 
-const ACTION_RE = /```action\s*([\s\S]*?)```/i;
+// Matches ```action, ```json or plain ``` code fences
+const FENCE_RE = /```(?:action|json)?\s*([\s\S]*?)```/gi;
+// Matches trailing/standalone raw JSON object or array (greedy to end)
+const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
+
+function tryParseAction(raw: string): Action | null {
+  try {
+    const obj = JSON.parse(raw.trim());
+    if (obj && typeof obj === "object" && typeof obj.type === "string" && typeof obj.title === "string") {
+      return obj as Action;
+    }
+  } catch {}
+  return null;
+}
+
+function stripJsonForDisplay(text: string): string {
+  let out = text.replace(FENCE_RE, "").trim();
+  const tm = out.match(TRAILING_JSON_RE);
+  if (tm) out = out.slice(0, tm.index).trim();
+  return out;
+}
 
 function parseAction(text: string): { clean: string; action: Action | null } {
-  const m = text.match(ACTION_RE);
-  if (!m) return { clean: text, action: null };
-  try {
-    const action = JSON.parse(m[1].trim()) as Action;
-    return { clean: text.replace(ACTION_RE, "").trim(), action };
-  } catch {
-    return { clean: text.replace(ACTION_RE, "").trim(), action: null };
+  let action: Action | null = null;
+  // Try fenced blocks first
+  const fenceMatches = [...text.matchAll(FENCE_RE)];
+  for (const m of fenceMatches) {
+    const a = tryParseAction(m[1]);
+    if (a) { action = a; break; }
   }
+  // Try trailing raw JSON
+  if (!action) {
+    const tm = text.match(TRAILING_JSON_RE);
+    if (tm) {
+      const a = tryParseAction(tm[1]);
+      if (a) action = a;
+    }
+  }
+  return { clean: stripJsonForDisplay(text), action };
+}
+
+function stripPartialJsonForLive(raw: string): string {
+  // Cut at first opening fence or first standalone JSON start
+  let cut = raw.length;
+  const fence = raw.search(/```/);
+  if (fence !== -1) cut = Math.min(cut, fence);
+  const jsonStart = raw.search(/(?:^|\n)\s*[{\[]/);
+  if (jsonStart !== -1) cut = Math.min(cut, jsonStart);
+  return raw.slice(0, cut).trimEnd();
 }
 
 export function ChatInterface() {
