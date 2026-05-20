@@ -53,3 +53,25 @@ export function parseMentions(text: string): Segment[] {
 export function stripMentionSyntax(text: string): string {
   return text.replace(MENTION_RE, (_, name) => `@${name}`);
 }
+
+/**
+ * Looser strip used for safety in any UI surface: replaces
+ * `@[Name](contact:anything)` / `@[Name](project:anything)` with `@Name`,
+ * even when the id isn't a strict uuid (e.g. when the model hallucinates one).
+ */
+const MENTION_RE_LOOSE = /@\[([^\]]+)\]\((?:contact|project):[^)\s]+\)/g;
+export function stripMentionSyntaxLoose(text: string): string {
+  if (!text) return text;
+  return text.replace(MENTION_RE_LOOSE, (_, name) => `@${name}`);
+}
+
+/** Compute the start offset of each segment within the original text. */
+export function segmentOffsets(segs: Segment[]): number[] {
+  const out: number[] = [];
+  let pos = 0;
+  for (const s of segs) {
+    out.push(pos);
+    pos += s.kind === "text" ? s.value.length : s.raw.length;
+  }
+  return out;
+}
