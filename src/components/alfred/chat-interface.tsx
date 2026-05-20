@@ -192,8 +192,7 @@ export function ChatInterface() {
         const { done, value } = await reader.read();
         if (done) break;
         raw += decoder.decode(value, { stream: true });
-        // Strip action block live so it doesn't flicker into view
-        const display = raw.includes("```action") ? raw.split("```action")[0].trimEnd() : raw;
+        const display = stripPartialJsonForLive(raw);
         setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: display } : msg));
       }
       const { clean, action } = parseAction(raw);
