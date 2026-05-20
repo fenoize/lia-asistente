@@ -157,6 +157,8 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     });
   }
 
+  const pendingCaretRef = useRef<number | null>(null);
+
   function pickAt(idx: number) {
     const flat: Suggestion[] = [...filtered.contacts, ...filtered.projects];
     const item = flat[idx];
@@ -171,16 +173,23 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     const triggerStart = pos - m[0].length + (m[0].startsWith("@") ? 0 : 1); // skip leading whitespace
     const insertion = `@[${item.name}](${item.kind}:${item.id}) `;
     const newVal = value.slice(0, triggerStart) + insertion + after;
-    onChange(newVal);
+    const caret = triggerStart + insertion.length;
+    pendingCaretRef.current = caret;
     setOpen(false);
-    requestAnimationFrame(() => {
-      const elx = inputRef.current;
-      if (!elx) return;
-      const caret = triggerStart + insertion.length;
-      elx.focus();
-      elx.setSelectionRange(caret, caret);
-    });
+    onChange(newVal);
   }
+
+  // After parent commits the new value, restore the caret right after the inserted chip.
+  useLayoutEffect(() => {
+    const caret = pendingCaretRef.current;
+    if (caret == null) return;
+    const el = inputRef.current;
+    if (!el) return;
+    if (el.value.length < caret) return; // value not yet propagated
+    el.focus();
+    try { el.setSelectionRange(caret, caret); } catch {}
+    pendingCaretRef.current = null;
+  }, [value]);
 
   function onKey(e: KeyboardEvent) {
     if (open && filtered.total > 0) {
