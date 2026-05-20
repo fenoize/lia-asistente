@@ -1,10 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
-import { parseMentions } from "@/lib/mentions";
+import { parseMentions, stripMentionSyntaxLoose } from "@/lib/mentions";
 
 export function MentionText({ text }: { text: string }) {
   const navigate = useNavigate();
-  const segs = parseMentions(text);
-  if (segs.length === 0) return <>{text}</>;
+  const safe = stripMentionSyntaxLoose(text);
+  const segs = parseMentions(safe);
+  if (segs.length === 0) return <>{safe}</>;
   return (
     <>
       {segs.map((s, i) => {
