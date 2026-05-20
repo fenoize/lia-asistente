@@ -279,6 +279,48 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
           {...sharedPropsFinal}
         />
       )}
+      {hasMentions && (
+        <div
+          ref={overlayRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+            whiteSpace: multiline ? "pre-wrap" : "pre",
+            wordWrap: "break-word",
+            color: "var(--text-primary)",
+          }}
+        >
+          <div style={{ transform: `translate(${-scrollLeft}px, ${-scrollTop}px)` }}>
+            {overlaySegments.segs.map((s, i) => {
+              if (s.kind === "text") return <span key={i}>{s.value}</span>;
+              const start = overlaySegments.offsets[i];
+              return (
+                <span
+                  key={i}
+                  className="alfred-mention-pill"
+                  style={{ pointerEvents: "auto" }}
+                  onMouseDown={(e) => e.preventDefault()}
+                >
+                  @{s.mention.name}
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${s.mention.name}`}
+                    onClick={() => removeMentionAt(start, s.raw)}
+                    className="alfred-mention-pill-x"
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+            {/* trailing space so wrap matches when value ends with newline */}
+            <span style={{ display: "inline-block", width: 0 }}>&#8203;</span>
+          </div>
+        </div>
+      )}
       <div ref={mirrorRef} aria-hidden="true" />
       {open && coords && (
         <div
