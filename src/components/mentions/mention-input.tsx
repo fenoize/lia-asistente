@@ -211,19 +211,72 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     style,
   };
 
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  // Mirror computed styles from the input onto the overlay so chips align exactly with text.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    const ov = overlayRef.current;
+    if (!el || !ov) return;
+    const cs = window.getComputedStyle(el);
+    const props = [
+      "boxSizing","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing",
+      "textTransform","textIndent","lineHeight","paddingTop","paddingBottom","paddingLeft","paddingRight",
+      "borderTopWidth","borderBottomWidth","borderLeftWidth","borderRightWidth","wordSpacing","wordWrap","textAlign",
+    ];
+    props.forEach((p) => { (ov.style as any)[p] = (cs as any)[p]; });
+    ov.style.borderStyle = "solid";
+    ov.style.borderColor = "transparent";
+  }, [value, multiline, className, style]);
+
+  function removeMentionAt(start: number, raw: string) {
+    let end = start + raw.length;
+    // also eat one trailing space we inserted, or one leading space if no trailing
+    if (value[end] === " ") end += 1;
+    else if (start > 0 && value[start - 1] === " ") {
+      const newVal = value.slice(0, start - 1) + value.slice(end);
+      onChange(newVal);
+      requestAnimationFrame(() => inputRef.current?.focus());
+      return;
+    }
+    const newVal = value.slice(0, start) + value.slice(end);
+    onChange(newVal);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
+  const overlaySegments = useMemo(() => {
+    const segs = parseMentions(value);
+    const offsets = segmentOffsets(segs);
+    return { segs, offsets };
+  }, [value]);
+
+  const hasMentions = overlaySegments.segs.some((s) => s.kind === "mention");
+
+  const inputStyleOverride: CSSProperties = hasMentions
+    ? { ...(style ?? {}), color: "transparent", caretColor: "var(--text-primary)", WebkitTextFillColor: "transparent" }
+    : (style ?? {});
+
+  const sharedPropsFinal = {
+    ...sharedProps,
+    style: inputStyleOverride,
+    onScroll: (e: any) => { setScrollTop(e.target.scrollTop); setScrollLeft(e.target.scrollLeft); },
+  };
+
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
       {multiline ? (
         <textarea
           ref={(el) => { inputRef.current = el; }}
           rows={rows}
-          {...sharedProps}
+          {...sharedPropsFinal}
         />
       ) : (
         <input
           ref={(el) => { inputRef.current = el; }}
           type="text"
-          {...sharedProps}
+          {...sharedPropsFinal}
         />
       )}
       <div ref={mirrorRef} aria-hidden="true" />
