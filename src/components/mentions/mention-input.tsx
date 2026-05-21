@@ -1,7 +1,17 @@
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { parseMentions, segmentOffsets } from "@/lib/mentions";
 
 type Suggestion =
   | { kind: "contact"; id: string; name: string; relationship_type?: string | null; type?: string | null }
@@ -25,7 +35,7 @@ type Props = {
 
 export type MentionInputHandle = {
   focus: () => void;
-  el: HTMLTextAreaElement | HTMLInputElement | null;
+  el: HTMLDivElement | null;
 };
 
 const RELATION_LABEL: Record<string, string> = {
@@ -52,39 +62,142 @@ function initials(name: string): string {
 }
 
 const TRIGGER_RE = /(?:^|\s)@([\p{L}\p{N}_-]{0,40})$/u;
+const MENTION_RE = /@\[([^\]]+)\]\((contact|project):([0-9a-fA-F-]{36})\)/g;
+
+/** Serialize the contenteditable DOM back to raw mention syntax. */
+function serializeEditor(root: HTMLElement): string {
+  let out = "";
+  const walk = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.textContent ?? "";
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const el = node as HTMLElement;
+    if (el.tagName === "BR") {
+      out += "\n";
+      return;
+    }
+    const raw = el.getAttribute("data-mention-raw");
+    if (raw) {
+      out += raw;
+      return;
+    }
+    // Browsers wrap new lines in <div> on Enter — treat as newline boundary.
+    if (el.tagName === "DIV" && out.length > 0 && !out.endsWith("\n")) {
+      out += "\n";
+    }
+    el.childNodes.forEach(walk);
+  };
+  root.childNodes.forEach(walk);
+  return out;
+}
+
+function createMentionSpan(
+  doc: Document,
+  m: { name: string; type: "contact" | "project"; id: string; raw: string },
+): HTMLSpanElement {
+  const span = doc.createElement("span");
+  span.className = "alfred-mention-pill";
+  span.setAttribute("contenteditable", "false");
+  span.setAttribute("data-mention-raw", m.raw);
+  span.setAttribute("data-mention-type", m.type);
+  span.setAttribute("data-mention-id", m.id);
+  span.setAttribute("data-mention-name", m.name);
+
+  const label = doc.createElement("span");
+  label.textContent = `@${m.name}`;
+  span.appendChild(label);
+
+  const x = doc.createElement("button");
+  x.type = "button";
+  x.className = "alfred-mention-pill-x";
+  x.textContent = "×";
+  x.setAttribute("data-mention-remove", "1");
+  x.setAttribute("contenteditable", "false");
+  x.setAttribute("tabindex", "-1");
+  x.setAttribute("aria-label", `Quitar ${m.name}`);
+  span.appendChild(x);
+
+  return span;
+}
+
+/** Build child nodes for a given raw value string. */
+function buildNodes(value: string, doc: Document): Node[] {
+  const nodes: Node[] = [];
+  const appendText = (text: string) => {
+    if (!text) return;
+    const parts = text.split("\n");
+    parts.forEach((line, i) => {
+      if (i > 0) nodes.push(doc.createElement("br"));
+      if (line) nodes.push(doc.createTextNode(line));
+    });
+  };
+
+  let last = 0;
+  let m: RegExpExecArray | null;
+  MENTION_RE.lastIndex = 0;
+  while ((m = MENTION_RE.exec(value)) !== null) {
+    if (m.index > last) appendText(value.slice(last, m.index));
+    nodes.push(
+      createMentionSpan(doc, {
+        raw: m[0],
+        name: m[1],
+        type: m[2] as "contact" | "project",
+        id: m[3],
+      }),
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < value.length) appendText(value.slice(last));
+  return nodes;
+}
 
 export const MentionInput = forwardRef<MentionInputHandle, Props>(function MentionInput(
-  { value, onChange, onSubmit, placeholder, multiline, rows = 1, className, style, disabled, onFocus, onBlur, autoFocus, maxRows = 6 },
+  { value, onChange, onSubmit, placeholder, multiline, rows: _rows, className, style, disabled, onFocus, onBlur, autoFocus, maxRows = 6 },
   ref,
 ) {
   const { user } = useAuth();
-  const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const lastValueRef = useRef<string>("");
   const [contacts, setContacts] = useState<Suggestion[]>([]);
   const [projects, setProjects] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const [coords, setCoords] = useState<{ left: number; bottom: number } | null>(null);
+  const [isEmpty, setIsEmpty] = useState(!value);
 
   useImperativeHandle(ref, () => ({
-    focus: () => inputRef.current?.focus(),
-    get el() { return inputRef.current; },
+    focus: () => editorRef.current?.focus(),
+    get el() { return editorRef.current; },
   }));
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (!multiline) return;
-    const ta = inputRef.current as HTMLTextAreaElement | null;
-    if (!ta) return;
-    ta.style.height = "auto";
-    const lineH = 22;
-    const max = lineH * maxRows + 16;
-    ta.style.height = Math.min(ta.scrollHeight, max) + "px";
-  }, [value, multiline, maxRows]);
+  // Sync external value → DOM (only when it differs from what we last emitted)
+  useLayoutEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    if (value === lastValueRef.current) return;
+    el.innerHTML = "";
+    buildNodes(value, document).forEach((n) => el.appendChild(n));
+    lastValueRef.current = value;
+    setIsEmpty(!value);
+  }, [value]);
 
-  // Load contacts + projects once when user is available
+  // Mount: initial render
+  useLayoutEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.innerHTML = "";
+    buildNodes(value, document).forEach((n) => el.appendChild(n));
+    lastValueRef.current = value;
+    setIsEmpty(!value);
+    if (autoFocus) setTimeout(() => el.focus(), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load contacts + projects
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -113,85 +226,131 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     return { contacts: cs, projects: ps, total: cs.length + ps.length };
   }, [contacts, projects, query]);
 
-  function updateCaret() {
-    const el = inputRef.current;
-    if (!el) { setOpen(false); return; }
-    const pos = el.selectionStart ?? 0;
-    const before = value.slice(0, pos);
-    const m = before.match(TRIGGER_RE);
+  function emit() {
+    const el = editorRef.current;
+    if (!el) return;
+    const v = serializeEditor(el);
+    lastValueRef.current = v;
+    setIsEmpty(!v);
+    onChange(v);
+  }
+
+  function getCaretTextBefore(): { text: string; node: Text | null; offset: number } | null {
+    const el = editorRef.current;
+    if (!el) return null;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.endContainer)) return null;
+    const pre = document.createRange();
+    pre.selectNodeContents(el);
+    try { pre.setEnd(range.endContainer, range.endOffset); } catch { return null; }
+    const text = pre.toString();
+    const node = range.endContainer.nodeType === Node.TEXT_NODE ? (range.endContainer as Text) : null;
+    return { text, node, offset: range.endOffset };
+  }
+
+  function detectTrigger() {
+    const info = getCaretTextBefore();
+    if (!info) { setOpen(false); return; }
+    const m = info.text.match(TRIGGER_RE);
     if (!m) { setOpen(false); return; }
     setQuery(m[1] ?? "");
     setActive(0);
     setOpen(true);
-    // Compute caret coords using mirror
-    requestAnimationFrame(() => {
-      const wrap = wrapRef.current;
-      const mirror = mirrorRef.current;
-      const input = inputRef.current;
-      if (!wrap || !mirror || !input) return;
-      const cs = window.getComputedStyle(input);
-      const props = [
-        "boxSizing","width","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing",
-        "textTransform","textIndent","lineHeight","paddingTop","paddingBottom","paddingLeft","paddingRight",
-        "borderTopWidth","borderBottomWidth","borderLeftWidth","borderRightWidth","whiteSpace","wordSpacing","wordWrap",
-      ];
-      props.forEach((p) => { (mirror.style as any)[p] = (cs as any)[p]; });
-      mirror.style.position = "absolute";
-      mirror.style.visibility = "hidden";
-      mirror.style.top = "0";
-      mirror.style.left = "0";
-      mirror.style.whiteSpace = multiline ? "pre-wrap" : "pre";
-      mirror.style.wordWrap = "break-word";
-      mirror.style.overflow = "hidden";
-      mirror.textContent = before;
-      const span = document.createElement("span");
-      span.textContent = "\u200b";
-      mirror.appendChild(span);
-      const inputRect = input.getBoundingClientRect();
-      const wrapRect = wrap.getBoundingClientRect();
-      const spanRect = span.getBoundingClientRect();
-      const mirrorRect = mirror.getBoundingClientRect();
-      const left = inputRect.left - wrapRect.left + (spanRect.left - mirrorRect.left) - input.scrollLeft;
-      const top = inputRect.top - wrapRect.top + (spanRect.top - mirrorRect.top) - input.scrollTop;
-      setCoords({ left: Math.max(0, left), bottom: wrapRect.height - top });
-    });
+    // Caret coords for picker
+    const sel = window.getSelection();
+    const wrap = wrapRef.current;
+    if (!sel || sel.rangeCount === 0 || !wrap) return;
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const left = rect.left - wrapRect.left;
+    const top = rect.top - wrapRect.top;
+    setCoords({ left: Math.max(0, left), bottom: wrapRect.height - top });
   }
-
-  const pendingCaretRef = useRef<number | null>(null);
 
   function pickAt(idx: number) {
     const flat: Suggestion[] = [...filtered.contacts, ...filtered.projects];
     const item = flat[idx];
     if (!item) return;
-    const el = inputRef.current;
+    const el = editorRef.current;
     if (!el) return;
-    const pos = el.selectionStart ?? 0;
-    const before = value.slice(0, pos);
-    const after = value.slice(pos);
-    const m = before.match(TRIGGER_RE);
-    if (!m) return;
-    const triggerStart = pos - m[0].length + (m[0].startsWith("@") ? 0 : 1); // skip leading whitespace
-    const insertion = `@[${item.name}](${item.kind}:${item.id}) `;
-    const newVal = value.slice(0, triggerStart) + insertion + after;
-    const caret = triggerStart + insertion.length;
-    pendingCaretRef.current = caret;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const tn = range.endContainer;
+    if (tn.nodeType !== Node.TEXT_NODE) { setOpen(false); return; }
+    const textNode = tn as Text;
+    const offset = range.endOffset;
+    const slice = (textNode.textContent ?? "").slice(0, offset);
+    const m = slice.match(TRIGGER_RE);
+    if (!m) { setOpen(false); return; }
+    // length of @query (without any leading whitespace captured by TRIGGER_RE)
+    const triggerLen = m[0].startsWith("@") ? m[0].length : m[0].length - 1;
+    const startInNode = offset - triggerLen;
+
+    // Remove @query characters
+    textNode.deleteData(startInNode, triggerLen);
+
+    // Split the text node at startInNode → `after` is the trailing text
+    const after = textNode.splitText(startInNode);
+    const raw = `@[${item.name}](${item.kind}:${item.id})`;
+    const span = createMentionSpan(document, {
+      raw,
+      name: item.name,
+      type: item.kind,
+      id: item.id,
+    });
+    const space = document.createTextNode("\u00A0"); // non-breaking space so caret sits visually right after chip
+    const parent = after.parentNode!;
+    parent.insertBefore(span, after);
+    parent.insertBefore(space, after);
+
+    // Place caret right after the inserted space
+    const newRange = document.createRange();
+    newRange.setStart(space, 1);
+    newRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+
     setOpen(false);
-    onChange(newVal);
+    emit();
+    // Ensure focus stays
+    editorRef.current?.focus();
   }
 
-  // After parent commits the new value, restore the caret right after the inserted chip.
-  useLayoutEffect(() => {
-    const caret = pendingCaretRef.current;
-    if (caret == null) return;
-    const el = inputRef.current;
-    if (!el) return;
-    if (el.value.length < caret) return; // value not yet propagated
-    el.focus();
-    try { el.setSelectionRange(caret, caret); } catch {}
-    pendingCaretRef.current = null;
-  }, [value]);
+  function removeMentionSpan(span: HTMLElement) {
+    const next = span.nextSibling;
+    const prev = span.previousSibling;
+    // remove a leading space we inserted after the chip
+    if (next && next.nodeType === Node.TEXT_NODE) {
+      const t = next as Text;
+      if (t.textContent && (t.textContent.startsWith(" ") || t.textContent.startsWith("\u00A0"))) {
+        t.deleteData(0, 1);
+        if (!t.textContent) t.parentNode?.removeChild(t);
+      }
+    } else if (prev && prev.nodeType === Node.TEXT_NODE) {
+      const t = prev as Text;
+      if (t.textContent && (t.textContent.endsWith(" ") || t.textContent.endsWith("\u00A0"))) {
+        t.deleteData(t.length - 1, 1);
+      }
+    }
+    span.remove();
+    emit();
+    editorRef.current?.focus();
+  }
 
-  function onKey(e: KeyboardEvent) {
+  function onClickEditor(e: ReactMouseEvent<HTMLDivElement>) {
+    const t = e.target as HTMLElement;
+    if (t && t.getAttribute && t.getAttribute("data-mention-remove") === "1") {
+      e.preventDefault();
+      e.stopPropagation();
+      const span = t.closest("[data-mention-raw]") as HTMLElement | null;
+      if (span) removeMentionSpan(span);
+    }
+  }
+
+  function onKey(e: ReactKeyboardEvent<HTMLDivElement>) {
     if (open && filtered.total > 0) {
       if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => (a + 1) % filtered.total); return; }
       if (e.key === "ArrowUp")   { e.preventDefault(); setActive((a) => (a - 1 + filtered.total) % filtered.total); return; }
@@ -199,138 +358,84 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
       if (e.key === "Tab")       { e.preventDefault(); pickAt(0); return; }
       if (e.key === "Escape")    { e.preventDefault(); setOpen(false); return; }
     }
-    if (e.key === "Enter" && !e.shiftKey && onSubmit) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      if (onSubmit) {
+        e.preventDefault();
+        onSubmit();
+        return;
+      }
+      if (!multiline) {
+        e.preventDefault();
+        return;
+      }
+    }
+    if (e.key === "Enter" && e.shiftKey && multiline) {
+      // Insert a <br> manually for consistent serialization
       e.preventDefault();
-      onSubmit();
+      document.execCommand("insertLineBreak");
+      emit();
     }
   }
 
-  const sharedProps = {
-    value,
-    onChange: (e: any) => { onChange(e.target.value); setTimeout(updateCaret, 0); },
-    onKeyDown: onKey,
-    onKeyUp: updateCaret,
-    onClick: updateCaret,
-    onFocus: () => { onFocus?.(); updateCaret(); },
-    onBlur: () => { onBlur?.(); setTimeout(() => setOpen(false), 120); },
-    placeholder,
-    disabled,
-    autoFocus,
-    className,
-    style,
+  function onInput() {
+    emit();
+    detectTrigger();
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain");
+    document.execCommand("insertText", false, text);
+  }
+
+  // Auto-resize: clamp by maxRows via maxHeight
+  const lineH = (style?.lineHeight as any) ? parseFloat(String(style?.lineHeight)) : 22;
+  const editorStyle: CSSProperties = {
+    outline: "none",
+    whiteSpace: multiline ? "pre-wrap" : "pre-wrap",
+    wordBreak: "break-word",
+    overflowWrap: "break-word",
+    overflowY: multiline ? "auto" : "hidden",
+    maxHeight: multiline ? `calc(${lineH * maxRows}px + 16px)` : undefined,
+    ...(style ?? {}),
   };
 
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  // Mirror computed styles from the input onto the overlay so chips align exactly with text.
-  useLayoutEffect(() => {
-    const el = inputRef.current;
-    const ov = overlayRef.current;
-    if (!el || !ov) return;
-    const cs = window.getComputedStyle(el);
-    const props = [
-      "boxSizing","fontFamily","fontSize","fontWeight","fontStyle","letterSpacing",
-      "textTransform","textIndent","lineHeight","paddingTop","paddingBottom","paddingLeft","paddingRight",
-      "borderTopWidth","borderBottomWidth","borderLeftWidth","borderRightWidth","wordSpacing","wordWrap","textAlign",
-    ];
-    props.forEach((p) => { (ov.style as any)[p] = (cs as any)[p]; });
-    ov.style.borderStyle = "solid";
-    ov.style.borderColor = "transparent";
-  }, [value, multiline, className, style]);
-
-  function removeMentionAt(start: number, raw: string) {
-    let end = start + raw.length;
-    // also eat one trailing space we inserted, or one leading space if no trailing
-    if (value[end] === " ") end += 1;
-    else if (start > 0 && value[start - 1] === " ") {
-      const newVal = value.slice(0, start - 1) + value.slice(end);
-      onChange(newVal);
-      requestAnimationFrame(() => inputRef.current?.focus());
-      return;
-    }
-    const newVal = value.slice(0, start) + value.slice(end);
-    onChange(newVal);
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }
-
-  const overlaySegments = useMemo(() => {
-    const segs = parseMentions(value);
-    const offsets = segmentOffsets(segs);
-    return { segs, offsets };
-  }, [value]);
-
-  const hasMentions = overlaySegments.segs.some((s) => s.kind === "mention");
-
-  const inputStyleOverride: CSSProperties = hasMentions
-    ? { ...(style ?? {}), color: "transparent", caretColor: "var(--text-primary)", WebkitTextFillColor: "transparent" }
-    : (style ?? {});
-
-  const sharedPropsFinal = {
-    ...sharedProps,
-    style: inputStyleOverride,
-    onScroll: (e: any) => { setScrollTop(e.target.scrollTop); setScrollLeft(e.target.scrollLeft); },
+  // Placeholder mirrors editor's padding so it aligns
+  const placeholderStyle: CSSProperties = {
+    position: "absolute",
+    top: (style?.paddingTop as any) ?? (style?.padding as any) ?? 0,
+    left: (style?.paddingLeft as any) ?? (style?.padding as any) ?? 0,
+    right: (style?.paddingRight as any) ?? (style?.padding as any) ?? 0,
+    color: "#444",
+    pointerEvents: "none",
+    fontSize: style?.fontSize,
+    lineHeight: style?.lineHeight,
+    fontFamily: style?.fontFamily,
   };
 
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
-      {multiline ? (
-        <textarea
-          ref={(el) => { inputRef.current = el; }}
-          rows={rows}
-          {...sharedPropsFinal}
-        />
-      ) : (
-        <input
-          ref={(el) => { inputRef.current = el; }}
-          type="text"
-          {...sharedPropsFinal}
-        />
+      <div
+        ref={editorRef}
+        role="textbox"
+        aria-multiline={multiline ? "true" : "false"}
+        contentEditable={!disabled}
+        suppressContentEditableWarning
+        spellCheck
+        onInput={onInput}
+        onKeyDown={onKey}
+        onKeyUp={detectTrigger}
+        onClick={(e) => { onClickEditor(e); detectTrigger(); }}
+        onFocus={() => { onFocus?.(); detectTrigger(); }}
+        onBlur={() => { onBlur?.(); setTimeout(() => setOpen(false), 120); }}
+        onPaste={onPaste}
+        data-placeholder={placeholder}
+        className={className}
+        style={editorStyle}
+      />
+      {isEmpty && placeholder && (
+        <div style={placeholderStyle}>{placeholder}</div>
       )}
-      {hasMentions && (
-        <div
-          ref={overlayRef}
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            overflow: "hidden",
-            whiteSpace: multiline ? "pre-wrap" : "pre",
-            wordWrap: "break-word",
-            color: "var(--text-primary)",
-          }}
-        >
-          <div style={{ transform: `translate(${-scrollLeft}px, ${-scrollTop}px)` }}>
-            {overlaySegments.segs.map((s, i) => {
-              if (s.kind === "text") return <span key={i}>{s.value}</span>;
-              const start = overlaySegments.offsets[i];
-              return (
-                <span
-                  key={i}
-                  className="alfred-mention-pill"
-                  style={{ pointerEvents: "auto" }}
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  @{s.mention.name}
-                  <button
-                    type="button"
-                    aria-label={`Quitar ${s.mention.name}`}
-                    onClick={() => removeMentionAt(start, s.raw)}
-                    className="alfred-mention-pill-x"
-                  >
-                    ×
-                  </button>
-                </span>
-              );
-            })}
-            {/* trailing space so wrap matches when value ends with newline */}
-            <span style={{ display: "inline-block", width: 0 }}>&#8203;</span>
-          </div>
-        </div>
-      )}
-      <div ref={mirrorRef} aria-hidden="true" />
       {open && coords && (
         <div
           className="alfred-mention-picker"
