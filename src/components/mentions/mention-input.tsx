@@ -383,7 +383,7 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     detectTrigger();
   }
 
-  function onPaste(e: React.ClipboardEvent<HTMLDivElement>) {
+  function onPaste(e: ReactClipboardEvent<HTMLDivElement>) {
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);
