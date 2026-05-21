@@ -244,6 +244,15 @@
   color: #444;
 }
 
+/* Placeholder para MentionInput (contenteditable) */
+.alfred-mention-editor[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #444;
+  pointer-events: none;
+  display: inline;
+}
+
+
 /* Mention chips & picker */
 .alfred-mention-chip {
   display: inline-flex;
