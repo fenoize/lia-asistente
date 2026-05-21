@@ -403,9 +403,12 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
   // Placeholder mirrors editor's padding so it aligns
   const placeholderStyle: CSSProperties = {
     position: "absolute",
-    top: (style?.paddingTop as any) ?? (style?.padding as any) ?? 0,
-    left: (style?.paddingLeft as any) ?? (style?.padding as any) ?? 0,
-    right: (style?.paddingRight as any) ?? (style?.padding as any) ?? 0,
+    inset: 0,
+    padding: (style?.padding as any),
+    paddingTop: (style?.paddingTop as any),
+    paddingLeft: (style?.paddingLeft as any),
+    paddingRight: (style?.paddingRight as any),
+    paddingBottom: (style?.paddingBottom as any),
     color: "#444",
     pointerEvents: "none",
     fontSize: style?.fontSize,
