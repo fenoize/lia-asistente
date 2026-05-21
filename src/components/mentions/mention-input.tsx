@@ -378,7 +378,18 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     }
   }
 
+  function cleanupEmpty() {
+    const el = editorRef.current;
+    if (!el) return;
+    // Si el navegador insertó <br> u otros nodos en estado vacío, limpiarlos
+    // para que el caret se quede al inicio (donde aparece el placeholder).
+    if (serializeEditor(el) === "" && el.childNodes.length > 0) {
+      el.innerHTML = "";
+    }
+  }
+
   function onInput() {
+    cleanupEmpty();
     emit();
     detectTrigger();
   }
@@ -398,23 +409,8 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
     overflowWrap: "break-word",
     overflowY: multiline ? "auto" : "hidden",
     maxHeight: multiline ? `calc(${lineH * maxRows}px + 16px)` : undefined,
+    minHeight: typeof style?.lineHeight !== "undefined" ? (style!.lineHeight as any) : `${lineH}px`,
     ...(style ?? {}),
-  };
-
-  // Placeholder mirrors editor's padding so it aligns
-  const placeholderStyle: CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    padding: (style?.padding as any),
-    paddingTop: (style?.paddingTop as any),
-    paddingLeft: (style?.paddingLeft as any),
-    paddingRight: (style?.paddingRight as any),
-    paddingBottom: (style?.paddingBottom as any),
-    color: "#444",
-    pointerEvents: "none",
-    fontSize: style?.fontSize,
-    lineHeight: style?.lineHeight,
-    fontFamily: style?.fontFamily,
   };
 
   return (
@@ -430,16 +426,15 @@ export const MentionInput = forwardRef<MentionInputHandle, Props>(function Menti
         onKeyDown={onKey}
         onKeyUp={detectTrigger}
         onClick={(e) => { onClickEditor(e); detectTrigger(); }}
-        onFocus={() => { onFocus?.(); detectTrigger(); }}
+        onFocus={() => { onFocus?.(); cleanupEmpty(); detectTrigger(); }}
         onBlur={() => { onBlur?.(); setTimeout(() => setOpen(false), 120); }}
         onPaste={onPaste}
-        data-placeholder={placeholder}
-        className={className}
+        data-placeholder={placeholder ?? ""}
+        data-empty={isEmpty ? "true" : "false"}
+        className={`alfred-mention-editor ${className ?? ""}`}
         style={editorStyle}
       />
-      {isEmpty && placeholder && (
-        <div style={placeholderStyle}>{placeholder}</div>
-      )}
+
       {open && coords && (
         <div
           className="alfred-mention-picker"
