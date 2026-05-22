@@ -144,7 +144,11 @@ export function ChatInterface() {
       ];
       if (!alreadyLoaded) {
         tasks.unshift(
-          supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+          supabase.from("chat_messages")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(PAGE_SIZE),
         );
       }
       const results = await Promise.all(tasks);
@@ -156,18 +160,21 @@ export function ChatInterface() {
       const r = results[offset + 3];
 
       if (history?.data) {
-        setMessages(history.data.map((row: any) => {
-          const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
-          return {
-            id: row.id,
-            role: row.role,
-            content: parsed.clean,
-            action: parsed.action,
-            actionStatus: row.metadata?.actionStatus ?? (parsed.action ? "pending" : undefined),
-            createdAt: new Date(row.created_at).getTime(),
-          };
-        }));
+        const rows = [...history.data].reverse();
+        setMessages(rows.map(rowToMsg));
+        setHasMore(history.data.length === PAGE_SIZE);
         loadedForUser.current = user.id;
+      } else if (alreadyLoaded) {
+        // On revisit, check if there are older messages than current oldest
+        if (messages.length > 0) {
+          const oldest = new Date(messages[0].createdAt).toISOString();
+          const { count } = await supabase
+            .from("chat_messages")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .lt("created_at", oldest);
+          setHasMore((count ?? 0) > 0);
+        }
       }
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       contextRef.current = {
