@@ -17,6 +17,10 @@ export type AlfredContext = {
   inactiveClients: string;
   contactMemory: string;
   contactLinks: string;
+  briefTaskCount: number;
+  briefTasksList: string;
+  todayMeetingCount: number;
+  activeReminderCount: number;
 };
 
 function personalityBlock(c: AlfredContext): string {
@@ -162,38 +166,50 @@ El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
 }
 
 export function buildBriefSystemPrompt(c: AlfredContext): string {
+  const hasMeetings = c.todayMeetingCount > 0;
+  const hasTasks = c.briefTaskCount > 0;
+  const hasReminders = c.activeReminderCount > 0;
+
+  const parts: string[] = [];
+  if (hasMeetings) parts.push(`${c.todayMeetingCount} ${c.todayMeetingCount === 1 ? "reunión" : "reuniones"}`);
+  if (hasTasks) parts.push(`${c.briefTaskCount} ${c.briefTaskCount === 1 ? "tarea relevante" : "tareas relevantes"} (hoy, vencidas o urgentes)`);
+  if (hasReminders) parts.push(`${c.activeReminderCount} ${c.activeReminderCount === 1 ? "recordatorio" : "recordatorios"}`);
+
+  const openingHint = parts.length
+    ? `Comienza así: "Hoy tienes ${parts.join(" y ")}."`
+    : `Comienza diciendo que el día está despejado, sin reuniones, tareas urgentes ni recordatorios activos.`;
+
   return `Eres ${c.assistantName}, asistente ejecutivo personal de ${c.name}.
 
 ${personalityBlock(c)}
 
 Generas el resumen breve del día. Español, tuteo, sin preámbulos, sin emojis.
 
-Usa exactamente esta estructura:
+REGLAS DEL RESUMEN:
+- SOLO menciona secciones (reuniones, tareas, recordatorios) que tengan contenido real (count > 0).
+- NUNCA digas "0 reuniones", "0 tareas" ni "ninguna". Si una categoría está vacía, omítela por completo.
+- "Tareas" en el resumen significa: tareas con fecha = hoy, tareas vencidas, o tareas urgentes. NO cuentes todas las pendientes.
+- Si no hay nada relevante, dilo en una sola oración corta.
 
-"Hoy tienes [N] reuniones y [N] tareas pendientes.
+ESTRUCTURA:
+${openingHint}
 
-[1-2 oraciones con lo más crítico del día]
-
-Te recomiendo empezar por: [tarea o acción concreta].
-
-[Alerta si hay algo urgente o en riesgo, si no, omite esta línea]"
+Luego (cada línea es opcional, solo si aplica):
+- 1-2 oraciones con lo más crítico del día.
+- "Te recomiendo empezar por: [tarea o acción concreta]." — solo si hay tareas relevantes.
+- Una alerta breve si hay algo urgente o en riesgo.
 
 CONTEXTO
 - Hora: ${c.currentTime}  ·  Zona: ${c.timezone}
 - Rol: ${c.role}  ·  Objetivos: ${c.goals}
 
-Tareas pendientes:
-${c.pendingTasks}
+Tareas relevantes hoy (hoy + vencidas + urgentes) [count=${c.briefTaskCount}]:
+${c.briefTasksList}
 
-Tareas vencidas:
-${c.overdueTasks}
-
-Reuniones hoy:
+Reuniones hoy [count=${c.todayMeetingCount}]:
 ${c.todayMeetings}
 
-Reuniones mañana:
-${c.tomorrowMeetings}
-
-Recordatorios activos:
+Recordatorios activos [count=${c.activeReminderCount}]:
 ${c.activeReminders}`;
 }
+
