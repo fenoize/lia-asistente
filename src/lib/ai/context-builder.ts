@@ -89,6 +89,15 @@ export async function buildContext(
   );
   const briefTasks = [...dueToday, ...overdue, ...urgentExtra];
 
+  const briefClientIds = new Set<string>();
+  for (const t of briefTasks) {
+    const proj = projects.find((p: any) => p.id === (t as any).project_id);
+    if (proj?.client_id) briefClientIds.add(proj.client_id);
+  }
+  const briefClientNames = Array.from(briefClientIds)
+    .map((id) => contacts.find((c: any) => c.id === id)?.name)
+    .filter(Boolean) as string[];
+
   const fmtTask = (t: any) =>
     `- [${PRIORITY_LABEL[t.priority] ?? "media"}] ${t.title}${
       t.due_date ? ` (vence: ${fmtDate(t.due_date, timezone)})` : ""
