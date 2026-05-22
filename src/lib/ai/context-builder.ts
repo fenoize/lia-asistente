@@ -138,6 +138,8 @@ export async function buildContext(
     tomorrowMeetings: bullets(tomorrowMeetings.map(fmtMeeting), "(ninguna)"),
     briefTaskCount: briefTasks.length,
     briefTasksList: bullets(briefTasks.map(fmtTask), "(ninguna)"),
+    briefClientCount: briefClientNames.length,
+    briefClientNames: briefClientNames.join(", "),
     todayMeetingCount: todayMeetings.length,
     activeReminderCount: reminders.length,
     activeReminders: bullets(
