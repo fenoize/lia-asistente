@@ -78,9 +78,53 @@ export function ChatInterface() {
   const [streaming, setStreaming] = useState(false);
   const [name, setName] = useState("");
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
+
+  const PAGE_SIZE = 10;
+
+  const rowToMsg = (row: any): Msg => {
+    const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
+    return {
+      id: row.id,
+      role: row.role,
+      content: parsed.clean,
+      action: parsed.action,
+      actionStatus: row.metadata?.actionStatus ?? (parsed.action ? "pending" : undefined),
+      createdAt: new Date(row.created_at).getTime(),
+    };
+  };
+
+  const loadMore = async () => {
+    if (!user || loadingMore || messages.length === 0) return;
+    setLoadingMore(true);
+    const oldest = new Date(messages[0].createdAt).toISOString();
+    const scrollEl = scrollRef.current;
+    const prevHeight = scrollEl?.scrollHeight ?? 0;
+    const prevTop = scrollEl?.scrollTop ?? 0;
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("user_id", user.id)
+      .lt("created_at", oldest)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+    if (data) {
+      const older = data.map(rowToMsg).reverse();
+      setMessages((m) => [...older, ...m]);
+      setHasMore(data.length === PAGE_SIZE);
+      // Preserve scroll position after prepending
+      requestAnimationFrame(() => {
+        if (scrollEl) {
+          scrollEl.scrollTop = scrollEl.scrollHeight - prevHeight + prevTop;
+        }
+      });
+    }
+    setLoadingMore(false);
+  };
 
   useEffect(() => {
     setUserTimeZone(detectUserTimeZone());
