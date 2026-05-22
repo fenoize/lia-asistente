@@ -114,6 +114,7 @@ export function ChatInterface() {
       .limit(PAGE_SIZE);
     if (data) {
       const older = data.map(rowToMsg).reverse();
+      skipAutoScrollRef.current = true;
       setMessages((m) => [...older, ...m]);
       setHasMore(data.length === PAGE_SIZE);
       // Preserve scroll position after prepending
