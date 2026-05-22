@@ -50,6 +50,7 @@ export async function buildContext(
       .select("title, datetime")
       .eq("done", false)
       .gte("datetime", todayRange.startIso)
+      .lt("datetime", todayRange.endExclusiveIso)
       .order("datetime", { ascending: true })
       .limit(20),
     supabase.from("contacts")
@@ -87,6 +88,15 @@ export async function buildContext(
     (t: any) => t.priority === "urgent" && !overdue.includes(t) && !dueToday.includes(t),
   );
   const briefTasks = [...dueToday, ...overdue, ...urgentExtra];
+
+  const briefClientIds = new Set<string>();
+  for (const t of briefTasks) {
+    const proj = projects.find((p: any) => p.id === (t as any).project_id);
+    if (proj?.client_id) briefClientIds.add(proj.client_id);
+  }
+  const briefClientNames = Array.from(briefClientIds)
+    .map((id) => contacts.find((c: any) => c.id === id)?.name)
+    .filter(Boolean) as string[];
 
   const fmtTask = (t: any) =>
     `- [${PRIORITY_LABEL[t.priority] ?? "media"}] ${t.title}${
@@ -128,6 +138,8 @@ export async function buildContext(
     tomorrowMeetings: bullets(tomorrowMeetings.map(fmtMeeting), "(ninguna)"),
     briefTaskCount: briefTasks.length,
     briefTasksList: bullets(briefTasks.map(fmtTask), "(ninguna)"),
+    briefClientCount: briefClientNames.length,
+    briefClientNames: briefClientNames.join(", "),
     todayMeetingCount: todayMeetings.length,
     activeReminderCount: reminders.length,
     activeReminders: bullets(
