@@ -50,6 +50,7 @@ export async function buildContext(
       .select("title, datetime")
       .eq("done", false)
       .gte("datetime", todayRange.startIso)
+      .lt("datetime", tomorrowRange.endExclusiveIso)
       .order("datetime", { ascending: true })
       .limit(20),
     supabase.from("contacts")
