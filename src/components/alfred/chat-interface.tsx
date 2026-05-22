@@ -187,8 +187,13 @@ export function ChatInterface() {
     })();
   }, [user, loadedForUser, setMessages]);
 
-  // Auto-scroll
+  // Auto-scroll (skip when prepending older messages)
+  const skipAutoScrollRef = useRef(false);
   useEffect(() => {
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
