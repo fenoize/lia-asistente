@@ -17,6 +17,10 @@ export type AlfredContext = {
   inactiveClients: string;
   contactMemory: string;
   contactLinks: string;
+  briefTaskCount: number;
+  briefTasksList: string;
+  todayMeetingCount: number;
+  activeReminderCount: number;
 };
 
 function personalityBlock(c: AlfredContext): string {
