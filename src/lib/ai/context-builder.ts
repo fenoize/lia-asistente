@@ -70,6 +70,7 @@ export async function buildContext(
   const projects = projectsRes.data ?? [];
   const relations = relationsRes.data ?? [];
   const todayStart = new Date(todayRange.startIso);
+  const tomorrowStart = new Date(tomorrowRange.startIso);
 
   const overdue = tasks.filter(
     (t: any) => t.due_date && new Date(t.due_date) < todayStart,
@@ -77,6 +78,15 @@ export async function buildContext(
   const pending = tasks.filter(
     (t: any) => !overdue.includes(t),
   );
+  const dueToday = tasks.filter((t: any) => {
+    if (!t.due_date) return false;
+    const d = new Date(t.due_date);
+    return d >= todayStart && d < tomorrowStart;
+  });
+  const urgentExtra = tasks.filter(
+    (t: any) => t.priority === "urgent" && !overdue.includes(t) && !dueToday.includes(t),
+  );
+  const briefTasks = [...dueToday, ...overdue, ...urgentExtra];
 
   const fmtTask = (t: any) =>
     `- [${PRIORITY_LABEL[t.priority] ?? "media"}] ${t.title}${
