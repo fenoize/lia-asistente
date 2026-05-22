@@ -126,6 +126,10 @@ export async function buildContext(
     overdueTasks: bullets(overdue.map(fmtTask), "(ninguna)"),
     todayMeetings: bullets(todayMeetings.map(fmtMeeting), "(ninguna)"),
     tomorrowMeetings: bullets(tomorrowMeetings.map(fmtMeeting), "(ninguna)"),
+    briefTaskCount: briefTasks.length,
+    briefTasksList: bullets(briefTasks.map(fmtTask), "(ninguna)"),
+    todayMeetingCount: todayMeetings.length,
+    activeReminderCount: reminders.length,
     activeReminders: bullets(
       reminders.map((r: any) => `- ${r.title} (${fmtDate(r.datetime, timezone)})`),
       "(ninguno)",
