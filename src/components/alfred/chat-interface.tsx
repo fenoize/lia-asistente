@@ -78,9 +78,54 @@ export function ChatInterface() {
   const [streaming, setStreaming] = useState(false);
   const [name, setName] = useState("");
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
   const contextRef = useRef<any>({});
+
+  const PAGE_SIZE = 10;
+
+  const rowToMsg = (row: any): Msg => {
+    const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
+    return {
+      id: row.id,
+      role: row.role,
+      content: parsed.clean,
+      action: parsed.action,
+      actionStatus: row.metadata?.actionStatus ?? (parsed.action ? "pending" : undefined),
+      createdAt: new Date(row.created_at).getTime(),
+    };
+  };
+
+  const loadMore = async () => {
+    if (!user || loadingMore || messages.length === 0) return;
+    setLoadingMore(true);
+    const oldest = new Date(messages[0].createdAt).toISOString();
+    const scrollEl = scrollRef.current;
+    const prevHeight = scrollEl?.scrollHeight ?? 0;
+    const prevTop = scrollEl?.scrollTop ?? 0;
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("user_id", user.id)
+      .lt("created_at", oldest)
+      .order("created_at", { ascending: false })
+      .limit(PAGE_SIZE);
+    if (data) {
+      const older = data.map(rowToMsg).reverse();
+      skipAutoScrollRef.current = true;
+      setMessages((m) => [...older, ...m]);
+      setHasMore(data.length === PAGE_SIZE);
+      // Preserve scroll position after prepending
+      requestAnimationFrame(() => {
+        if (scrollEl) {
+          scrollEl.scrollTop = scrollEl.scrollHeight - prevHeight + prevTop;
+        }
+      });
+    }
+    setLoadingMore(false);
+  };
 
   useEffect(() => {
     setUserTimeZone(detectUserTimeZone());
@@ -100,7 +145,11 @@ export function ChatInterface() {
       ];
       if (!alreadyLoaded) {
         tasks.unshift(
-          supabase.from("chat_messages").select("*").order("created_at", { ascending: true }).limit(20),
+          supabase.from("chat_messages")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(PAGE_SIZE),
         );
       }
       const results = await Promise.all(tasks);
@@ -112,18 +161,21 @@ export function ChatInterface() {
       const r = results[offset + 3];
 
       if (history?.data) {
-        setMessages(history.data.map((row: any) => {
-          const parsed = row.role === "assistant" ? parseAction(row.content) : { clean: row.content, action: null };
-          return {
-            id: row.id,
-            role: row.role,
-            content: parsed.clean,
-            action: parsed.action,
-            actionStatus: row.metadata?.actionStatus ?? (parsed.action ? "pending" : undefined),
-            createdAt: new Date(row.created_at).getTime(),
-          };
-        }));
+        const rows = [...history.data].reverse();
+        setMessages(rows.map(rowToMsg));
+        setHasMore(history.data.length === PAGE_SIZE);
         loadedForUser.current = user.id;
+      } else if (alreadyLoaded) {
+        // On revisit, check if there are older messages than current oldest
+        if (messages.length > 0) {
+          const oldest = new Date(messages[0].createdAt).toISOString();
+          const { count } = await supabase
+            .from("chat_messages")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .lt("created_at", oldest);
+          setHasMore((count ?? 0) > 0);
+        }
       }
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       contextRef.current = {
@@ -136,8 +188,13 @@ export function ChatInterface() {
     })();
   }, [user, loadedForUser, setMessages]);
 
-  // Auto-scroll
+  // Auto-scroll (skip when prepending older messages)
+  const skipAutoScrollRef = useRef(false);
   useEffect(() => {
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
@@ -291,6 +348,26 @@ export function ChatInterface() {
           )}
 
           <div className="space-y-4">
+            {hasMore && messages.length > 0 && (
+              <div className="flex justify-center pb-2">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  style={{
+                    fontSize: 12,
+                    border: "1px solid var(--border)",
+                    borderRadius: 100,
+                    padding: "6px 14px",
+                    color: "var(--text-secondary)",
+                    background: "var(--bg-elevated)",
+                    cursor: loadingMore ? "default" : "pointer",
+                    opacity: loadingMore ? 0.6 : 1,
+                  }}
+                >
+                  {loadingMore ? "Cargando..." : "Cargar mensajes anteriores"}
+                </button>
+              </div>
+            )}
             {messages.map((m, idx) => {
               const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
