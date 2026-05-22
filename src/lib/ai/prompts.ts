@@ -174,11 +174,17 @@ export function buildBriefSystemPrompt(c: AlfredContext): string {
 
   const parts: string[] = [];
   if (hasMeetings) parts.push(`${c.todayMeetingCount} ${c.todayMeetingCount === 1 ? "reunión" : "reuniones"}`);
-  if (hasTasks) parts.push(`${c.briefTaskCount} ${c.briefTaskCount === 1 ? "tarea relevante" : "tareas relevantes"} (hoy, vencidas o urgentes)`);
-  if (hasReminders) parts.push(`${c.activeReminderCount} ${c.activeReminderCount === 1 ? "recordatorio" : "recordatorios"}`);
+  if (hasTasks) {
+    const tasksLabel = c.briefTaskCount === 1 ? "tarea relevante" : "tareas relevantes";
+    const clientSuffix = c.briefClientCount > 0
+      ? ` con ${c.briefClientCount === 1 ? `${c.briefClientNames}` : `${c.briefClientCount} clientes (${c.briefClientNames})`}`
+      : "";
+    parts.push(`${c.briefTaskCount} ${tasksLabel}${clientSuffix}`);
+  }
+  if (hasReminders) parts.push(`${c.activeReminderCount} ${c.activeReminderCount === 1 ? "recordatorio de hoy" : "recordatorios de hoy"}`);
 
   const openingHint = parts.length
-    ? `Comienza así: "Hoy tienes ${parts.join(" y ")}."`
+    ? `Comienza así, exactamente con esta estructura: "Hoy tienes ${parts.join(", ")}." (cambia las comas finales por "y" si suena más natural). No agregues paréntesis explicativos como "(hoy, vencidas o urgentes)" — ya está implícito.`
     : `Comienza diciendo que el día está despejado, sin reuniones, tareas urgentes ni recordatorios activos.`;
 
   return `Eres ${c.assistantName}, asistente ejecutivo personal de ${c.name}.
