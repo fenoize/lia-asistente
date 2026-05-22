@@ -348,6 +348,26 @@ export function ChatInterface() {
           )}
 
           <div className="space-y-4">
+            {hasMore && messages.length > 0 && (
+              <div className="flex justify-center pb-2">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  style={{
+                    fontSize: 12,
+                    border: "1px solid var(--border)",
+                    borderRadius: 100,
+                    padding: "6px 14px",
+                    color: "var(--text-secondary)",
+                    background: "var(--bg-elevated)",
+                    cursor: loadingMore ? "default" : "pointer",
+                    opacity: loadingMore ? 0.6 : 1,
+                  }}
+                >
+                  {loadingMore ? "Cargando..." : "Cargar mensajes anteriores"}
+                </button>
+              </div>
+            )}
             {messages.map((m, idx) => {
               const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
