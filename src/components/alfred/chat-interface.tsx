@@ -301,7 +301,7 @@ export function ChatInterface() {
     setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "declined" } : x));
   };
 
-  const isEmpty = messages.length === 0;
+  const isEmpty = messages.length === 0 && !initialLoading;
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     return h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
