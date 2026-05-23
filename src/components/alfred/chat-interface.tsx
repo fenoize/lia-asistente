@@ -73,16 +73,16 @@ function stripPartialJsonForLive(raw: string): string {
 export function ChatInterface() {
   const { user } = useAuth();
   const assistant = useAssistant();
-  const { messages, setMessages, loadedForUser } = useChatStore();
+  const { messages, setMessages, loadedForUser, hasMore, setHasMore, name, setName, contextRef } = useChatStore();
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [name, setName] = useState("");
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
-  const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(
+    () => !!user && loadedForUser.current !== user.id,
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
-  const contextRef = useRef<any>({});
 
   const PAGE_SIZE = 10;
 
@@ -131,51 +131,34 @@ export function ChatInterface() {
     setUserTimeZone(detectUserTimeZone());
   }, []);
 
-  // Load history + context once per user (kept in memory across navigations)
+  // Load history + context ONCE per user. Cached in chat store across navigations.
   useEffect(() => {
     if (!user) return;
-    const alreadyLoaded = loadedForUser.current === user.id;
+    if (loadedForUser.current === user.id) {
+      setInitialLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setInitialLoading(true);
     (async () => {
       const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
-      const tasks: any[] = [
+      const [history, profile, t, m, r] = await Promise.all([
+        supabase.from("chat_messages")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(PAGE_SIZE),
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase.from("tasks").select("title,due_date,priority,status").eq("status", "pending").limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
-      ];
-      if (!alreadyLoaded) {
-        tasks.unshift(
-          supabase.from("chat_messages")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(PAGE_SIZE),
-        );
-      }
-      const results = await Promise.all(tasks);
-      const offset = alreadyLoaded ? 0 : 1;
-      const history = alreadyLoaded ? null : results[0];
-      const profile = results[offset];
-      const t = results[offset + 1];
-      const m = results[offset + 2];
-      const r = results[offset + 3];
+      ]);
+      if (cancelled) return;
 
       if (history?.data) {
         const rows = [...history.data].reverse();
         setMessages(rows.map(rowToMsg));
         setHasMore(history.data.length === PAGE_SIZE);
-        loadedForUser.current = user.id;
-      } else if (alreadyLoaded) {
-        // On revisit, check if there are older messages than current oldest
-        if (messages.length > 0) {
-          const oldest = new Date(messages[0].createdAt).toISOString();
-          const { count } = await supabase
-            .from("chat_messages")
-            .select("*", { count: "exact", head: true })
-            .eq("user_id", user.id)
-            .lt("created_at", oldest);
-          setHasMore((count ?? 0) > 0);
-        }
       }
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       contextRef.current = {
@@ -185,8 +168,11 @@ export function ChatInterface() {
         meetings: m.data ?? [],
         reminders: r.data ?? [],
       };
+      loadedForUser.current = user.id;
+      setInitialLoading(false);
     })();
-  }, [user, loadedForUser, setMessages]);
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Auto-scroll (skip when prepending older messages)
   const skipAutoScrollRef = useRef(false);
