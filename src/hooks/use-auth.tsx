@@ -31,6 +31,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Sync OneSignal push subscription id to profile once user is authenticated.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || typeof window === "undefined") return;
+    const OneSignalDeferred = (window as any).OneSignalDeferred;
+    if (!OneSignalDeferred) return;
+
+    let cancelled = false;
+    let listenerAttached: any = null;
+
+    OneSignalDeferred.push(async (OneSignal: any) => {
+      try {
+        try { await OneSignal.login(userId); } catch { /* ignore */ }
+
+        const syncPlayerId = async () => {
+          const playerId: string | undefined = OneSignal?.User?.PushSubscription?.id;
+          if (!playerId || cancelled) return;
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("onesignal_player_id")
+            .eq("id", userId)
+            .maybeSingle();
+          if (cancelled) return;
+          if (profile?.onesignal_player_id !== playerId) {
+            await supabase
+              .from("profiles")
+              .update({ onesignal_player_id: playerId })
+              .eq("id", userId);
+          }
+        };
+
+        await syncPlayerId();
+        listenerAttached = syncPlayerId;
+        OneSignal.User.PushSubscription.addEventListener("change", syncPlayerId);
+      } catch (err) {
+        console.error("OneSignal sync error", err);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      try {
+        const OS = (window as any).OneSignal;
+        if (OS && listenerAttached) {
+          OS.User?.PushSubscription?.removeEventListener?.("change", listenerAttached);
+        }
+      } catch { /* ignore */ }
+    };
+  }, [session?.user?.id]);
+
   return (
     <Ctx.Provider
       value={{
