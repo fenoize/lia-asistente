@@ -449,6 +449,36 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          entity_id: string
+          entity_type: string
+          id: string
+          onesignal_notification_id: string | null
+          scheduled_for: string | null
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          entity_id: string
+          entity_type: string
+          id?: string
+          onesignal_notification_id?: string | null
+          scheduled_for?: string | null
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          onesignal_notification_id?: string | null
+          scheduled_for?: string | null
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           assistant_gender: string | null
@@ -459,6 +489,7 @@ export type Database = {
           id: string
           name: string | null
           onboarding_completed: boolean | null
+          onesignal_player_id: string | null
           plan: string | null
           preferred_model: string | null
           role: string | null
@@ -473,6 +504,7 @@ export type Database = {
           id: string
           name?: string | null
           onboarding_completed?: boolean | null
+          onesignal_player_id?: string | null
           plan?: string | null
           preferred_model?: string | null
           role?: string | null
@@ -487,6 +519,7 @@ export type Database = {
           id?: string
           name?: string | null
           onboarding_completed?: boolean | null
+          onesignal_player_id?: string | null
           plan?: string | null
           preferred_model?: string | null
           role?: string | null
