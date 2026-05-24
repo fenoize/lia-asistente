@@ -4,6 +4,7 @@ import { IconVenus, IconMars } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -189,6 +190,8 @@ function SettingsPage() {
           {saving ? "Guardando…" : "Guardar"}
         </button>
       </section>
+
+      <PushNotificationsSettings />
     </div>
   );
 }
