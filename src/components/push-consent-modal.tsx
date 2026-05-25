@@ -128,8 +128,13 @@ export function PushConsentModal() {
           <button
             disabled={loading}
             onClick={async () => {
-              await enable();
-              setOpen(false);
+              try {
+                await enable();
+              } catch (err) {
+                console.error("OneSignal permission error:", err);
+              } finally {
+                setOpen(false);
+              }
             }}
             style={{
               background: "var(--accent-color)",
