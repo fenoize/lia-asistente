@@ -60,17 +60,47 @@ export function usePushNotifications() {
     try {
       const OS = await getOneSignal();
       if (!OS) return;
-      // Will trigger native prompt if needed
       await OS.Notifications.requestPermission();
       try { await OS.User.PushSubscription.optIn(); } catch { /* ignore */ }
-      const perm = typeof Notification !== "undefined" ? Notification.permission : "default";
+
+      // On mobile PWA, the subscription id can take a moment to populate.
+      let playerId: string | undefined = OS.User?.PushSubscription?.id;
+      for (let i = 0; i < 8 && !playerId; i++) {
+        await new Promise((r) => setTimeout(r, 250));
+        playerId = OS.User?.PushSubscription?.id;
+      }
+
+      const perm =
+        typeof Notification !== "undefined" ? Notification.permission : "default";
       setPermission(perm);
-      const sub = !!OS.User?.PushSubscription?.optedIn;
+      const sub = !!OS.User?.PushSubscription?.optedIn || !!playerId;
       setIsSubscribed(sub);
+
+      if (perm === "granted" && playerId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from("profiles")
+              .update({ onesignal_player_id: playerId })
+              .eq("id", user.id);
+          }
+        } catch (err) {
+          console.error("Failed to save OneSignal player id:", err);
+        }
+      }
+
       const result: Consent = perm === "granted" ? "granted" : "denied";
       localStorage.setItem(STORAGE_KEY, result);
       localStorage.setItem(ASKED_KEY, "1");
       setConsent(result);
+    } catch (error) {
+      console.error("OneSignal permission error:", error);
+      try {
+        localStorage.setItem(ASKED_KEY, "1");
+        localStorage.setItem(STORAGE_KEY, "denied");
+        setConsent("denied");
+      } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
