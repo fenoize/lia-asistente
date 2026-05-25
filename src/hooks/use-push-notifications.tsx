@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "lia.push.consent"; // "granted" | "denied" | null
 const ASKED_KEY = "lia.push.asked";
+const ONESIGNAL_READY_TIMEOUT_MS = 6000;
 const PERMISSION_TIMEOUT_MS = 7000;
 const PLAYER_ID_RETRIES = 12;
 const PLAYER_ID_DELAY_MS = 300;
@@ -24,7 +25,20 @@ function getOneSignal(): Promise<any> {
     if (current) return resolve(current);
     const deferred = (window as any).OneSignalDeferred;
     if (!deferred) return resolve(null);
-    deferred.push((OS: any) => resolve(OS));
+
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(null);
+    }, ONESIGNAL_READY_TIMEOUT_MS);
+
+    deferred.push((OS: any) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      resolve(OS);
+    });
   });
 }
 
