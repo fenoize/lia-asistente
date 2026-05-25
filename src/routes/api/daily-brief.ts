@@ -34,8 +34,9 @@ export const Route = createFileRoute("/api/daily-brief")({
           },
         );
 
-        const { data: userRes, error: userErr } = await sb.auth.getUser();
-        if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
+        const token = authHeader.replace("Bearer ", "");
+        const { data: claimsRes, error: claimsErr } = await sb.auth.getClaims(token);
+        if (claimsErr || !claimsRes?.claims?.sub) return jsonError(401, "Sesión inválida.");
 
         try {
           const timezone = request.headers.get("x-user-timezone") || USER_TZ;
