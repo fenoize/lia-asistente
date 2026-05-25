@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "lia.push.consent"; // "granted" | "denied" | null
 const ASKED_KEY = "lia.push.asked";
