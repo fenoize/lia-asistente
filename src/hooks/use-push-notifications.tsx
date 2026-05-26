@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "lia.push.consent"; // "granted" | "denied" | null
@@ -9,6 +9,16 @@ const PLAYER_ID_RETRIES = 12;
 const PLAYER_ID_DELAY_MS = 300;
 
 type Consent = "granted" | "denied" | null;
+
+function isOneSignalReady(OS: any) {
+  return !!OS?.Notifications && !!OS?.User?.PushSubscription;
+}
+
+function getImmediateOneSignal() {
+  if (typeof window === "undefined") return null;
+  const current = (window as any).OneSignal;
+  return isOneSignalReady(current) ? current : null;
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -21,10 +31,9 @@ function getCurrentPermission(): NotificationPermission | "default" {
 function getOneSignal(): Promise<any> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(null);
-    const current = (window as any).OneSignal;
+    const current = getImmediateOneSignal();
     if (current) return resolve(current);
-    const deferred = (window as any).OneSignalDeferred;
-    if (!deferred) return resolve(null);
+    const deferred = ((window as any).OneSignalDeferred = (window as any).OneSignalDeferred || []);
 
     let settled = false;
     const timeoutId = window.setTimeout(() => {
@@ -35,6 +44,7 @@ function getOneSignal(): Promise<any> {
 
     deferred.push((OS: any) => {
       if (settled) return;
+      if (!isOneSignalReady(OS)) return;
       settled = true;
       clearTimeout(timeoutId);
       resolve(OS);
@@ -88,6 +98,7 @@ async function waitForPlayerId(OS: any) {
 }
 
 export function usePushNotifications() {
+  const oneSignalRef = useRef<any>(getImmediateOneSignal());
   const [consent, setConsent] = useState<Consent>(() => {
     if (typeof window === "undefined") return null;
     return (localStorage.getItem(STORAGE_KEY) as Consent) ?? null;
@@ -96,6 +107,7 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission | "default">(
     getCurrentPermission(),
   );
+  const [sdkReady, setSdkReady] = useState(() => !!oneSignalRef.current);
   const [loading, setLoading] = useState(false);
   const [supported, setSupported] = useState(true);
 
@@ -105,9 +117,15 @@ export function usePushNotifications() {
 
     void (async () => {
       const OS = await getOneSignal();
-      if (!OS || cancelled) return;
+      if (!OS || cancelled) {
+        if (!cancelled) setSupported(false);
+        return;
+      }
 
       try {
+        oneSignalRef.current = OS;
+        setSdkReady(true);
+
         const onChange = () => {
           if (cancelled) return;
           setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
@@ -137,11 +155,13 @@ export function usePushNotifications() {
     setLoading(true);
 
     try {
-      const OS = await getOneSignal();
+      const OS = oneSignalRef.current ?? getImmediateOneSignal();
       if (!OS) {
-        setSupported(false);
+        console.warn("OneSignal is not ready yet");
         return;
       }
+
+      oneSignalRef.current = OS;
 
       let requestError: unknown = null;
       const requestPromise = Promise.resolve(OS.Notifications?.requestPermission?.())
@@ -184,14 +204,16 @@ export function usePushNotifications() {
       if (perm === "granted" && playerId) {
         try {
           const {
-            data: { user },
-          } = await supabase.auth.getUser();
+            data: { session },
+          } = await supabase.auth.getSession();
 
-          if (user) {
+          const userId = session?.user?.id;
+
+          if (userId) {
             await supabase
               .from("profiles")
               .update({ onesignal_player_id: playerId })
-              .eq("id", user.id);
+              .eq("id", userId);
           }
         } catch (err) {
           console.error("Failed to save OneSignal player id:", err);
@@ -253,6 +275,7 @@ export function usePushNotifications() {
     permission,
     loading,
     supported,
+    sdkReady,
     hasBeenAsked,
     enable,
     disable,
