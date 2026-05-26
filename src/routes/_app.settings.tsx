@@ -15,6 +15,7 @@ type Gender = "feminine" | "masculine";
 
 function SettingsPage() {
   const { user } = useAuth();
+  const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userName, setUserName] = useState("");
