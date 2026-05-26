@@ -5,7 +5,7 @@ import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export function PushConsentModal() {
   const { user } = useAuth();
-  const { hasBeenAsked, enable, dismiss, loading, supported } = usePushNotifications();
+  const { hasBeenAsked, enable, dismiss, loading, supported, sdkReady } = usePushNotifications();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export function PushConsentModal() {
             Ahora no
           </button>
           <button
-            disabled={loading}
+            disabled={loading || !sdkReady}
             onClick={async () => {
               try {
                 await enable();
@@ -143,10 +143,10 @@ export function PushConsentModal() {
               padding: "9px 22px",
               fontSize: 13,
               fontWeight: 500,
-              opacity: loading ? 0.5 : 1,
+              opacity: loading || !sdkReady ? 0.5 : 1,
             }}
           >
-            {loading ? "Activando…" : "Activar"}
+            {loading ? "Activando…" : sdkReady ? "Activar" : "Preparando…"}
           </button>
         </div>
       </div>
