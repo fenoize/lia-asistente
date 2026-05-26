@@ -2,7 +2,7 @@ import { IconBell, IconBellOff } from "@tabler/icons-react";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 export function PushNotificationsSettings() {
-  const { isSubscribed, permission, loading, enable, disable, supported } =
+  const { isSubscribed, permission, loading, enable, disable, supported, sdkReady } =
     usePushNotifications();
 
   const blocked = permission === "denied";
@@ -58,6 +58,8 @@ export function PushNotificationsSettings() {
               ? "Tu navegador no admite notificaciones."
               : blocked && !isSubscribed
               ? "Bloqueadas en el navegador. Habilítalas desde el candado de la URL."
+              : !sdkReady
+              ? "Preparando el servicio de notificaciones en este dispositivo."
               : isSubscribed
               ? "Te avisaremos de reuniones, recordatorios y tareas."
               : "Activa para recibir avisos en este dispositivo."}
@@ -84,7 +86,7 @@ export function PushNotificationsSettings() {
       ) : (
         <button
           onClick={enable}
-          disabled={loading || !supported || blocked}
+          disabled={loading || !supported || blocked || !sdkReady}
           style={{
             background: "var(--accent-color)",
             color: "white",
@@ -92,10 +94,10 @@ export function PushNotificationsSettings() {
             padding: "9px 22px",
             fontSize: 13,
             fontWeight: 500,
-            opacity: loading || !supported || blocked ? 0.5 : 1,
+            opacity: loading || !supported || blocked || !sdkReady ? 0.5 : 1,
           }}
         >
-          {loading ? "Activando…" : "Activar notificaciones"}
+          {loading ? "Activando…" : sdkReady ? "Activar notificaciones" : "Preparando…"}
         </button>
       )}
     </section>
