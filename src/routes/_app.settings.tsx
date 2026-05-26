@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
+import { usePwaUpdate } from "@/hooks/use-pwa-update";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
