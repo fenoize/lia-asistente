@@ -112,15 +112,30 @@ export function usePushNotifications() {
   const [supported, setSupported] = useState(true);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const current = getImmediateOneSignal();
+    if (current) {
+      oneSignalRef.current = current;
+      setSdkReady(true);
+      return;
+    }
+
+    const deferred = ((window as any).OneSignalDeferred = (window as any).OneSignalDeferred || []);
+    deferred.push((OS: any) => {
+      if (!isOneSignalReady(OS)) return;
+      oneSignalRef.current = OS;
+      setSdkReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     let cleanup = () => {};
 
     void (async () => {
       const OS = await getOneSignal();
-      if (!OS || cancelled) {
-        if (!cancelled) setSupported(false);
-        return;
-      }
+      if (!OS || cancelled) return;
 
       try {
         oneSignalRef.current = OS;
