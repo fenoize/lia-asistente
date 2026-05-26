@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
+import { usePwaUpdate } from "@/hooks/use-pwa-update";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -14,6 +15,7 @@ type Gender = "feminine" | "masculine";
 
 function SettingsPage() {
   const { user } = useAuth();
+  const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userName, setUserName] = useState("");
@@ -192,6 +194,92 @@ function SettingsPage() {
       </section>
 
       <PushNotificationsSettings />
+
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--text-tertiary)",
+            fontWeight: 600,
+            marginBottom: 16,
+          }}
+        >
+          Aplicación
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: hasUpdate ? "var(--accent-subtle)" : "var(--bg-base)",
+              border: "1px solid var(--border-subtle)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {hasUpdate ? (
+              <IconReload size={20} color="var(--accent-color)" stroke={1.5} />
+            ) : (
+              <IconRefresh size={20} color="var(--text-tertiary)" stroke={1.5} />
+            )}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+              {hasUpdate ? "Actualización disponible" : "Versión actual"}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+              {hasUpdate
+                ? "Hay una nueva versión. Reinicia para aplicarla."
+                : "Buscando actualizaciones…"}
+            </div>
+          </div>
+        </div>
+
+        {hasUpdate ? (
+          <button
+            onClick={skipWaiting}
+            style={{
+              background: "var(--accent-color)",
+              color: "white",
+              borderRadius: "var(--radius-pill)",
+              padding: "9px 22px",
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
+            Reiniciar y actualizar
+          </button>
+        ) : (
+          <button
+            onClick={update}
+            disabled={checking}
+            style={{
+              background: "transparent",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-pill)",
+              padding: "9px 22px",
+              fontSize: 13,
+              opacity: checking ? 0.5 : 1,
+            }}
+          >
+            {checking ? "Buscando…" : "Buscar actualizaciones"}
+          </button>
+        )}
+      </section>
     </div>
   );
 }
