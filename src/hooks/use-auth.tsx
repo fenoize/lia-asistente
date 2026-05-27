@@ -62,7 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         };
 
+        // Try immediately, then poll for a few seconds in case the
+        // subscription id isn't ready yet (common in mobile PWA right after install).
         await syncPlayerId();
+        for (let i = 0; i < 10 && !OneSignal?.User?.PushSubscription?.id && !cancelled; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        await syncPlayerId();
+
         listenerAttached = syncPlayerId;
         OneSignal.User.PushSubscription.addEventListener("change", syncPlayerId);
       } catch (err) {
