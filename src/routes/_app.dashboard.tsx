@@ -414,17 +414,11 @@ function Dashboard() {
       {/* 2. Requiere atención */}
       {(overdueCount > 0 || nextMeeting || (finance && finance.pending > 0)) && (
         <Block label="REQUIERE ATENCIÓN">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              gap: 12,
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {overdueCount > 0 && (
               <AttentionCard
                 to="/tasks"
-                icon={<IconAlertTriangle size={16} stroke={1.75} color="#f87171" />}
+                icon={<IconAlertTriangle size={14} stroke={1.75} color="#f87171" />}
                 bg="#3d1515"
                 border="rgba(220,38,38,0.35)"
                 accent="#f87171"
@@ -436,7 +430,7 @@ function Dashboard() {
             {nextMeeting && (
               <AttentionCard
                 to="/meetings"
-                icon={<IconClock size={16} stroke={1.75} color="#fbbf24" />}
+                icon={<IconClock size={14} stroke={1.75} color="#fbbf24" />}
                 bg="#2e1f00"
                 border="rgba(217,119,6,0.35)"
                 accent="#fbbf24"
@@ -448,7 +442,7 @@ function Dashboard() {
             {finance && finance.pending > 0 && (
               <AttentionCard
                 to="/finanzas"
-                icon={<IconCurrencyDollar size={16} stroke={1.75} color="#34d399" />}
+                icon={<IconCurrencyDollar size={14} stroke={1.75} color="#34d399" />}
                 bg="#0e2e1a"
                 border="rgba(16,185,129,0.35)"
                 accent="#34d399"
@@ -889,18 +883,18 @@ function AttentionCard({
         display: "block",
         background: bg,
         border: `1px solid ${border}`,
-        borderRadius: 12,
-        padding: "14px 16px",
+        borderRadius: 10,
+        padding: "10px 12px",
         textDecoration: "none",
         transition: "transform 0.15s, border-color 0.15s",
       }}
       className="hover:scale-[1.01]"
     >
-      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
         {icon}
         <span
           style={{
-            fontSize: 11,
+            fontSize: 10,
             color: accent,
             letterSpacing: "0.08em",
             fontWeight: 600,
@@ -912,7 +906,7 @@ function AttentionCard({
       </div>
       <div
         style={{
-          fontSize: 22,
+          fontSize: 18,
           color: "#f2f2f2",
           fontWeight: 600,
           letterSpacing: "-0.02em",
@@ -925,9 +919,9 @@ function AttentionCard({
       {hint && (
         <div
           style={{
-            fontSize: 12,
+            fontSize: 11,
             color: "#888",
-            marginTop: 4,
+            marginTop: 2,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
