@@ -3,249 +3,168 @@ import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "lia.push.consent"; // "granted" | "denied" | null
 const ASKED_KEY = "lia.push.asked";
-const ONESIGNAL_READY_TIMEOUT_MS = 6000;
-const PERMISSION_TIMEOUT_MS = 7000;
-const PLAYER_ID_RETRIES = 12;
-const PLAYER_ID_DELAY_MS = 300;
 
 type Consent = "granted" | "denied" | null;
 
-function isOneSignalReady(OS: any) {
-  return !!OS?.Notifications && !!OS?.User?.PushSubscription;
+function getOS(): any {
+  if (typeof window === "undefined") return null;
+  return (window as any).OneSignal ?? null;
 }
 
-function getImmediateOneSignal() {
-  if (typeof window === "undefined") return null;
-  const current = (window as any).OneSignal;
-  return isOneSignalReady(current) ? current : null;
+function isReady(OS: any) {
+  return !!OS?.Notifications && !!OS?.User?.PushSubscription;
 }
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function getCurrentPermission(): NotificationPermission | "default" {
+function getPermission(): NotificationPermission | "default" {
   return typeof Notification !== "undefined" ? Notification.permission : "default";
 }
 
-function getOneSignal(): Promise<any> {
-  return new Promise((resolve) => {
-    if (typeof window === "undefined") return resolve(null);
-    const current = getImmediateOneSignal();
-    if (current) return resolve(current);
-    const deferred = ((window as any).OneSignalDeferred = (window as any).OneSignalDeferred || []);
-
-    let settled = false;
-    const timeoutId = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      resolve(null);
-    }, ONESIGNAL_READY_TIMEOUT_MS);
-
-    deferred.push((OS: any) => {
-      if (settled) return;
-      if (!isOneSignalReady(OS)) return;
-      settled = true;
-      clearTimeout(timeoutId);
-      resolve(OS);
-    });
-  });
-}
-
-async function waitForPermissionChange(OS: any, timeoutMs: number) {
-  if (getCurrentPermission() !== "default") return getCurrentPermission();
-
-  return await new Promise<NotificationPermission | "default">((resolve) => {
-    let settled = false;
-
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      clearInterval(intervalId);
-      clearTimeout(timeoutId);
-      try {
-        OS?.Notifications?.removeEventListener?.("permissionChange", onChange);
-      } catch {
-        // ignore
-      }
-      resolve(getCurrentPermission());
-    };
-
-    const onChange = () => {
-      if (getCurrentPermission() !== "default") finish();
-    };
-
-    const intervalId = window.setInterval(onChange, 250);
-    const timeoutId = window.setTimeout(finish, timeoutMs);
-
-    try {
-      OS?.Notifications?.addEventListener?.("permissionChange", onChange);
-    } catch {
-      // ignore
-    }
-
-    onChange();
-  });
-}
-
-async function waitForPlayerId(OS: any) {
-  let playerId: string | undefined = OS?.User?.PushSubscription?.id;
-  for (let i = 0; i < PLAYER_ID_RETRIES && !playerId; i++) {
-    await sleep(PLAYER_ID_DELAY_MS);
-    playerId = OS?.User?.PushSubscription?.id;
+async function savePlayerId(playerId: string) {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return;
+    await supabase
+      .from("profiles")
+      .update({ onesignal_player_id: playerId })
+      .eq("id", userId);
+  } catch (err) {
+    console.error("[push] failed to save player id", err);
   }
-  return playerId;
 }
 
 export function usePushNotifications() {
-  const oneSignalRef = useRef<any>(getImmediateOneSignal());
-  const [consent, setConsent] = useState<Consent>(() => {
-    if (typeof window === "undefined") return null;
-    return (localStorage.getItem(STORAGE_KEY) as Consent) ?? null;
-  });
+  const osRef = useRef<any>(getOS());
+  const [sdkReady, setSdkReady] = useState(() => isReady(osRef.current));
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "default">(
-    getCurrentPermission(),
+    getPermission(),
   );
-  const [sdkReady, setSdkReady] = useState(() => !!oneSignalRef.current);
   const [loading, setLoading] = useState(false);
-  const [supported, setSupported] = useState(true);
+  const [supported, setSupported] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return "Notification" in window && "serviceWorker" in navigator;
+  });
 
+  // Wait for OneSignal SDK to be ready (via OneSignalDeferred)
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    const current = getImmediateOneSignal();
-    if (current) {
-      oneSignalRef.current = current;
-      setSdkReady(true);
-      return;
-    }
-
-    const deferred = ((window as any).OneSignalDeferred = (window as any).OneSignalDeferred || []);
-    deferred.push((OS: any) => {
-      if (!isOneSignalReady(OS)) return;
-      oneSignalRef.current = OS;
-      setSdkReady(true);
-    });
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
-    let cleanup = () => {};
 
-    void (async () => {
-      const OS = await getOneSignal();
-      if (!OS || cancelled) return;
+    const attach = (OS: any) => {
+      if (cancelled || !isReady(OS)) return;
+      osRef.current = OS;
+      setSdkReady(true);
+
+      const refresh = () => {
+        if (cancelled) return;
+        setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
+        setPermission(getPermission());
+      };
+
+      refresh();
 
       try {
-        oneSignalRef.current = OS;
-        setSdkReady(true);
-
-        const onChange = () => {
-          if (cancelled) return;
-          setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
-          setPermission(getCurrentPermission());
-        };
-
-        onChange();
-        OS.User?.PushSubscription?.addEventListener?.("change", onChange);
-        OS.Notifications?.addEventListener?.("permissionChange", onChange);
-
-        cleanup = () => {
-          OS.User?.PushSubscription?.removeEventListener?.("change", onChange);
-          OS.Notifications?.removeEventListener?.("permissionChange", onChange);
-        };
-      } catch {
-        setSupported(false);
+        OS.User.PushSubscription.addEventListener?.("change", refresh);
+        OS.Notifications.addEventListener?.("permissionChange", refresh);
+      } catch (err) {
+        console.warn("[push] failed to attach listeners", err);
       }
-    })();
+    };
+
+    const current = getOS();
+    if (isReady(current)) {
+      attach(current);
+    } else {
+      const deferred = ((window as any).OneSignalDeferred =
+        (window as any).OneSignalDeferred || []);
+      deferred.push((OS: any) => attach(OS));
+    }
 
     return () => {
       cancelled = true;
-      cleanup();
     };
   }, []);
 
   const enable = useCallback(async () => {
+    // CRITICAL: call requestPermission synchronously inside the user gesture.
+    // Any await before this breaks the gesture chain on mobile Safari/Chrome PWA.
+    const OS = osRef.current ?? getOS();
+
+    if (!OS || !isReady(OS)) {
+      console.warn("[push] OneSignal SDK not ready yet");
+      return;
+    }
+
     setLoading(true);
 
+    // Fire requestPermission IMMEDIATELY without awaiting anything first.
+    const requestPromise: Promise<unknown> = (() => {
+      try {
+        const r = OS.Notifications?.requestPermission?.();
+        return Promise.resolve(r).catch((e) => {
+          console.error("[push] requestPermission threw", e);
+          return null;
+        });
+      } catch (e) {
+        console.error("[push] requestPermission sync throw", e);
+        return Promise.resolve(null);
+      }
+    })();
+
     try {
-      const OS = oneSignalRef.current ?? getImmediateOneSignal();
-      if (!OS) {
-        console.warn("OneSignal is not ready yet");
+      // Wait for the browser permission dialog to resolve (user accepts/denies).
+      await requestPromise;
+
+      const perm = getPermission();
+      setPermission(perm);
+      console.log("[push] permission after request:", perm);
+
+      if (perm !== "granted") {
+        localStorage.setItem(STORAGE_KEY, "denied");
+        localStorage.setItem(ASKED_KEY, "1");
+        setIsSubscribed(false);
         return;
       }
 
-      oneSignalRef.current = OS;
-
-      let requestError: unknown = null;
-      const requestPromise = Promise.resolve(OS.Notifications?.requestPermission?.())
-        .catch((error) => {
-          requestError = error;
-          return null;
-        });
-
-      await Promise.race([
-        requestPromise,
-        waitForPermissionChange(OS, PERMISSION_TIMEOUT_MS),
-      ]);
-
-      const permAfterRequest = getCurrentPermission();
-
-      if (permAfterRequest === "default") {
-        await waitForPermissionChange(OS, 1500);
-      }
-
-      if (requestError) {
-        throw requestError;
-      }
-
+      // Permission granted: opt in to OneSignal (creates subscription).
       try {
-        await Promise.race([
-          Promise.resolve(OS.User?.PushSubscription?.optIn?.()),
-          sleep(2000),
-        ]);
-      } catch {
-        // ignore
+        await OS.User?.PushSubscription?.optIn?.();
+      } catch (e) {
+        console.warn("[push] optIn failed (continuing)", e);
       }
 
-      const playerId = await waitForPlayerId(OS);
-      const perm = getCurrentPermission();
-      const sub = !!OS.User?.PushSubscription?.optedIn || !!playerId;
-
-      setPermission(perm);
-      setIsSubscribed(sub);
-
-      if (perm === "granted" && playerId) {
-        try {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          const userId = session?.user?.id;
-
-          if (userId) {
-            await supabase
-              .from("profiles")
-              .update({ onesignal_player_id: playerId })
-              .eq("id", userId);
-          }
-        } catch (err) {
-          console.error("Failed to save OneSignal player id:", err);
-        }
+      // Poll for the player/subscription id — may take a few seconds on mobile PWA.
+      let playerId: string | undefined = OS.User?.PushSubscription?.id;
+      for (let i = 0; i < 20 && !playerId; i++) {
+        await sleep(500);
+        playerId = OS.User?.PushSubscription?.id;
       }
 
-      const result: Consent = perm === "granted" ? "granted" : "denied";
-      localStorage.setItem(STORAGE_KEY, result);
-      localStorage.setItem(ASKED_KEY, "1");
-      setConsent(result);
-    } catch (error) {
-      console.error("OneSignal permission error:", error);
-      localStorage.setItem(ASKED_KEY, "1");
-      localStorage.setItem(STORAGE_KEY, "denied");
-      setConsent("denied");
-      setPermission(getCurrentPermission());
-      setIsSubscribed(false);
+      console.log("[push] player id:", playerId);
+
+      if (playerId) {
+        await savePlayerId(playerId);
+        setIsSubscribed(true);
+        localStorage.setItem(STORAGE_KEY, "granted");
+        localStorage.setItem(ASKED_KEY, "1");
+      } else {
+        console.warn(
+          "[push] permission granted but no subscription id was created. " +
+            "The service worker may not be registered correctly.",
+        );
+        // Still record they tried so we don't loop the prompt
+        localStorage.setItem(ASKED_KEY, "1");
+        setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
+      }
+    } catch (err) {
+      console.error("[push] enable error", err);
     } finally {
       setLoading(false);
     }
@@ -254,22 +173,18 @@ export function usePushNotifications() {
   const disable = useCallback(async () => {
     setLoading(true);
     try {
-      const OS = await getOneSignal();
+      const OS = osRef.current ?? getOS();
       if (OS) {
         try {
-          await Promise.race([
-            Promise.resolve(OS.User?.PushSubscription?.optOut?.()),
-            sleep(2000),
-          ]);
-        } catch {
-          // ignore
+          await OS.User?.PushSubscription?.optOut?.();
+        } catch (e) {
+          console.warn("[push] optOut failed", e);
         }
       }
       setIsSubscribed(false);
-      setPermission(getCurrentPermission());
+      setPermission(getPermission());
       localStorage.setItem(STORAGE_KEY, "denied");
       localStorage.setItem(ASKED_KEY, "1");
-      setConsent("denied");
     } finally {
       setLoading(false);
     }
@@ -278,11 +193,15 @@ export function usePushNotifications() {
   const dismiss = useCallback(() => {
     localStorage.setItem(ASKED_KEY, "1");
     localStorage.setItem(STORAGE_KEY, "denied");
-    setConsent("denied");
   }, []);
 
   const hasBeenAsked =
     typeof window !== "undefined" && localStorage.getItem(ASKED_KEY) === "1";
+
+  const consent: Consent =
+    typeof window !== "undefined"
+      ? ((localStorage.getItem(STORAGE_KEY) as Consent) ?? null)
+      : null;
 
   return {
     consent,

@@ -80,10 +80,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "text/javascript",
         children: `window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.init({
-    appId: "9de4397a-f173-4215-a0e7-f89f49202f72",
-    allowLocalhostAsSecureOrigin: true,
-  });
+  try {
+    await OneSignal.init({
+      appId: "9de4397a-f173-4215-a0e7-f89f49202f72",
+      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerPath: "OneSignalSDKWorker.js",
+      serviceWorkerParam: { scope: "/" },
+      autoResubscribe: true,
+    });
+    console.log("[OneSignal] init OK", {
+      permission: typeof Notification !== "undefined" ? Notification.permission : "n/a",
+      optedIn: OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn,
+      id: OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.id,
+    });
+  } catch (e) {
+    console.error("[OneSignal] init failed", e);
+  }
 });`,
       },
     ],
