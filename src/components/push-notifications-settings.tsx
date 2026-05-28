@@ -88,7 +88,7 @@ export function PushNotificationsSettings() {
           marginBottom: 16,
         }}
       >
-        Notificaciones push
+          Notificaciones
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
