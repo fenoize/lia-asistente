@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     const { data: tasks } = await sb
       .from("tasks")
       .select("id, user_id, title, due_date, status")
-      .neq("status", "done")
+      .neq("status", "completed")
       .gte("due_date", todayStart.toISOString())
       .lt("due_date", tomorrowStart.toISOString());
 
