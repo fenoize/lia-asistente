@@ -43,6 +43,9 @@ export function usePushNotifications() {
   const osRef = useRef<any>(getOS());
   const [sdkReady, setSdkReady] = useState(() => isReady(osRef.current));
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [playerId, setPlayerId] = useState<string | null>(
+    () => osRef.current?.User?.PushSubscription?.id ?? null,
+  );
   const [permission, setPermission] = useState<NotificationPermission | "default">(
     getPermission(),
   );
@@ -65,6 +68,7 @@ export function usePushNotifications() {
       const refresh = () => {
         if (cancelled) return;
         setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
+        setPlayerId(OS.User?.PushSubscription?.id ?? null);
         setPermission(getPermission());
       };
 
@@ -152,6 +156,7 @@ export function usePushNotifications() {
       if (playerId) {
         await savePlayerId(playerId);
         setIsSubscribed(true);
+        setPlayerId(playerId);
         localStorage.setItem(STORAGE_KEY, "granted");
         localStorage.setItem(ASKED_KEY, "1");
       } else {
@@ -162,6 +167,7 @@ export function usePushNotifications() {
         // Still record they tried so we don't loop the prompt
         localStorage.setItem(ASKED_KEY, "1");
         setIsSubscribed(!!OS.User?.PushSubscription?.optedIn);
+        setPlayerId(OS.User?.PushSubscription?.id ?? null);
       }
     } catch (err) {
       console.error("[push] enable error", err);
@@ -182,6 +188,7 @@ export function usePushNotifications() {
         }
       }
       setIsSubscribed(false);
+      setPlayerId(OS?.User?.PushSubscription?.id ?? null);
       setPermission(getPermission());
       localStorage.setItem(STORAGE_KEY, "denied");
       localStorage.setItem(ASKED_KEY, "1");
@@ -207,6 +214,7 @@ export function usePushNotifications() {
     consent,
     isSubscribed,
     permission,
+    playerId,
     loading,
     supported,
     sdkReady,
