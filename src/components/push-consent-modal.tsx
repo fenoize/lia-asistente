@@ -9,6 +9,17 @@ export function PushConsentModal() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (!open || !loading) return;
+
+    const timer = setTimeout(() => {
+      setOpen(false);
+      console.error("Push notification modal timed out after 12 seconds.");
+    }, 12000);
+
+    return () => clearTimeout(timer);
+  }, [open, loading]);
+
+  useEffect(() => {
     if (!user || !supported) return;
     if (hasBeenAsked) return;
     if (typeof Notification === "undefined") return;
@@ -129,9 +140,13 @@ export function PushConsentModal() {
             disabled={loading || !sdkReady}
             onClick={async () => {
               try {
+                if (typeof Notification !== "undefined" && Notification.permission === "default") {
+                  await Notification.requestPermission();
+                }
+
                 await enable();
               } catch (err) {
-                console.error("OneSignal permission error:", err);
+                console.error("push error", err);
               } finally {
                 setOpen(false);
               }
