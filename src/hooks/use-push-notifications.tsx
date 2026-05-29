@@ -97,8 +97,6 @@ export function usePushNotifications() {
   }, []);
 
   const enable = useCallback(async () => {
-    // CRITICAL: call requestPermission synchronously inside the user gesture.
-    // Any await before this breaks the gesture chain on mobile Safari/Chrome PWA.
     const OS = osRef.current ?? getOS();
 
     if (!OS || !isReady(OS)) {
@@ -108,23 +106,16 @@ export function usePushNotifications() {
 
     setLoading(true);
 
-    // Fire requestPermission IMMEDIATELY without awaiting anything first.
-    const requestPromise: Promise<unknown> = (() => {
-      try {
-        const r = OS.Notifications?.requestPermission?.();
-        return Promise.resolve(r).catch((e) => {
-          console.error("[push] requestPermission threw", e);
-          return null;
-        });
-      } catch (e) {
-        console.error("[push] requestPermission sync throw", e);
-        return Promise.resolve(null);
-      }
-    })();
-
     try {
-      // Wait for the browser permission dialog to resolve (user accepts/denies).
-      await requestPromise;
+      const currentPermission = getPermission();
+
+      if (currentPermission !== "granted") {
+        try {
+          await OS.Notifications?.requestPermission?.();
+        } catch (e) {
+          console.error("[push] requestPermission threw", e);
+        }
+      }
 
       const perm = getPermission();
       setPermission(perm);
@@ -137,19 +128,38 @@ export function usePushNotifications() {
         return;
       }
 
-      // Permission granted: opt in to OneSignal (creates subscription).
-      try {
-        await OS.User?.PushSubscription?.optIn?.();
-      } catch (e) {
-        console.warn("[push] optIn failed (continuing)", e);
-      }
+      await Promise.race([
+        Promise.resolve(OS.User?.PushSubscription?.optIn?.()).catch((e) => {
+          console.warn("[push] optIn failed (continuing)", e);
+          return null;
+        }),
+        sleep(5000),
+      ]);
 
-      // Poll for the player/subscription id — may take a few seconds on mobile PWA.
-      let playerId: string | undefined = OS.User?.PushSubscription?.id;
-      for (let i = 0; i < 20 && !playerId; i++) {
-        await sleep(500);
-        playerId = OS.User?.PushSubscription?.id;
-      }
+      const playerId = await Promise.race<string | null>([
+        new Promise((resolve) => {
+          const startedAt = Date.now();
+
+          const poll = async () => {
+            const nextPlayerId = OS.User?.PushSubscription?.id ?? null;
+            if (nextPlayerId) {
+              resolve(nextPlayerId);
+              return;
+            }
+
+            if (Date.now() - startedAt >= 10000) {
+              resolve(null);
+              return;
+            }
+
+            await sleep(500);
+            poll();
+          };
+
+          void poll();
+        }),
+        sleep(10000).then(() => null),
+      ]);
 
       console.log("[push] player id:", playerId);
 
