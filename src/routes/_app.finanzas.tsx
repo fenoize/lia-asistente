@@ -8,15 +8,20 @@ import {
   IconBuildingBank,
   IconChartPie,
   IconPlus,
+  IconEye,
+  IconEyeOff,
+  IconCoin,
 } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FinanceModal, type FinanceKind, type FinanceRecord } from "@/components/finanzas/finance-modal";
+import { DebtModal, type DebtRecord } from "@/components/finanzas/debt-modal";
+import { useHideAmounts } from "@/hooks/use-hide-amounts";
 
 export const Route = createFileRoute("/_app/finanzas")({
   component: FinanzasPage,
 });
 
-type Tab = "resumen" | "cobros" | "gastos" | "subs" | "cuentas";
+type Tab = "resumen" | "cobros" | "gastos" | "subs" | "cuentas" | "deudas";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
@@ -24,9 +29,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "gastos", label: "Gastos" },
   { id: "subs", label: "Suscripciones" },
   { id: "cuentas", label: "Cuentas" },
+  { id: "deudas", label: "Deudas" },
 ];
 
-const TAB_TO_KIND: Record<Exclude<Tab, "resumen">, FinanceKind> = {
+const TAB_TO_KIND: Record<Exclude<Tab, "resumen" | "deudas">, FinanceKind> = {
   cobros: "cobro",
   gastos: "gasto",
   subs: "sub",
@@ -38,6 +44,7 @@ const TAB_TO_TABLE: Record<Exclude<Tab, "resumen">, string> = {
   gastos: "finance_expenses",
   subs: "finance_subscriptions",
   cuentas: "finance_accounts",
+  deudas: "finance_debts",
 };
 
 function fmt(amount: number | null | undefined, currency: string | null | undefined) {
@@ -53,31 +60,45 @@ function FinanzasPage() {
   const [tab, setTab] = useState<Tab>("resumen");
   const [modalKind, setModalKind] = useState<FinanceKind | null>(null);
   const [modalRecord, setModalRecord] = useState<FinanceRecord | null>(null);
+  const [debtModalOpen, setDebtModalOpen] = useState(false);
+  const [debtRecord, setDebtRecord] = useState<DebtRecord | null>(null);
+  const { hidden, toggle, mask } = useHideAmounts();
   const [items, setItems] = useState<Record<string, FinanceRecord[]>>({
     cobros: [],
     gastos: [],
     subs: [],
     cuentas: [],
   });
+  const [debts, setDebts] = useState<DebtRecord[]>([]);
 
   const loadAll = useCallback(async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
     const uid = u.user.id;
-    const fetchTab = async (t: Exclude<Tab, "resumen">) => {
+    const fetchTab = async (t: Exclude<Tab, "resumen" | "deudas">) => {
       const table = TAB_TO_TABLE[t];
       const { data } = await (supabase.from(table as never) as unknown as {
         select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: FinanceRecord[] | null }> } };
       }).select("*").eq("user_id", uid).order("created_at", { ascending: false });
       return [t, data ?? []] as const;
     };
-    const results = await Promise.all([
-      fetchTab("cobros"),
-      fetchTab("gastos"),
-      fetchTab("subs"),
-      fetchTab("cuentas"),
+    const fetchDebts = async () => {
+      const { data } = await (supabase.from("finance_debts" as never) as unknown as {
+        select: (s: string) => { eq: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => Promise<{ data: DebtRecord[] | null }> } };
+      }).select("*").eq("user_id", uid).order("created_at", { ascending: false });
+      return data ?? [];
+    };
+    const [results, debtData] = await Promise.all([
+      Promise.all([
+        fetchTab("cobros"),
+        fetchTab("gastos"),
+        fetchTab("subs"),
+        fetchTab("cuentas"),
+      ]),
+      fetchDebts(),
     ]);
     setItems(Object.fromEntries(results) as Record<string, FinanceRecord[]>);
+    setDebts(debtData);
   }, []);
 
   useEffect(() => {
@@ -86,6 +107,11 @@ function FinanzasPage() {
 
   const openNew = () => {
     if (tab === "resumen") return;
+    if (tab === "deudas") {
+      setDebtRecord(null);
+      setDebtModalOpen(true);
+      return;
+    }
     setModalKind(TAB_TO_KIND[tab]);
     setModalRecord(null);
   };
@@ -95,9 +121,16 @@ function FinanzasPage() {
     setModalRecord(rec);
   };
 
+  const openEditDebt = (rec: DebtRecord) => {
+    setDebtRecord(rec);
+    setDebtModalOpen(true);
+  };
+
   const onSaved = async () => {
     setModalKind(null);
     setModalRecord(null);
+    setDebtModalOpen(false);
+    setDebtRecord(null);
     await loadAll();
   };
 
@@ -110,11 +143,28 @@ function FinanzasPage() {
             Tu dinero, en una vista clara.
           </p>
         </div>
-        {tab !== "resumen" && (
-          <button className="alfred-new-btn" onClick={openNew}>
-            <IconPlus size={14} stroke={2} /> Nuevo
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggle}
+            title={hidden ? "Mostrar montos" : "Ocultar montos"}
+            style={{
+              background: "transparent",
+              border: "1px solid #222",
+              borderRadius: 100,
+              padding: 8,
+              color: hidden ? "#818cf8" : "#666",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            {hidden ? <IconEyeOff size={16} stroke={1.8} /> : <IconEye size={16} stroke={1.8} />}
           </button>
-        )}
+          {tab !== "resumen" && (
+            <button className="alfred-new-btn" onClick={openNew}>
+              <IconPlus size={14} stroke={2} /> Nuevo
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-6 flex-wrap">
@@ -144,6 +194,8 @@ function FinanzasPage() {
           incomes={items.cobros ?? []}
           expenses={items.gastos ?? []}
           accounts={items.cuentas ?? []}
+          debts={debts}
+          mask={mask}
         />
       )}
 
@@ -159,7 +211,7 @@ function FinanzasPage() {
           render={(r) => ({
             primary: r.description ?? "Sin descripción",
             secondary: [r.status === "paid" ? "Pagado" : r.status === "overdue" ? "Atrasado" : r.status === "cancelled" ? "Cancelado" : "Pendiente", r.due_date ? `vence ${r.due_date}` : null].filter(Boolean).join(" · "),
-            amount: fmt(r.amount, r.currency),
+            amount: mask(fmt(r.amount, r.currency)),
           })}
         />
       )}
@@ -176,7 +228,7 @@ function FinanzasPage() {
           render={(r) => ({
             primary: r.description ?? "Sin descripción",
             secondary: [r.category, r.expense_date].filter(Boolean).join(" · "),
-            amount: fmt(r.amount, r.currency),
+            amount: mask(fmt(r.amount, r.currency)),
           })}
         />
       )}
@@ -193,7 +245,7 @@ function FinanzasPage() {
           render={(r) => ({
             primary: r.name ?? "Sin nombre",
             secondary: [r.frequency === "yearly" ? "Anual" : r.frequency === "weekly" ? "Semanal" : r.frequency === "quarterly" ? "Trimestral" : "Mensual", r.next_charge_date ? `próx. ${r.next_charge_date}` : null, r.active === false ? "Inactiva" : null].filter(Boolean).join(" · "),
-            amount: fmt(r.amount, r.currency),
+            amount: mask(fmt(r.amount, r.currency)),
           })}
         />
       )}
@@ -210,9 +262,13 @@ function FinanzasPage() {
           render={(r) => ({
             primary: r.name ?? "Sin nombre",
             secondary: r.type === "cash" ? "Efectivo" : r.type === "credit" ? "Tarjeta de crédito" : r.type === "savings" ? "Ahorros" : r.type === "other" ? "Otro" : "Banco",
-            amount: fmt(r.balance, r.currency),
+            amount: mask(fmt(r.balance, r.currency)),
           })}
         />
+      )}
+
+      {tab === "deudas" && (
+        <DebtsList debts={debts} onClick={openEditDebt} mask={mask} />
       )}
 
       {modalKind && (
@@ -220,6 +276,14 @@ function FinanzasPage() {
           kind={modalKind}
           record={modalRecord}
           onClose={() => { setModalKind(null); setModalRecord(null); }}
+          onSaved={onSaved}
+        />
+      )}
+
+      {debtModalOpen && (
+        <DebtModal
+          record={debtRecord}
+          onClose={() => { setDebtModalOpen(false); setDebtRecord(null); }}
           onSaved={onSaved}
         />
       )}
@@ -286,14 +350,102 @@ function ListOrEmpty({
   );
 }
 
+function DebtsList({
+  debts,
+  onClick,
+  mask,
+}: {
+  debts: DebtRecord[];
+  onClick: (r: DebtRecord) => void;
+  mask: (s: string) => string;
+}) {
+  if (debts.length === 0) {
+    return (
+      <div className="text-center" style={{ padding: "80px 24px", border: "1px dashed #1e1e1e", borderRadius: 14 }}>
+        <IconCoin size={28} stroke={1.5} color="#444" style={{ margin: "0 auto 12px" }} />
+        <p style={{ fontSize: 14, color: "#888", maxWidth: 380, margin: "0 auto 6px" }}>No tienes deudas registradas.</p>
+        <p style={{ fontSize: 12, color: "#444", maxWidth: 380, margin: "0 auto" }}>
+          Registra lo que debes a terceros y lleva el control de tus abonos.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {debts.map((d) => {
+        const total = Number(d.total_amount ?? 0);
+        const paid = Number(d.paid_amount ?? 0);
+        const pending = Math.max(0, total - paid);
+        const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
+        const isPaid = d.status === "paid";
+        return (
+          <button
+            key={d.id}
+            onClick={() => onClick(d)}
+            style={{
+              textAlign: "left",
+              background: "#111111",
+              border: "1px solid #1e1e1e",
+              borderRadius: 12,
+              padding: "14px 16px",
+              cursor: "pointer",
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="flex items-center gap-2">
+                  <span style={{ fontSize: 14, color: "#f2f2f2", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {d.creditor ?? "Sin nombre"}
+                  </span>
+                  {isPaid && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, color: "#4ade80",
+                      background: "rgba(74,222,128,0.1)",
+                      border: "1px solid rgba(74,222,128,0.25)",
+                      borderRadius: 100, padding: "2px 8px", letterSpacing: "0.04em",
+                    }}>
+                      Saldada
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>
+                  {mask(fmt(paid, d.currency))} de {mask(fmt(total, d.currency))}
+                  {d.due_date ? ` · vence ${d.due_date}` : ""}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 10, color: "#555", letterSpacing: "0.05em", textTransform: "uppercase" }}>Pendiente</div>
+                <div style={{ fontSize: 14, color: isPaid ? "#666" : "#e0e0e0", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  {mask(fmt(pending, d.currency))}
+                </div>
+              </div>
+            </div>
+            <div style={{ height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{
+                width: `${pct}%`, height: "100%",
+                background: isPaid ? "#4ade80" : "#6366f1",
+                transition: "width 0.3s",
+              }} />
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ResumenTab({
   incomes,
   expenses,
   accounts,
+  debts,
+  mask,
 }: {
   incomes: FinanceRecord[];
   expenses: FinanceRecord[];
   accounts: FinanceRecord[];
+  debts: DebtRecord[];
+  mask: (s: string) => string;
 }) {
   const now = new Date();
   const y = now.getFullYear();
@@ -304,28 +456,39 @@ function ResumenTab({
     return d.getFullYear() === y && d.getMonth() === m;
   };
 
+  // Cobros pagados este mes: usa paid_at si existe, sino due_date, sino mes actual.
   const incomeMonth = incomes
-    .filter((r) => r.status === "paid" && inMonth(r.paid_at ?? null))
+    .filter((r) => r.status === "paid")
+    .filter((r) => {
+      const ref = r.paid_at ?? r.due_date ?? null;
+      if (!ref) return true; // sin fecha: cae en mes actual
+      return inMonth(ref);
+    })
     .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+
   const expenseMonth = expenses
     .filter((r) => inMonth(r.expense_date ?? null))
     .reduce((s, r) => s + (Number(r.amount) || 0), 0);
   const balance = accounts.reduce((s, r) => s + (Number(r.balance) || 0), 0);
   const pending = incomes
-    .filter((r) => r.status !== "paid" && r.status !== "cancelled")
+    .filter((r) => r.status === "pending" || r.status === "overdue")
     .reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const debtsActive = debts
+    .filter((d) => d.status === "active")
+    .reduce((s, d) => s + Math.max(0, Number(d.total_amount ?? 0) - Number(d.paid_amount ?? 0)), 0);
 
   const currency =
     accounts[0]?.currency ?? incomes[0]?.currency ?? expenses[0]?.currency ?? "CLP";
 
   const cards = [
-    { label: "INGRESOS DEL MES", value: fmt(incomeMonth, currency), hint: incomeMonth ? "Cobros pagados este mes" : "Sin cobros pagados" },
-    { label: "GASTOS DEL MES", value: fmt(expenseMonth, currency), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
-    { label: "BALANCE", value: fmt(balance, currency), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
-    { label: "POR COBRAR", value: fmt(pending, currency), hint: pending ? "Cobros pendientes" : "Sin cobros pendientes" },
+    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Cobros pagados este mes" : "Sin cobros pagados" },
+    { label: "GASTOS DEL MES", value: mask(fmt(expenseMonth, currency)), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
+    { label: "BALANCE", value: mask(fmt(balance, currency)), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
+    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Cobros pendientes" : "Sin cobros pendientes" },
+    { label: "DEUDAS ACTIVAS", value: mask(fmt(debtsActive, currency)), hint: debtsActive ? `${debts.filter((d) => d.status === "active").length} deuda${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"} pendiente${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"}` : "Sin deudas activas" },
   ];
 
-  const hasData = incomes.length || expenses.length || accounts.length;
+  const hasData = incomes.length || expenses.length || accounts.length || debts.length;
 
   return (
     <div>

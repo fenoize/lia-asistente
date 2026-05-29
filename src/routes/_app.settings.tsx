@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
+import { useHideAmounts } from "@/hooks/use-hide-amounts";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -16,6 +17,7 @@ type Gender = "feminine" | "masculine";
 function SettingsPage() {
   const { user } = useAuth();
   const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
+  const { hidden: hideAmounts, set: setHideAmounts } = useHideAmounts();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userName, setUserName] = useState("");
@@ -194,6 +196,81 @@ function SettingsPage() {
       </section>
 
       <PushNotificationsSettings />
+
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--text-tertiary)",
+            fontWeight: 600,
+            marginBottom: 16,
+          }}
+        >
+          Privacidad
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "var(--bg-base)",
+              border: "1px solid var(--border-subtle)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <IconEyeOff size={20} color="var(--text-tertiary)" stroke={1.5} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+              Ocultar montos
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+              Reemplaza los montos en Finanzas por puntos.
+            </div>
+          </div>
+          <button
+            onClick={() => setHideAmounts(!hideAmounts)}
+            aria-pressed={hideAmounts}
+            style={{
+              width: 44,
+              height: 26,
+              borderRadius: 100,
+              background: hideAmounts ? "var(--accent-color)" : "var(--border)",
+              position: "relative",
+              transition: "background 0.2s",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 3,
+                left: hideAmounts ? 21 : 3,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: "white",
+                transition: "left 0.2s",
+              }}
+            />
+          </button>
+        </div>
+      </section>
+
 
       <section
         style={{

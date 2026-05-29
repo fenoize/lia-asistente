@@ -225,6 +225,48 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_debts: {
+        Row: {
+          created_at: string
+          creditor: string
+          currency: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          paid_amount: number
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          creditor: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          creditor?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_amount?: number
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       finance_expenses: {
         Row: {
           amount: number
