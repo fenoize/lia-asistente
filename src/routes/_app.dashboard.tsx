@@ -11,7 +11,7 @@ import {
   IconCake,
   IconAlertTriangle,
   IconClock,
-  IconCurrencyDollar,
+  
   IconSparkles,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
@@ -56,13 +56,6 @@ function daysUntil(birthdayIso: string): number {
   return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
-function fmtMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("es-CL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${Math.round(amount)} ${currency}`;
-  }
-}
 
 function Dashboard() {
   const { user } = useAuth();
@@ -77,7 +70,7 @@ function Dashboard() {
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
-  const [finance, setFinance] = useState<{ income: number; expense: number; pending: number; currency: string; hasData: boolean } | null>(null);
+  
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
 
@@ -146,23 +139,8 @@ function Dashboard() {
         .sort((a, b) => a.daysUntil - b.daysUntil);
       setBirthdays(upcoming);
 
-      // Finance summary for current month
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-      const [incRes, expRes, accRes] = await Promise.all([
-        supabase.from("finance_incomes").select("amount,currency,status,paid_at,due_date").eq("user_id", user.id),
-        supabase.from("finance_expenses").select("amount,currency,expense_date").eq("user_id", user.id).gte("expense_date", monthStart).lte("expense_date", monthEnd),
-        supabase.from("finance_accounts").select("id").eq("user_id", user.id).limit(1),
-      ]);
-      const incomes = (incRes.data ?? []) as Array<{ amount: number; currency: string; status: string; paid_at: string | null; due_date: string | null }>;
-      const expenses = (expRes.data ?? []) as Array<{ amount: number; currency: string; expense_date: string }>;
-      const accounts = (accRes.data ?? []) as Array<{ id: string }>;
-      const income = incomes.filter(i => i.status === "paid" && i.paid_at && i.paid_at >= monthStart && i.paid_at <= monthEnd).reduce((s, i) => s + Number(i.amount || 0), 0);
-      const expense = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-      const pending = incomes.filter(i => i.status !== "paid" && i.status !== "cancelled").reduce((s, i) => s + Number(i.amount || 0), 0);
-      const currency = incomes[0]?.currency || expenses[0]?.currency || "CLP";
-      const hasData = incomes.length > 0 || expenses.length > 0 || accounts.length > 0;
-      setFinance({ income, expense, pending, currency, hasData });
+
+
 
       const todayStr = currentDateInTimeZone(userTimeZone);
       const { data: existing } = await supabase
@@ -412,7 +390,7 @@ function Dashboard() {
       })}
 
       {/* 2. Requiere atención */}
-      {(overdueCount > 0 || nextMeeting || (finance && finance.pending > 0)) && (
+      {(overdueCount > 0 || nextMeeting) && (
         <Block label="REQUIERE ATENCIÓN">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {overdueCount > 0 && (
@@ -437,18 +415,6 @@ function Dashboard() {
                 label="Próxima reunión"
                 value={formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
                 hint={nextMeeting.title}
-              />
-            )}
-            {finance && finance.pending > 0 && (
-              <AttentionCard
-                to="/finanzas"
-                icon={<IconCurrencyDollar size={14} stroke={1.75} color="#34d399" />}
-                bg="#0e2e1a"
-                border="rgba(16,185,129,0.35)"
-                accent="#34d399"
-                label="Cobros pendientes"
-                value={fmtMoney(finance.pending, finance.currency)}
-                hint="por cobrar"
               />
             )}
           </div>
