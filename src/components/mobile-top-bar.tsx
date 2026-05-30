@@ -113,19 +113,20 @@ export function MobileTopBar() {
 
       {open && (
         <div
-          className="md:hidden"
           onClick={() => setOpen(false)}
           style={{ position: "fixed", inset: 0, zIndex: 200 }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", animation: "alfredQcIn 180ms ease" }} />
+          <div
+            className="md:hidden"
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", animation: "alfredQcIn 180ms ease" }}
+          />
           <div
             onClick={(e) => e.stopPropagation()}
+            className="notifications-panel"
             style={{
-              position: "absolute", left: 0, right: 0, bottom: 0,
-              maxHeight: "85vh", background: "#111111",
-              borderRadius: "20px 20px 0 0", borderTop: "1px solid #1e1e1e",
-              paddingBottom: "env(safe-area-inset-bottom)",
-              animation: "alfredSheetIn 240ms cubic-bezier(.2,.8,.2,1)",
+              position: "absolute",
+              background: "#111111",
+              border: "1px solid #1e1e1e",
               overflowY: "auto",
             }}
           >
