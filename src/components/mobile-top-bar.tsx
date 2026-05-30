@@ -56,8 +56,29 @@ export function MobileTopBar() {
 
   return (
     <>
+      <style>{`
+        .notifications-panel {
+          left: 0; right: 0; bottom: 0;
+          max-height: 85vh;
+          border-radius: 20px 20px 0 0;
+          border-top: 1px solid #1e1e1e;
+          padding-bottom: env(safe-area-inset-bottom);
+          animation: alfredSheetIn 240ms cubic-bezier(.2,.8,.2,1);
+        }
+        @media (min-width: 768px) {
+          .notifications-panel {
+            left: auto; bottom: auto;
+            top: 60px; right: 16px;
+            width: 380px; max-height: 70vh;
+            border-radius: 14px;
+            border: 1px solid #1e1e1e;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            padding-bottom: 0;
+            animation: alfredQcIn 160ms ease;
+          }
+        }
+      `}</style>
       <header
-        className="md:hidden"
         style={{
           position: "sticky",
           top: 0,
@@ -114,23 +135,24 @@ export function MobileTopBar() {
 
       {open && (
         <div
-          className="md:hidden"
           onClick={() => setOpen(false)}
           style={{ position: "fixed", inset: 0, zIndex: 200 }}
         >
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", animation: "alfredQcIn 180ms ease" }} />
+          <div
+            className="md:hidden"
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", animation: "alfredQcIn 180ms ease" }}
+          />
           <div
             onClick={(e) => e.stopPropagation()}
+            className="notifications-panel"
             style={{
-              position: "absolute", left: 0, right: 0, bottom: 0,
-              maxHeight: "85vh", background: "#111111",
-              borderRadius: "20px 20px 0 0", borderTop: "1px solid #1e1e1e",
-              paddingBottom: "env(safe-area-inset-bottom)",
-              animation: "alfredSheetIn 240ms cubic-bezier(.2,.8,.2,1)",
+              position: "absolute",
+              background: "#111111",
+              border: "1px solid #1e1e1e",
               overflowY: "auto",
             }}
           >
-            <div style={{ width: 36, height: 4, background: "#2a2a2a", borderRadius: 2, margin: "12px auto" }} />
+            <div className="md:hidden" style={{ width: 36, height: 4, background: "#2a2a2a", borderRadius: 2, margin: "12px auto" }} />
             <div style={{ padding: "8px 24px 20px" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: "#f2f2f2" }}>Notificaciones</h2>
