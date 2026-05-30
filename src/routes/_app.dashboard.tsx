@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
@@ -221,8 +222,15 @@ function Dashboard() {
     }
     return false;
   });
+  const [completedAt, setCompletedAt] = useState<Record<string, number>>({});
   const pendingTodayTasks = todayTasks.filter((t) => t.status !== "done");
-  const doneTodayTasks = todayTasks.filter((t) => t.status === "done");
+  const doneTodayTasks = useMemo(
+    () =>
+      todayTasks
+        .filter((t) => t.status === "done")
+        .sort((a, b) => (completedAt[a.id] ?? 0) - (completedAt[b.id] ?? 0)),
+    [todayTasks, completedAt],
+  );
   const overdueCount = tasks.filter(
     (t) => t.status !== "done" && isOverdue(t.due_date),
   ).length;
@@ -248,23 +256,27 @@ function Dashboard() {
   ].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   const toggleTask = async (task: Task) => {
+    const wasDone = task.status === "done";
+    const newStatus = wasDone ? "pending" : "done";
     setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
     );
+    if (!wasDone) {
+      setCompletedAt((prev) => ({ ...prev, [task.id]: Date.now() }));
+    } else {
+      setCompletedAt((prev) => {
+        const { [task.id]: _, ...rest } = prev;
+        return rest;
+      });
+    }
     const { error } = await supabase
       .from("tasks")
-      .update({ status: "done" })
+      .update({ status: newStatus })
       .eq("id", task.id);
     if (error) {
       toast.error("No pude actualizar.");
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "pending" } : t)),
-      );
-    } else {
-      // small celebratory: remove from list after a beat
-      setTimeout(
-        () => setTasks((prev) => prev.filter((t) => t.id !== task.id)),
-        450,
+        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
       );
     }
   };
@@ -471,39 +483,41 @@ function Dashboard() {
               padding: 8,
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {visiblePending.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  overdue={isOverdue(t.due_date)}
-                  onToggle={() => toggleTask(t)}
-                />
-              ))}
-              {pendingTodayTasks.length > 4 && !showAllTasks && (
-                <button
-                  onClick={() => setShowAllTasks(true)}
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-tertiary)",
-                    marginTop: 4,
-                    paddingLeft: 10,
-                    textAlign: "left",
-                  }}
-                  className="hover:text-foreground transition-colors"
-                >
-                  + {pendingTodayTasks.length - 4} más
-                </button>
-              )}
-              {doneTodayTasks.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  overdue={false}
-                  onToggle={() => toggleTask(t)}
-                />
-              ))}
-            </div>
+            <LayoutGroup>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {visiblePending.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    overdue={isOverdue(t.due_date)}
+                    onToggle={() => toggleTask(t)}
+                  />
+                ))}
+                {pendingTodayTasks.length > 4 && !showAllTasks && (
+                  <button
+                    onClick={() => setShowAllTasks(true)}
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-tertiary)",
+                      marginTop: 4,
+                      paddingLeft: 10,
+                      textAlign: "left",
+                    }}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    + {pendingTodayTasks.length - 4} más
+                  </button>
+                )}
+                {doneTodayTasks.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    overdue={false}
+                    onToggle={() => toggleTask(t)}
+                  />
+                ))}
+              </div>
+            </LayoutGroup>
           </div>
         )}
       </Block>
@@ -624,12 +638,14 @@ function TaskRow({
   const done = task.status === "done";
   const high = task.priority === "high";
   return (
-    <div
+    <motion.div
+      layout
+      transition={{ type: "spring", stiffness: 400, damping: 36, duration: 0.35 }}
       className="flex items-center gap-3 group"
       style={{
         padding: "8px 10px",
         borderRadius: 8,
-        opacity: done ? 0.4 : 1,
+        opacity: done ? 0.5 : 1,
         transition: "opacity 0.3s, background-color 0.15s",
       }}
       onMouseEnter={(e) => {
@@ -641,7 +657,7 @@ function TaskRow({
     >
       <button
         onClick={onToggle}
-        aria-label="Completar tarea"
+        aria-label={done ? "Marcar pendiente" : "Completar tarea"}
         style={{
           width: 16,
           height: 16,
@@ -673,6 +689,18 @@ function TaskRow({
       >
         {task.title}
       </span>
+      {done && (
+        <span
+          style={{
+            fontSize: 10,
+            color: "var(--text-tertiary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          Completada
+        </span>
+      )}
       {high && !done && (
         <span
           style={{
@@ -699,7 +727,7 @@ function TaskRow({
           Atrasada
         </span>
       )}
-    </div>
+    </motion.div>
   );
 }
 
