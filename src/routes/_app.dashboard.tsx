@@ -256,23 +256,27 @@ function Dashboard() {
   ].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
   const toggleTask = async (task: Task) => {
+    const wasDone = task.status === "done";
+    const newStatus = wasDone ? "pending" : "done";
     setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: "done" } : t)),
+      prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
     );
+    if (!wasDone) {
+      setCompletedAt((prev) => ({ ...prev, [task.id]: Date.now() }));
+    } else {
+      setCompletedAt((prev) => {
+        const { [task.id]: _, ...rest } = prev;
+        return rest;
+      });
+    }
     const { error } = await supabase
       .from("tasks")
-      .update({ status: "done" })
+      .update({ status: newStatus })
       .eq("id", task.id);
     if (error) {
       toast.error("No pude actualizar.");
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "pending" } : t)),
-      );
-    } else {
-      // small celebratory: remove from list after a beat
-      setTimeout(
-        () => setTasks((prev) => prev.filter((t) => t.id !== task.id)),
-        450,
+        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t)),
       );
     }
   };
