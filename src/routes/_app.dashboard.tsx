@@ -439,18 +439,6 @@ function Dashboard() {
                 hint={nextMeeting.title}
               />
             )}
-            {finance && finance.pending > 0 && (
-              <AttentionCard
-                to="/finanzas"
-                icon={<IconCurrencyDollar size={14} stroke={1.75} color="#34d399" />}
-                bg="#0e2e1a"
-                border="rgba(16,185,129,0.35)"
-                accent="#34d399"
-                label="Cobros pendientes"
-                value={fmtMoney(finance.pending, finance.currency)}
-                hint="por cobrar"
-              />
-            )}
           </div>
         </Block>
       )}
