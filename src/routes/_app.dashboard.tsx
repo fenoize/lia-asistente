@@ -483,39 +483,41 @@ function Dashboard() {
               padding: 8,
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {visiblePending.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  overdue={isOverdue(t.due_date)}
-                  onToggle={() => toggleTask(t)}
-                />
-              ))}
-              {pendingTodayTasks.length > 4 && !showAllTasks && (
-                <button
-                  onClick={() => setShowAllTasks(true)}
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-tertiary)",
-                    marginTop: 4,
-                    paddingLeft: 10,
-                    textAlign: "left",
-                  }}
-                  className="hover:text-foreground transition-colors"
-                >
-                  + {pendingTodayTasks.length - 4} más
-                </button>
-              )}
-              {doneTodayTasks.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  overdue={false}
-                  onToggle={() => toggleTask(t)}
-                />
-              ))}
-            </div>
+            <LayoutGroup>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {visiblePending.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    overdue={isOverdue(t.due_date)}
+                    onToggle={() => toggleTask(t)}
+                  />
+                ))}
+                {pendingTodayTasks.length > 4 && !showAllTasks && (
+                  <button
+                    onClick={() => setShowAllTasks(true)}
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-tertiary)",
+                      marginTop: 4,
+                      paddingLeft: 10,
+                      textAlign: "left",
+                    }}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    + {pendingTodayTasks.length - 4} más
+                  </button>
+                )}
+                {doneTodayTasks.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    overdue={false}
+                    onToggle={() => toggleTask(t)}
+                  />
+                ))}
+              </div>
+            </LayoutGroup>
           </div>
         )}
       </Block>
