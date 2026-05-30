@@ -57,7 +57,6 @@ export function MobileTopBar() {
   return (
     <>
       <header
-        className="md:hidden"
         style={{
           position: "sticky",
           top: 0,
