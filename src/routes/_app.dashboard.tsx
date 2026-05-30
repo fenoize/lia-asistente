@@ -146,23 +146,8 @@ function Dashboard() {
         .sort((a, b) => a.daysUntil - b.daysUntil);
       setBirthdays(upcoming);
 
-      // Finance summary for current month
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
-      const [incRes, expRes, accRes] = await Promise.all([
-        supabase.from("finance_incomes").select("amount,currency,status,paid_at,due_date").eq("user_id", user.id),
-        supabase.from("finance_expenses").select("amount,currency,expense_date").eq("user_id", user.id).gte("expense_date", monthStart).lte("expense_date", monthEnd),
-        supabase.from("finance_accounts").select("id").eq("user_id", user.id).limit(1),
-      ]);
-      const incomes = (incRes.data ?? []) as Array<{ amount: number; currency: string; status: string; paid_at: string | null; due_date: string | null }>;
-      const expenses = (expRes.data ?? []) as Array<{ amount: number; currency: string; expense_date: string }>;
-      const accounts = (accRes.data ?? []) as Array<{ id: string }>;
-      const income = incomes.filter(i => i.status === "paid" && i.paid_at && i.paid_at >= monthStart && i.paid_at <= monthEnd).reduce((s, i) => s + Number(i.amount || 0), 0);
-      const expense = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
-      const pending = incomes.filter(i => i.status !== "paid" && i.status !== "cancelled").reduce((s, i) => s + Number(i.amount || 0), 0);
-      const currency = incomes[0]?.currency || expenses[0]?.currency || "CLP";
-      const hasData = incomes.length > 0 || expenses.length > 0 || accounts.length > 0;
-      setFinance({ income, expense, pending, currency, hasData });
+
+
 
       const todayStr = currentDateInTimeZone(userTimeZone);
       const { data: existing } = await supabase
