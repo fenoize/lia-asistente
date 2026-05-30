@@ -412,7 +412,7 @@ function Dashboard() {
       })}
 
       {/* 2. Requiere atención */}
-      {(overdueCount > 0 || nextMeeting || (finance && finance.pending > 0)) && (
+      {(overdueCount > 0 || nextMeeting) && (
         <Block label="REQUIERE ATENCIÓN">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {overdueCount > 0 && (
