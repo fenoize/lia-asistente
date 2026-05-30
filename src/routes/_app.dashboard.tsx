@@ -638,12 +638,14 @@ function TaskRow({
   const done = task.status === "done";
   const high = task.priority === "high";
   return (
-    <div
+    <motion.div
+      layout
+      transition={{ type: "spring", stiffness: 400, damping: 36, duration: 0.35 }}
       className="flex items-center gap-3 group"
       style={{
         padding: "8px 10px",
         borderRadius: 8,
-        opacity: done ? 0.4 : 1,
+        opacity: done ? 0.5 : 1,
         transition: "opacity 0.3s, background-color 0.15s",
       }}
       onMouseEnter={(e) => {
@@ -655,7 +657,7 @@ function TaskRow({
     >
       <button
         onClick={onToggle}
-        aria-label="Completar tarea"
+        aria-label={done ? "Marcar pendiente" : "Completar tarea"}
         style={{
           width: 16,
           height: 16,
@@ -687,6 +689,18 @@ function TaskRow({
       >
         {task.title}
       </span>
+      {done && (
+        <span
+          style={{
+            fontSize: 10,
+            color: "var(--text-tertiary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          Completada
+        </span>
+      )}
       {high && !done && (
         <span
           style={{
@@ -713,7 +727,7 @@ function TaskRow({
           Atrasada
         </span>
       )}
-    </div>
+    </motion.div>
   );
 }
 
