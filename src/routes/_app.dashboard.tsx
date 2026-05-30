@@ -56,13 +56,6 @@ function daysUntil(birthdayIso: string): number {
   return Math.round((next.getTime() - today.getTime()) / 86_400_000);
 }
 
-function fmtMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("es-CL", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${Math.round(amount)} ${currency}`;
-  }
-}
 
 function Dashboard() {
   const { user } = useAuth();
