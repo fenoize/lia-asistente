@@ -130,7 +130,7 @@ export function MobileTopBar() {
               overflowY: "auto",
             }}
           >
-            <div style={{ width: 36, height: 4, background: "#2a2a2a", borderRadius: 2, margin: "12px auto" }} />
+            <div className="md:hidden" style={{ width: 36, height: 4, background: "#2a2a2a", borderRadius: 2, margin: "12px auto" }} />
             <div style={{ padding: "8px 24px 20px" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 style={{ fontSize: 18, fontWeight: 600, color: "#f2f2f2" }}>Notificaciones</h2>
