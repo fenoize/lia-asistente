@@ -11,7 +11,7 @@ import {
   IconCake,
   IconAlertTriangle,
   IconClock,
-  IconCurrencyDollar,
+  
   IconSparkles,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
