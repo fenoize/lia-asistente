@@ -222,8 +222,15 @@ function Dashboard() {
     }
     return false;
   });
+  const [completedAt, setCompletedAt] = useState<Record<string, number>>({});
   const pendingTodayTasks = todayTasks.filter((t) => t.status !== "done");
-  const doneTodayTasks = todayTasks.filter((t) => t.status === "done");
+  const doneTodayTasks = useMemo(
+    () =>
+      todayTasks
+        .filter((t) => t.status === "done")
+        .sort((a, b) => (completedAt[a.id] ?? 0) - (completedAt[b.id] ?? 0)),
+    [todayTasks, completedAt],
+  );
   const overdueCount = tasks.filter(
     (t) => t.status !== "done" && isOverdue(t.due_date),
   ).length;
