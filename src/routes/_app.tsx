@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { QuickCapture } from "@/components/quick-capture";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LiaSplash } from "@/components/lia-splash";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { MobileTopBar } from "@/components/mobile-top-bar";
 import { ChatStoreProvider } from "@/hooks/use-chat-store";
