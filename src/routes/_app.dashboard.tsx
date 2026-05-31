@@ -469,10 +469,8 @@ function Dashboard() {
       )}
 
       {/* 4. Tareas del día */}
-      <Block label="TAREAS DEL DÍA">
-        {pendingTodayTasks.length === 0 && doneTodayTasks.length === 0 ? (
-          <Empty>Sin tareas urgentes para hoy. Buen día para enfocarte.</Empty>
-        ) : (
+      {(pendingTodayTasks.length > 0 || doneTodayTasks.length > 0) && (
+        <Block label="TAREAS DEL DÍA">
           <div
             style={{
               background: "#111111",
@@ -517,8 +515,8 @@ function Dashboard() {
               </div>
             </LayoutGroup>
           </div>
-        )}
-      </Block>
+        </Block>
+      )}
 
       {editingMeeting && (
         <EditMeetingModal
