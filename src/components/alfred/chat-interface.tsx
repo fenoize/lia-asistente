@@ -308,9 +308,9 @@ export function ChatInterface() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full min-h-0 w-full" style={{ background: "var(--bg-base)" }}>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "24px 24px 16px" }}>
+    <div className="flex flex-col h-full min-h-0 w-full overflow-x-hidden" style={{ background: "var(--bg-base)", maxWidth: "100%" }}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin" style={{ maxWidth: "100%" }}>
+        <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "24px 24px 16px", overflowX: "hidden" }}>
           {isEmpty && (
             <div
               className="flex flex-col items-center justify-center text-center"
