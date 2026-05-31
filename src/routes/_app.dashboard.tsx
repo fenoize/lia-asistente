@@ -678,11 +678,14 @@ function TaskRow({
         {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
       <span
-        className="flex-1 truncate"
+        className="flex-1 min-w-0"
         style={{
           fontSize: 14,
           color: "#d0d0d0",
           textDecoration: done ? "line-through" : "none",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+          whiteSpace: "normal",
         }}
       >
         {task.title}
