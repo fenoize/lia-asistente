@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
 import { QuickCapture } from "@/components/quick-capture";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LiaSplash } from "@/components/lia-splash";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { MobileTopBar } from "@/components/mobile-top-bar";
 import { ChatStoreProvider } from "@/hooks/use-chat-store";
@@ -68,27 +68,7 @@ function AppLayout() {
   }, [session, loading, navigate]);
 
   if (loading || !authGateReady) {
-    return (
-      <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
-        {session ? <AppSidebar /> : null}
-        <main
-          className="flex-1 min-w-0 overflow-y-auto h-screen"
-          style={{ background: "var(--bg-base)" }}
-        >
-          <div className="alfred-page h-full">
-            <div className="alfred-page-shell">
-              <div className="space-y-4 px-6 py-6 md:px-8">
-                <Skeleton className="h-8 w-40 rounded-full bg-white/5" />
-                <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
-                <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
-                <Skeleton className="h-24 w-full rounded-xl bg-white/5" />
-              </div>
-            </div>
-          </div>
-        </main>
-        <QuickCapture />
-      </div>
-    );
+    return <LiaSplash />;
   }
 
   return (
