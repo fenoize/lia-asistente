@@ -509,10 +509,13 @@ function AlfredBubble({
             fontSize: 14,
             lineHeight: 1.65,
             color: "var(--text-primary)",
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+            minWidth: 0,
           }}
         >
           {text || streaming ? (
-            <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5">
+            <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
               {text ? <ReactMarkdown>{text}</ReactMarkdown> : null}
               {streaming && (
                 <span
