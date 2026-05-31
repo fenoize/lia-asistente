@@ -434,10 +434,8 @@ function Dashboard() {
       )}
 
       {/* 3. Recordatorios y eventos (combinado) */}
-      <Block label="RECORDATORIOS Y EVENTOS">
-        {timeline.length === 0 ? (
-          <Empty>Sin recordatorios ni eventos para hoy.</Empty>
-        ) : (
+      {timeline.length > 0 && (
+        <Block label="RECORDATORIOS Y EVENTOS">
           <div className="space-y-2">
             {timeline.map((item) =>
               item.kind === "reminder" ? (
@@ -451,8 +449,8 @@ function Dashboard() {
               ),
             )}
           </div>
-        )}
-      </Block>
+        </Block>
+      )}
 
       {/* Pendiente de resumen (kept) */}
       {pastMeetingsWithoutNotes.length > 0 && (
@@ -471,10 +469,8 @@ function Dashboard() {
       )}
 
       {/* 4. Tareas del día */}
-      <Block label="TAREAS DEL DÍA">
-        {pendingTodayTasks.length === 0 && doneTodayTasks.length === 0 ? (
-          <Empty>Sin tareas urgentes para hoy. Buen día para enfocarte.</Empty>
-        ) : (
+      {(pendingTodayTasks.length > 0 || doneTodayTasks.length > 0) && (
+        <Block label="TAREAS DEL DÍA">
           <div
             style={{
               background: "#111111",
@@ -519,8 +515,8 @@ function Dashboard() {
               </div>
             </LayoutGroup>
           </div>
-        )}
-      </Block>
+        </Block>
+      )}
 
       {editingMeeting && (
         <EditMeetingModal
@@ -680,11 +676,14 @@ function TaskRow({
         {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
       <span
-        className="flex-1 truncate"
+        className="flex-1 min-w-0"
         style={{
           fontSize: 14,
           color: "#d0d0d0",
           textDecoration: done ? "line-through" : "none",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+          whiteSpace: "normal",
         }}
       >
         {task.title}
