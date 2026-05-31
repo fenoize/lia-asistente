@@ -434,10 +434,8 @@ function Dashboard() {
       )}
 
       {/* 3. Recordatorios y eventos (combinado) */}
-      <Block label="RECORDATORIOS Y EVENTOS">
-        {timeline.length === 0 ? (
-          <Empty>Sin recordatorios ni eventos para hoy.</Empty>
-        ) : (
+      {timeline.length > 0 && (
+        <Block label="RECORDATORIOS Y EVENTOS">
           <div className="space-y-2">
             {timeline.map((item) =>
               item.kind === "reminder" ? (
@@ -451,8 +449,8 @@ function Dashboard() {
               ),
             )}
           </div>
-        )}
-      </Block>
+        </Block>
+      )}
 
       {/* Pendiente de resumen (kept) */}
       {pastMeetingsWithoutNotes.length > 0 && (
