@@ -170,7 +170,7 @@ export function MobileTopBar() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {reminders.map((r) => (
+                  {[...reminders].sort((a, b) => Number(!!a.done) - Number(!!b.done)).map((r) => (
                     <button
                       key={r.id}
                       onClick={() => toggleDone(r)}
