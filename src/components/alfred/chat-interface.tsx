@@ -445,7 +445,10 @@ function UserBubble({ text, time }: { text: string; time?: string }) {
           fontSize: 14,
           color: "var(--text-primary)",
           whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
           lineHeight: 1.5,
+          minWidth: 0,
         }}
       >
         <MentionText text={text} />
