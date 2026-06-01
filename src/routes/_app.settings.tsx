@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -357,9 +357,129 @@ function SettingsPage() {
           </button>
         )}
       </section>
+
+      <AboutSection />
     </div>
   );
 }
+
+const CHANGELOG: Array<{ version: string; date: string; items: string[] }> = [
+  {
+    version: "v0.4.0",
+    date: "Mayo 2026",
+    items: [
+      "Notificaciones push (iOS y desktop)",
+      "Nueva pestaña Deudas en Finanzas",
+      "Toggle para ocultar montos",
+      "Panel de finanzas eliminado del Inicio",
+      "Tareas completadas se mueven al final",
+      "Panel de notificaciones mejorado",
+      "Orden correcto: pendientes arriba, completadas abajo",
+    ],
+  },
+  {
+    version: "v0.3.0",
+    date: "Mayo 2026",
+    items: [
+      "Captura rápida con chips de mención",
+      "Optimistic UI en captura rápida",
+      "Zona horaria corregida (Chile)",
+      "Chat: JSON crudo eliminado de respuestas",
+    ],
+  },
+  {
+    version: "v0.2.0",
+    date: "Mayo 2026",
+    items: [
+      "Historial del chat preservado entre módulos",
+      "Hora de envío visible en mensajes",
+      "Resumen de LIA expandible",
+    ],
+  },
+  {
+    version: "v0.1.0",
+    date: "Mayo 2026",
+    items: ["Lanzamiento inicial de LIA"],
+  },
+];
+
+function AboutSection() {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <section
+      style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: "var(--radius-xl)",
+        padding: 24,
+        marginTop: 24,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase",
+          color: "var(--text-tertiary)",
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        Acerca de LIA
+      </div>
+
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Versión</span>
+        <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
+          v0.4.0
+        </span>
+      </div>
+
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          marginTop: 12,
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          color: "#a5a5f5",
+          fontSize: 12,
+          padding: "6px 0",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        {expanded ? "Ocultar actualizaciones" : "Ver actualizaciones"}
+        <IconChevronDown
+          size={14}
+          stroke={1.75}
+          style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 180ms ease" }}
+        />
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 16 }}>
+          {CHANGELOG.map((release) => (
+            <div key={release.version}>
+              <div style={{ fontSize: 12, color: "#a5a5f5", fontWeight: 600, marginBottom: 6 }}>
+                {release.version} <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>— {release.date}</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 14, display: "flex", flexDirection: "column", gap: 3 }}>
+                {release.items.map((item, idx) => (
+                  <li key={idx} style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 
 function PersonaCard({
   active,
