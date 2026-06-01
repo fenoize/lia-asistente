@@ -190,13 +190,38 @@ export function MobileTopBar() {
                 </button>
               </div>
 
-              {loading ? (
-                <p style={{ fontSize: 13, color: "#555" }}>Cargando…</p>
+              {loading && items.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: "#181818",
+                        border: "1px solid #1e1e1e",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        animation: "notifSkeleton 1.2s ease-in-out infinite",
+                        opacity: 0.6,
+                      }}
+                    >
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "#222", flexShrink: 0 }} />
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ height: 10, width: "70%", borderRadius: 4, background: "#222" }} />
+                        <div style={{ height: 8, width: "40%", borderRadius: 4, background: "#1d1d1d" }} />
+                      </div>
+                    </div>
+                  ))}
+                  <style>{`@keyframes notifSkeleton { 0%,100% { opacity: 0.45; } 50% { opacity: 0.8; } }`}</style>
+                </div>
               ) : items.length === 0 ? (
                 <div style={{ padding: "32px 0", textAlign: "center" }}>
                   <IconBell size={26} stroke={1.5} color="#333" style={{ margin: "0 auto 10px" }} />
                   <p style={{ fontSize: 14, color: "#666" }}>Sin notificaciones recientes.</p>
                 </div>
+
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                   {(Object.keys(grouped) as EntityType[]).map((type) => {
