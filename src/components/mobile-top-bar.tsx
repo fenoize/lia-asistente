@@ -39,12 +39,12 @@ export function MobileTopBar() {
 
     const { data: logs } = await supabase
       .from("notification_log")
-      .select("id, entity_type, entity_id, created_at")
+      .select("id, entity_type, entity_id, sent_at")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+      .order("sent_at", { ascending: false })
       .limit(30);
 
-    const rows = (logs ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; created_at: string }>;
+    const rows = (logs ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; sent_at: string }>;
 
     const byType: Record<EntityType, string[]> = { reminder: [], task: [], meeting: [] };
     for (const r of rows) {
@@ -56,22 +56,22 @@ export function MobileTopBar() {
 
     if (byType.reminder.length) {
       fetches.push(
-        supabase.from("reminders").select("id, title").in("id", byType.reminder).then(({ data }) => {
-          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`reminder:${d.id}`, d.title));
+        Promise.resolve(supabase.from("reminders").select("id, title").in("id", byType.reminder)).then(({ data }) => {
+          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`reminder:${d.id}`, d.title));
         })
       );
     }
     if (byType.task.length) {
       fetches.push(
-        supabase.from("tasks").select("id, title").in("id", byType.task).then(({ data }) => {
-          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`task:${d.id}`, d.title));
+        Promise.resolve(supabase.from("tasks").select("id, title").in("id", byType.task)).then(({ data }) => {
+          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`task:${d.id}`, d.title));
         })
       );
     }
     if (byType.meeting.length) {
       fetches.push(
-        supabase.from("meetings").select("id, title").in("id", byType.meeting).then(({ data }) => {
-          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`meeting:${d.id}`, d.title));
+        Promise.resolve(supabase.from("meetings").select("id, title").in("id", byType.meeting)).then(({ data }) => {
+          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`meeting:${d.id}`, d.title));
         })
       );
     }
@@ -81,9 +81,10 @@ export function MobileTopBar() {
       id: r.id,
       entity_type: r.entity_type,
       entity_id: r.entity_id,
-      created_at: r.created_at,
+      sent_at: r.sent_at,
       title: titleMap.get(`${r.entity_type}:${r.entity_id}`) ?? "(elemento eliminado)",
     }));
+
 
     setItems(enriched);
     setLoading(false);
