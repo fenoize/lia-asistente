@@ -26,56 +26,51 @@ const GROUP_META: Record<EntityType, { label: string; icon: typeof IconBell }> =
   meeting: { label: "Reuniones", icon: IconUsers },
 };
 
+const CACHE_TTL_MS = 60_000;
+const notificationsCache = new Map<string, { at: number; items: NotificationItem[] }>();
+
 export function MobileTopBar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [items, setItems] = useState<NotificationItem[]>(() => {
+    if (!user) return [];
+    const c = notificationsCache.get(user.id);
+    return c ? c.items : [];
+  });
   const [loading, setLoading] = useState(false);
 
-  const load = async () => {
+  const load = async (force = false) => {
     if (!user) return;
+
+    const cached = notificationsCache.get(user.id);
+    if (!force && cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      setItems(cached.items);
+      return;
+    }
+
     setLoading(true);
 
-    const { data: logs } = await supabase
-      .from("notification_log")
-      .select("id, entity_type, entity_id, sent_at")
-      .eq("user_id", user.id)
-      .order("sent_at", { ascending: false })
-      .limit(30);
+    // Fire all queries in parallel from the start. The lookup tables are
+    // filtered by user_id (RLS would do this anyway) so the worst case is
+    // ~30 extra rows per table — cheaper than a second round trip.
+    const [logsRes, remindersRes, tasksRes, meetingsRes] = await Promise.all([
+      supabase
+        .from("notification_log")
+        .select("id, entity_type, entity_id, sent_at")
+        .eq("user_id", user.id)
+        .order("sent_at", { ascending: false })
+        .limit(30),
+      supabase.from("reminders").select("id, title").eq("user_id", user.id),
+      supabase.from("tasks").select("id, title").eq("user_id", user.id),
+      supabase.from("meetings").select("id, title").eq("user_id", user.id),
+    ]);
 
-    const rows = (logs ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; sent_at: string }>;
-
-    const byType: Record<EntityType, string[]> = { reminder: [], task: [], meeting: [] };
-    for (const r of rows) {
-      if (byType[r.entity_type]) byType[r.entity_type].push(r.entity_id);
-    }
-
+    const rows = (logsRes.data ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; sent_at: string }>;
     const titleMap = new Map<string, string>();
-    const fetches: Promise<unknown>[] = [];
-
-    if (byType.reminder.length) {
-      fetches.push(
-        Promise.resolve(supabase.from("reminders").select("id, title").in("id", byType.reminder)).then(({ data }) => {
-          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`reminder:${d.id}`, d.title));
-        })
-      );
-    }
-    if (byType.task.length) {
-      fetches.push(
-        Promise.resolve(supabase.from("tasks").select("id, title").in("id", byType.task)).then(({ data }) => {
-          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`task:${d.id}`, d.title));
-        })
-      );
-    }
-    if (byType.meeting.length) {
-      fetches.push(
-        Promise.resolve(supabase.from("meetings").select("id, title").in("id", byType.meeting)).then(({ data }) => {
-          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`meeting:${d.id}`, d.title));
-        })
-      );
-    }
-    await Promise.all(fetches);
+    ((remindersRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`reminder:${d.id}`, d.title));
+    ((tasksRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`task:${d.id}`, d.title));
+    ((meetingsRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`meeting:${d.id}`, d.title));
 
     const enriched: NotificationItem[] = rows.map((r) => ({
       id: r.id,
@@ -85,15 +80,12 @@ export function MobileTopBar() {
       title: titleMap.get(`${r.entity_type}:${r.entity_id}`) ?? "(elemento eliminado)",
     }));
 
-
+    notificationsCache.set(user.id, { at: Date.now(), items: enriched });
     setItems(enriched);
     setLoading(false);
   };
 
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+
 
   useEffect(() => {
     if (open) document.body.style.overflow = "hidden";
@@ -198,13 +190,38 @@ export function MobileTopBar() {
                 </button>
               </div>
 
-              {loading ? (
-                <p style={{ fontSize: 13, color: "#555" }}>Cargando…</p>
+              {loading && items.length === 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        background: "#181818",
+                        border: "1px solid #1e1e1e",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        animation: "notifSkeleton 1.2s ease-in-out infinite",
+                        opacity: 0.6,
+                      }}
+                    >
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "#222", flexShrink: 0 }} />
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ height: 10, width: "70%", borderRadius: 4, background: "#222" }} />
+                        <div style={{ height: 8, width: "40%", borderRadius: 4, background: "#1d1d1d" }} />
+                      </div>
+                    </div>
+                  ))}
+                  <style>{`@keyframes notifSkeleton { 0%,100% { opacity: 0.45; } 50% { opacity: 0.8; } }`}</style>
+                </div>
               ) : items.length === 0 ? (
                 <div style={{ padding: "32px 0", textAlign: "center" }}>
                   <IconBell size={26} stroke={1.5} color="#333" style={{ margin: "0 auto 10px" }} />
                   <p style={{ fontSize: 14, color: "#666" }}>Sin notificaciones recientes.</p>
                 </div>
+
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                   {(Object.keys(grouped) as EntityType[]).map((type) => {
