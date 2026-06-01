@@ -11,9 +11,10 @@ type NotificationItem = {
   id: string;
   entity_type: EntityType;
   entity_id: string;
-  created_at: string;
+  sent_at: string;
   title: string;
 };
+
 
 function formatWhen(iso: string) {
   return formatDateTimeInTimeZone(iso, detectUserTimeZone());
