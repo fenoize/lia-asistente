@@ -244,7 +244,7 @@ export function MobileTopBar() {
                                   {n.title}
                                 </div>
                                 <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
-                                  {formatWhen(n.created_at)}
+                                  {formatWhen(n.sent_at)}
                                 </div>
                               </div>
                             </div>
