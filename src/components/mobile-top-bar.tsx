@@ -1,40 +1,90 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { IconBell, IconUser, IconX } from "@tabler/icons-react";
+import { IconBell, IconUser, IconX, IconCalendarEvent, IconChecklist, IconUsers } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { detectUserTimeZone, formatDateTimeInTimeZone } from "@/lib/timezone";
 
-type Reminder = {
+type EntityType = "reminder" | "task" | "meeting";
+
+type NotificationItem = {
   id: string;
+  entity_type: EntityType;
+  entity_id: string;
+  created_at: string;
   title: string;
-  datetime: string;
-  done: boolean | null;
 };
 
 function formatWhen(iso: string) {
   return formatDateTimeInTimeZone(iso, detectUserTimeZone());
 }
 
+const GROUP_META: Record<EntityType, { label: string; icon: typeof IconBell }> = {
+  reminder: { label: "Recordatorios", icon: IconCalendarEvent },
+  task: { label: "Tareas", icon: IconChecklist },
+  meeting: { label: "Reuniones", icon: IconUsers },
+};
+
 export function MobileTopBar() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const pendingCount = reminders.filter((r) => !r.done).length;
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("reminders")
-      .select("id, title, datetime, done")
+
+    const { data: logs } = await supabase
+      .from("notification_log")
+      .select("id, entity_type, entity_id, created_at")
       .eq("user_id", user.id)
-      .order("datetime", { ascending: true })
-      .limit(50);
-    setReminders((data ?? []) as Reminder[]);
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    const rows = (logs ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; created_at: string }>;
+
+    const byType: Record<EntityType, string[]> = { reminder: [], task: [], meeting: [] };
+    for (const r of rows) {
+      if (byType[r.entity_type]) byType[r.entity_type].push(r.entity_id);
+    }
+
+    const titleMap = new Map<string, string>();
+    const fetches: Promise<unknown>[] = [];
+
+    if (byType.reminder.length) {
+      fetches.push(
+        supabase.from("reminders").select("id, title").in("id", byType.reminder).then(({ data }) => {
+          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`reminder:${d.id}`, d.title));
+        })
+      );
+    }
+    if (byType.task.length) {
+      fetches.push(
+        supabase.from("tasks").select("id, title").in("id", byType.task).then(({ data }) => {
+          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`task:${d.id}`, d.title));
+        })
+      );
+    }
+    if (byType.meeting.length) {
+      fetches.push(
+        supabase.from("meetings").select("id, title").in("id", byType.meeting).then(({ data }) => {
+          (data ?? []).forEach((d: { id: string; title: string }) => titleMap.set(`meeting:${d.id}`, d.title));
+        })
+      );
+    }
+    await Promise.all(fetches);
+
+    const enriched: NotificationItem[] = rows.map((r) => ({
+      id: r.id,
+      entity_type: r.entity_type,
+      entity_id: r.entity_id,
+      created_at: r.created_at,
+      title: titleMap.get(`${r.entity_type}:${r.entity_id}`) ?? "(elemento eliminado)",
+    }));
+
+    setItems(enriched);
     setLoading(false);
   };
 
@@ -49,10 +99,8 @@ export function MobileTopBar() {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const toggleDone = async (r: Reminder) => {
-    await supabase.from("reminders").update({ done: !r.done }).eq("id", r.id);
-    setReminders((prev) => prev.map((x) => (x.id === r.id ? { ...x, done: !r.done } : x)));
-  };
+  const grouped: Record<EntityType, NotificationItem[]> = { reminder: [], task: [], meeting: [] };
+  for (const it of items) grouped[it.entity_type].push(it);
 
   return (
     <>
@@ -106,19 +154,6 @@ export function MobileTopBar() {
           }}
         >
           <IconBell size={18} stroke={1.75} />
-          {pendingCount > 0 && (
-            <span
-              style={{
-                position: "absolute", top: 6, right: 6,
-                minWidth: 16, height: 16, padding: "0 4px",
-                borderRadius: 999, background: "#6366f1", color: "white",
-                fontSize: 10, fontWeight: 700, display: "flex",
-                alignItems: "center", justifyContent: "center",
-              }}
-            >
-              {pendingCount > 9 ? "9+" : pendingCount}
-            </span>
-          )}
         </button>
         <button
           onClick={() => navigate({ to: "/settings" })}
@@ -163,61 +198,61 @@ export function MobileTopBar() {
 
               {loading ? (
                 <p style={{ fontSize: 13, color: "#555" }}>Cargando…</p>
-              ) : reminders.length === 0 ? (
+              ) : items.length === 0 ? (
                 <div style={{ padding: "32px 0", textAlign: "center" }}>
                   <IconBell size={26} stroke={1.5} color="#333" style={{ margin: "0 auto 10px" }} />
-                  <p style={{ fontSize: 14, color: "#666" }}>Sin recordatorios.</p>
+                  <p style={{ fontSize: 14, color: "#666" }}>Sin notificaciones recientes.</p>
                 </div>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[...reminders].sort((a, b) => Number(!!a.done) - Number(!!b.done)).map((r) => (
-                    <button
-                      key={r.id}
-                      onClick={() => toggleDone(r)}
-                      style={{
-                        textAlign: "left",
-                        background: r.done ? "#0d0d0d" : "#181818",
-                        border: "1px solid #1e1e1e",
-                        borderRadius: 12,
-                        padding: "12px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        opacity: r.done ? 0.55 : 1,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 18, height: 18, borderRadius: "50%",
-                          border: `1.5px solid ${r.done ? "#444" : "#6366f1"}`,
-                          background: r.done ? "#6366f1" : "transparent",
-                          flexShrink: 0,
-                        }}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: 500, textDecoration: r.done ? "line-through" : "none" }}>
-                          {r.title}
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {(Object.keys(grouped) as EntityType[]).map((type) => {
+                    const list = grouped[type];
+                    if (list.length === 0) return null;
+                    const Meta = GROUP_META[type];
+                    const Icon = Meta.icon;
+                    return (
+                      <div key={type}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#777", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+                          {Meta.label}
                         </div>
-                        <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
-                          {formatWhen(r.datetime)}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {list.map((n) => (
+                            <div
+                              key={n.id}
+                              style={{
+                                background: "#181818",
+                                border: "1px solid #1e1e1e",
+                                borderRadius: 12,
+                                padding: "12px 14px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                              }}
+                            >
+                              <div style={{
+                                width: 32, height: 32, borderRadius: 8,
+                                background: "#1f1f1f", display: "flex",
+                                alignItems: "center", justifyContent: "center",
+                                color: "#a5a5f5", flexShrink: 0,
+                              }}>
+                                <Icon size={16} stroke={1.75} />
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: 500, wordBreak: "break-word" }}>
+                                  {n.title}
+                                </div>
+                                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
+                                  {formatWhen(n.created_at)}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
-
-              <button
-                onClick={() => { setOpen(false); navigate({ to: "/reminders" }); }}
-                style={{
-                  width: "100%", marginTop: 16,
-                  background: "transparent", border: "1px solid #1e1e1e",
-                  color: "#ccc", borderRadius: 10, padding: "10px 14px",
-                  fontSize: 13,
-                }}
-              >
-                Ver todos los recordatorios
-              </button>
             </div>
           </div>
         </div>
