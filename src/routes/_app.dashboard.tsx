@@ -529,6 +529,14 @@ function Dashboard() {
         </Block>
       )}
 
+      {editingMeeting && (
+        <EditMeetingModal
+          meeting={editingMeeting}
+          onClose={() => setEditingMeeting(null)}
+          onSaved={async () => { setEditingMeeting(null); await reloadMeetings(); }}
+        />
+      )}
+
       {editingTask && (
         <EditTaskModal
           task={editingTask as EditableTask}
@@ -554,9 +562,6 @@ function Dashboard() {
           setEditingReminder(null);
         }}
       />
-    </div>
-  );
-}
     </div>
   );
 }
