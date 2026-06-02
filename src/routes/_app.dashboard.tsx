@@ -30,6 +30,8 @@ type Task = {
   status: string;
   priority: string;
   due_date: string | null;
+  description: string | null;
+  project_id: string | null;
 };
 type Meeting = {
   id: string;
