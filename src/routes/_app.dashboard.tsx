@@ -448,7 +448,7 @@ function Dashboard() {
           <div className="space-y-2">
             {timeline.map((item) =>
               item.kind === "reminder" ? (
-                <ReminderPill key={`r-${item.id}`} reminder={item.data} />
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} />
               ) : (
                 <MeetingRow
                   key={`m-${item.id}`}
