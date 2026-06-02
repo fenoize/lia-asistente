@@ -106,7 +106,7 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [profile, t, m, r, c] = await Promise.all([
+      const [profile, t, m, r, c, p] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase
           .from("tasks")
@@ -130,11 +130,13 @@ function Dashboard() {
           .from("contacts")
           .select("id,name,birthday,context")
           .not("birthday", "is", null),
+        supabase.from("projects").select("id,name").order("name"),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       setTasks((t.data as Task[]) ?? []);
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
+      setProjects((p.data as { id: string; name: string }[]) ?? []);
       const upcoming = ((c.data as any[]) ?? [])
         .map((row) => ({
           id: row.id,
