@@ -643,6 +643,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   meeting: { label: "Agendar reunión", Icon: IconCalendarEvent },
   reminder: { label: "Crear recordatorio", Icon: IconBell },
   note: { label: "Guardar nota", Icon: IconPencil },
+  bulk: { label: "Crear varios", Icon: IconCircleCheck },
 };
 
 function ActionCard({
@@ -656,8 +657,13 @@ function ActionCard({
   onConfirm: () => void;
   onDecline: () => void;
 }) {
-  const meta = TYPE_META[action.type];
-  const Icon = meta.Icon;
+  const isBulk = action.type === "bulk" && Array.isArray(action.items);
+  const items = isBulk ? action.items! : [action];
+  const headerMeta = isBulk
+    ? { label: `Crear ${items.length} ítems`, Icon: IconCircleCheck }
+    : TYPE_META[action.type];
+  const HeaderIcon = headerMeta.Icon;
+  const tz = detectUserTimeZone();
   return (
     <div
       style={{
@@ -669,24 +675,48 @@ function ActionCard({
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={14} stroke={1.75} style={{ color: "var(--accent-color)" }} />
+        <HeaderIcon size={14} stroke={1.75} style={{ color: "var(--accent-color)" }} />
         <span style={{ fontSize: 11, color: "var(--accent-color)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>
-          {meta.label}
+          {headerMeta.label}
         </span>
       </div>
-      <p style={{ fontSize: 14, color: "var(--text-primary)", marginBottom: 4 }}>
-        {action.title}
-      </p>
-      {action.datetime && (
-        <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-          {formatDateTimeInTimeZone(action.datetime, detectUserTimeZone())}
-        </p>
-      )}
-      {action.description && (
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
-          {action.description}
-        </p>
-      )}
+      <div className="flex flex-col gap-2">
+        {items.map((it, idx) => {
+          const ItemIcon = (TYPE_META[it.type] ?? TYPE_META.task).Icon;
+          return (
+            <div
+              key={idx}
+              style={{
+                padding: isBulk ? "8px 10px" : 0,
+                background: isBulk ? "var(--bg-base)" : "transparent",
+                borderRadius: isBulk ? "var(--radius-sm)" : 0,
+                border: isBulk ? "1px solid var(--border)" : "none",
+              }}
+            >
+              {isBulk && (
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <ItemIcon size={12} stroke={1.75} style={{ color: "var(--text-tertiary)" }} />
+                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {TYPE_META[it.type]?.label ?? it.type}
+                  </span>
+                </div>
+              )}
+              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>{it.title}</p>
+              {it.datetime && (
+                <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  {formatDateTimeInTimeZone(it.datetime, tz)}
+                </p>
+              )}
+              {it.description && !isBulk && (
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
+                  {it.description}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
 
       {status === "pending" ? (
         <div className="flex items-center gap-2 mt-3">
