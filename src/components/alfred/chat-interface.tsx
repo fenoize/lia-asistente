@@ -731,7 +731,7 @@ function ActionCard({
               fontWeight: 500,
             }}
           >
-            Sí, crear
+            {isBulk ? `Sí, crear ${items.length}` : "Sí, crear"}
           </button>
           <button
             onClick={onDecline}
