@@ -24,15 +24,27 @@ const FENCE_RE = /```(?:action|json)?\s*([\s\S]*?)```/gi;
 // Matches trailing/standalone raw JSON object or array (greedy to end)
 const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 
+function isValidSingle(obj: any): obj is Action {
+  return obj && typeof obj === "object"
+    && typeof obj.type === "string"
+    && ["task", "meeting", "reminder", "note"].includes(obj.type)
+    && typeof obj.title === "string";
+}
+
 function tryParseAction(raw: string): Action | null {
   try {
     const obj = JSON.parse(raw.trim());
-    if (obj && typeof obj === "object" && typeof obj.type === "string" && typeof obj.title === "string") {
-      return obj as Action;
+    if (Array.isArray(obj)) {
+      const items = obj.filter(isValidSingle);
+      if (items.length === 0) return null;
+      if (items.length === 1) return items[0];
+      return { type: "bulk", title: "", items };
     }
+    if (isValidSingle(obj)) return obj;
   } catch {}
   return null;
 }
+
 
 function stripJsonForDisplay(text: string): string {
   let out = text.replace(FENCE_RE, "").trim();
