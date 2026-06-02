@@ -774,17 +774,20 @@ function TaskRow({
   );
 }
 
-function ReminderPill({ reminder }: { reminder: Reminder }) {
+function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () => void }) {
   const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
   return (
-    <div
-      className="flex items-center gap-2"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 w-full text-left"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-pill)",
         padding: "6px 14px",
         fontSize: 12,
+        cursor: onClick ? "pointer" : "default",
       }}
     >
       <IconBell size={12} stroke={1.75} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
@@ -794,7 +797,7 @@ function ReminderPill({ reminder }: { reminder: Reminder }) {
       <span style={{ color: "var(--text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
         {time}
       </span>
-    </div>
+    </button>
   );
 }
 
