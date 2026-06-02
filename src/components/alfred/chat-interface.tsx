@@ -24,6 +24,7 @@ const FENCE_RE = /```(?:action|json)?\s*([\s\S]*?)```/gi;
 // Matches trailing/standalone raw JSON object or array (greedy to end)
 const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 
+
 function isValidSingle(obj: any): obj is Action {
   return obj && typeof obj === "object"
     && typeof obj.type === "string"
