@@ -1,13 +1,15 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 
 export type ChatAction = {
-  type: "task" | "meeting" | "reminder" | "note";
+  type: "task" | "meeting" | "reminder" | "note" | "bulk";
   title: string;
   description?: string | null;
   datetime?: string | null;
   priority?: "low" | "medium" | "high" | null;
   duration_minutes?: number | null;
+  items?: ChatAction[];
 };
+
 
 export type ChatMsg = {
   id: string;
