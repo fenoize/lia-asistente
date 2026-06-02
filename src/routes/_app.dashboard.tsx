@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
+import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
