@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
+import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,6 +30,8 @@ type Task = {
   status: string;
   priority: string;
   due_date: string | null;
+  description: string | null;
+  project_id: string | null;
 };
 type Meeting = {
   id: string;
@@ -71,6 +75,9 @@ function Dashboard() {
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
@@ -99,7 +106,7 @@ function Dashboard() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [profile, t, m, r, c] = await Promise.all([
+      const [profile, t, m, r, c, p] = await Promise.all([
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
         supabase
           .from("tasks")
@@ -123,11 +130,13 @@ function Dashboard() {
           .from("contacts")
           .select("id,name,birthday,context")
           .not("birthday", "is", null),
+        supabase.from("projects").select("id,name").order("name"),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
       setTasks((t.data as Task[]) ?? []);
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
+      setProjects((p.data as { id: string; name: string }[]) ?? []);
       const upcoming = ((c.data as any[]) ?? [])
         .map((row) => ({
           id: row.id,
@@ -439,7 +448,7 @@ function Dashboard() {
           <div className="space-y-2">
             {timeline.map((item) =>
               item.kind === "reminder" ? (
-                <ReminderPill key={`r-${item.id}`} reminder={item.data} />
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} />
               ) : (
                 <MeetingRow
                   key={`m-${item.id}`}
@@ -487,6 +496,7 @@ function Dashboard() {
                     task={t}
                     overdue={isOverdue(t.due_date)}
                     onToggle={() => toggleTask(t)}
+                    onOpen={() => setEditingTask(t)}
                   />
                 ))}
                 {pendingTodayTasks.length > 4 && !showAllTasks && (
@@ -510,6 +520,7 @@ function Dashboard() {
                     task={t}
                     overdue={false}
                     onToggle={() => toggleTask(t)}
+                    onOpen={() => setEditingTask(t)}
                   />
                 ))}
               </div>
@@ -525,6 +536,32 @@ function Dashboard() {
           onSaved={async () => { setEditingMeeting(null); await reloadMeetings(); }}
         />
       )}
+
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask as EditableTask}
+          projects={projects}
+          onClose={() => setEditingTask(null)}
+          onSaved={(updated) => {
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } as Task : t)));
+            setEditingTask(null);
+          }}
+          onDeleted={(id) => {
+            setTasks((prev) => prev.filter((t) => t.id !== id));
+            setEditingTask(null);
+          }}
+        />
+      )}
+
+      <EditReminderModal
+        reminder={editingReminder}
+        open={!!editingReminder}
+        onClose={() => setEditingReminder(null)}
+        onSaved={(updated) => {
+          setReminders((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated, done: updated.done ?? false } : r)));
+          setEditingReminder(null);
+        }}
+      />
     </div>
   );
 }
@@ -626,10 +663,12 @@ function TaskRow({
   task,
   overdue,
   onToggle,
+  onOpen,
 }: {
   task: Task;
   overdue: boolean;
   onToggle: () => void;
+  onOpen?: () => void;
 }) {
   const done = task.status === "done";
   const high = task.priority === "high";
@@ -675,8 +714,10 @@ function TaskRow({
       >
         {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
-      <span
-        className="flex-1 min-w-0"
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex-1 min-w-0 text-left bg-transparent"
         style={{
           fontSize: 14,
           color: "#d0d0d0",
@@ -684,10 +725,13 @@ function TaskRow({
           wordBreak: "break-word",
           overflowWrap: "anywhere",
           whiteSpace: "normal",
+          cursor: onOpen ? "pointer" : "default",
+          padding: 0,
+          border: "none",
         }}
       >
         {task.title}
-      </span>
+      </button>
       {done && (
         <span
           style={{
@@ -730,17 +774,20 @@ function TaskRow({
   );
 }
 
-function ReminderPill({ reminder }: { reminder: Reminder }) {
+function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () => void }) {
   const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
   return (
-    <div
-      className="flex items-center gap-2"
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-2 w-full text-left"
       style={{
         background: "var(--bg-elevated)",
         border: "1px solid var(--border)",
         borderRadius: "var(--radius-pill)",
         padding: "6px 14px",
         fontSize: 12,
+        cursor: onClick ? "pointer" : "default",
       }}
     >
       <IconBell size={12} stroke={1.75} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
@@ -750,7 +797,7 @@ function ReminderPill({ reminder }: { reminder: Reminder }) {
       <span style={{ color: "var(--text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
         {time}
       </span>
-    </div>
+    </button>
   );
 }
 
