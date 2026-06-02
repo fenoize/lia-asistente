@@ -529,13 +529,34 @@ function Dashboard() {
         </Block>
       )}
 
-      {editingMeeting && (
-        <EditMeetingModal
-          meeting={editingMeeting}
-          onClose={() => setEditingMeeting(null)}
-          onSaved={async () => { setEditingMeeting(null); await reloadMeetings(); }}
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask as EditableTask}
+          projects={projects}
+          onClose={() => setEditingTask(null)}
+          onSaved={(updated) => {
+            setTasks((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } as Task : t)));
+            setEditingTask(null);
+          }}
+          onDeleted={(id) => {
+            setTasks((prev) => prev.filter((t) => t.id !== id));
+            setEditingTask(null);
+          }}
         />
       )}
+
+      <EditReminderModal
+        reminder={editingReminder}
+        open={!!editingReminder}
+        onClose={() => setEditingReminder(null)}
+        onSaved={(updated) => {
+          setReminders((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated, done: updated.done ?? false } : r)));
+          setEditingReminder(null);
+        }}
+      />
+    </div>
+  );
+}
     </div>
   );
 }
