@@ -75,6 +75,9 @@ function Dashboard() {
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
