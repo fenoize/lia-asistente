@@ -150,11 +150,19 @@ FORMATO DE RESPUESTAS
 
 ACCIONES PROPUESTAS
 Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees.
-Al final del mensaje agrega un bloque:
+Al final del mensaje agrega un bloque con UN OBJETO (si es una sola acción) o un ARRAY (si son varias):
 
 \`\`\`action
 {"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
 \`\`\`
+
+Si el usuario pide crear VARIAS cosas en el mismo mensaje (ej: "crea 3 tareas..."), envía TODAS juntas como array en un único bloque:
+
+\`\`\`action
+[{"type":"task","title":"Tarea 1", ...}, {"type":"task","title":"Tarea 2", ...}, {"type":"task","title":"Tarea 3", ...}]
+\`\`\`
+
+Nunca propongas las acciones de a una si el usuario pidió varias: enumeralas todas en el array.
 
 REGLAS CRÍTICAS PARA datetime:
 - SIEMPRE en ISO 8601 con offset explícito de la zona horaria del usuario (${c.timezone}, UTC${tzOffset(c.timezone)}).
@@ -163,8 +171,15 @@ REGLAS CRÍTICAS PARA datetime:
 - NUNCA uses "Z" ni asumas UTC. La hora que escribe el usuario es hora local (${c.timezone}).
 - Si el usuario dice "mañana 9am", interpreta como 09:00 en ${c.timezone} y agrega el offset.
 - Si no hay fecha/hora explícita, usa null.
+- "Hoy" SIEMPRE es la fecha actual indicada arriba (${todayLine(c.timezone).replace(/^Hoy es /, "").replace(/\.$/, "")}). NUNCA infieras la fecha de mensajes anteriores del historial — si el usuario dice "hoy", usa la fecha de HOY real, aunque ayer hayan conversado sobre otra fecha.
+
+EVITAR DUPLICADOS:
+- Antes de proponer una tarea/recordatorio/reunión, revisa el CONTEXTO OPERATIVO de arriba.
+- Si ya existe una con el mismo título (o equivalente) y la misma fecha, NO la propongas de nuevo.
+- Cuando el usuario pida "completar las que faltan" o similar, propón SOLO las que aún no existen.
 
 El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
+
 }
 
 export function buildBriefSystemPrompt(c: AlfredContext): string {

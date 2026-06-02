@@ -24,15 +24,28 @@ const FENCE_RE = /```(?:action|json)?\s*([\s\S]*?)```/gi;
 // Matches trailing/standalone raw JSON object or array (greedy to end)
 const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 
+
+function isValidSingle(obj: any): obj is Action {
+  return obj && typeof obj === "object"
+    && typeof obj.type === "string"
+    && ["task", "meeting", "reminder", "note"].includes(obj.type)
+    && typeof obj.title === "string";
+}
+
 function tryParseAction(raw: string): Action | null {
   try {
     const obj = JSON.parse(raw.trim());
-    if (obj && typeof obj === "object" && typeof obj.type === "string" && typeof obj.title === "string") {
-      return obj as Action;
+    if (Array.isArray(obj)) {
+      const items = obj.filter(isValidSingle);
+      if (items.length === 0) return null;
+      if (items.length === 1) return items[0];
+      return { type: "bulk", title: "", items };
     }
+    if (isValidSingle(obj)) return obj;
   } catch {}
   return null;
 }
+
 
 function stripJsonForDisplay(text: string): string {
   let out = text.replace(FENCE_RE, "").trim();
@@ -257,41 +270,88 @@ export function ChatInterface() {
     }
   };
 
+  const dayKeyInTz = (iso: string | null | undefined, tz: string): string => {
+    if (!iso) return "none";
+    try {
+      const d = new Date(iso);
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).formatToParts(d);
+      const y = parts.find(p => p.type === "year")?.value;
+      const m = parts.find(p => p.type === "month")?.value;
+      const day = parts.find(p => p.type === "day")?.value;
+      return `${y}-${m}-${day}`;
+    } catch { return "none"; }
+  };
+
+  const insertOne = async (action: Action): Promise<"created" | "duplicate"> => {
+    if (!user) return "duplicate";
+    const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
+    if (action.type === "task") {
+      // Dedupe: same title (case-insensitive) and same day in user TZ
+      const { data: existing } = await supabase
+        .from("tasks")
+        .select("title, due_date")
+        .eq("user_id", user.id)
+        .ilike("title", action.title.trim());
+      const newKey = dayKeyInTz(dt, userTimeZone);
+      const dup = (existing ?? []).some((t: any) =>
+        t.title.trim().toLowerCase() === action.title.trim().toLowerCase()
+        && dayKeyInTz(t.due_date, userTimeZone) === newKey,
+      );
+      if (dup) return "duplicate";
+      await supabase.from("tasks").insert({
+        user_id: user.id,
+        title: action.title,
+        description: action.description ?? null,
+        priority: action.priority ?? "medium",
+        due_date: dt,
+      });
+    } else if (action.type === "meeting") {
+      await supabase.from("meetings").insert({
+        user_id: user.id,
+        title: action.title,
+        datetime: dt ?? new Date().toISOString(),
+        duration_minutes: action.duration_minutes ?? 60,
+        notes: action.description ?? null,
+      });
+    } else if (action.type === "reminder") {
+      await supabase.from("reminders").insert({
+        user_id: user.id,
+        title: action.title,
+        datetime: dt ?? new Date().toISOString(),
+      });
+    } else if (action.type === "note") {
+      await supabase.from("notes").insert({
+        user_id: user.id,
+        content: action.description || action.title,
+        type: "note",
+      });
+    }
+    return "created";
+  };
+
   const confirmAction = async (msgId: string, action: Action) => {
     if (!user) return;
     try {
-      const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
-      if (action.type === "task") {
-        await supabase.from("tasks").insert({
-          user_id: user.id,
-          title: action.title,
-          description: action.description ?? null,
-          priority: action.priority ?? "medium",
-          due_date: dt,
-        });
-      } else if (action.type === "meeting") {
-        await supabase.from("meetings").insert({
-          user_id: user.id,
-          title: action.title,
-          datetime: dt ?? new Date().toISOString(),
-          duration_minutes: action.duration_minutes ?? 60,
-          notes: action.description ?? null,
-        });
-      } else if (action.type === "reminder") {
-        await supabase.from("reminders").insert({
-          user_id: user.id,
-          title: action.title,
-          datetime: dt ?? new Date().toISOString(),
-        });
+      if (action.type === "bulk" && action.items?.length) {
+        let created = 0;
+        let dup = 0;
+        for (const item of action.items) {
+          const r = await insertOne(item);
+          if (r === "created") created++;
+          else dup++;
+        }
+        setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
+        if (dup > 0 && created > 0) toast.success(`${created} creadas, ${dup} ya existían.`);
+        else if (dup > 0 && created === 0) toast.success(`Ya existían todas (${dup}).`);
+        else toast.success(`${created} creadas.`);
       } else {
-        await supabase.from("notes").insert({
-          user_id: user.id,
-          content: action.description || action.title,
-          type: "note",
-        });
+        const r = await insertOne(action);
+        setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
+        toast.success(r === "duplicate" ? "Ya existía." : "Listo.");
       }
-      setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
-      toast.success("Listo.");
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -300,6 +360,7 @@ export function ChatInterface() {
   const declineAction = (msgId: string) => {
     setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "declined" } : x));
   };
+
 
   const isEmpty = messages.length === 0 && !initialLoading;
   const greeting = useMemo(() => {
@@ -582,6 +643,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   meeting: { label: "Agendar reunión", Icon: IconCalendarEvent },
   reminder: { label: "Crear recordatorio", Icon: IconBell },
   note: { label: "Guardar nota", Icon: IconPencil },
+  bulk: { label: "Crear varios", Icon: IconCircleCheck },
 };
 
 function ActionCard({
@@ -595,8 +657,13 @@ function ActionCard({
   onConfirm: () => void;
   onDecline: () => void;
 }) {
-  const meta = TYPE_META[action.type];
-  const Icon = meta.Icon;
+  const isBulk = action.type === "bulk" && Array.isArray(action.items);
+  const items = isBulk ? action.items! : [action];
+  const headerMeta = isBulk
+    ? { label: `Crear ${items.length} ítems`, Icon: IconCircleCheck }
+    : TYPE_META[action.type];
+  const HeaderIcon = headerMeta.Icon;
+  const tz = detectUserTimeZone();
   return (
     <div
       style={{
@@ -608,24 +675,48 @@ function ActionCard({
       }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={14} stroke={1.75} style={{ color: "var(--accent-color)" }} />
+        <HeaderIcon size={14} stroke={1.75} style={{ color: "var(--accent-color)" }} />
         <span style={{ fontSize: 11, color: "var(--accent-color)", letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 600 }}>
-          {meta.label}
+          {headerMeta.label}
         </span>
       </div>
-      <p style={{ fontSize: 14, color: "var(--text-primary)", marginBottom: 4 }}>
-        {action.title}
-      </p>
-      {action.datetime && (
-        <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-          {formatDateTimeInTimeZone(action.datetime, detectUserTimeZone())}
-        </p>
-      )}
-      {action.description && (
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
-          {action.description}
-        </p>
-      )}
+      <div className="flex flex-col gap-2">
+        {items.map((it, idx) => {
+          const ItemIcon = (TYPE_META[it.type] ?? TYPE_META.task).Icon;
+          return (
+            <div
+              key={idx}
+              style={{
+                padding: isBulk ? "8px 10px" : 0,
+                background: isBulk ? "var(--bg-base)" : "transparent",
+                borderRadius: isBulk ? "var(--radius-sm)" : 0,
+                border: isBulk ? "1px solid var(--border)" : "none",
+              }}
+            >
+              {isBulk && (
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <ItemIcon size={12} stroke={1.75} style={{ color: "var(--text-tertiary)" }} />
+                  <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {TYPE_META[it.type]?.label ?? it.type}
+                  </span>
+                </div>
+              )}
+              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>{it.title}</p>
+              {it.datetime && (
+                <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                  {formatDateTimeInTimeZone(it.datetime, tz)}
+                </p>
+              )}
+              {it.description && !isBulk && (
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
+                  {it.description}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
 
       {status === "pending" ? (
         <div className="flex items-center gap-2 mt-3">
@@ -640,7 +731,7 @@ function ActionCard({
               fontWeight: 500,
             }}
           >
-            Sí, crear
+            {isBulk ? `Sí, crear ${items.length}` : "Sí, crear"}
           </button>
           <button
             onClick={onDecline}
