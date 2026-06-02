@@ -663,10 +663,12 @@ function TaskRow({
   task,
   overdue,
   onToggle,
+  onOpen,
 }: {
   task: Task;
   overdue: boolean;
   onToggle: () => void;
+  onOpen?: () => void;
 }) {
   const done = task.status === "done";
   const high = task.priority === "high";
@@ -712,8 +714,10 @@ function TaskRow({
       >
         {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
-      <span
-        className="flex-1 min-w-0"
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex-1 min-w-0 text-left bg-transparent"
         style={{
           fontSize: 14,
           color: "#d0d0d0",
@@ -721,10 +725,13 @@ function TaskRow({
           wordBreak: "break-word",
           overflowWrap: "anywhere",
           whiteSpace: "normal",
+          cursor: onOpen ? "pointer" : "default",
+          padding: 0,
+          border: "none",
         }}
       >
         {task.title}
-      </span>
+      </button>
       {done && (
         <span
           style={{
