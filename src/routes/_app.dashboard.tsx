@@ -496,6 +496,7 @@ function Dashboard() {
                     task={t}
                     overdue={isOverdue(t.due_date)}
                     onToggle={() => toggleTask(t)}
+                    onOpen={() => setEditingTask(t)}
                   />
                 ))}
                 {pendingTodayTasks.length > 4 && !showAllTasks && (
@@ -519,6 +520,7 @@ function Dashboard() {
                     task={t}
                     overdue={false}
                     onToggle={() => toggleTask(t)}
+                    onOpen={() => setEditingTask(t)}
                   />
                 ))}
               </div>
