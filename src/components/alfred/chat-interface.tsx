@@ -270,41 +270,88 @@ export function ChatInterface() {
     }
   };
 
+  const dayKeyInTz = (iso: string | null | undefined, tz: string): string => {
+    if (!iso) return "none";
+    try {
+      const d = new Date(iso);
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).formatToParts(d);
+      const y = parts.find(p => p.type === "year")?.value;
+      const m = parts.find(p => p.type === "month")?.value;
+      const day = parts.find(p => p.type === "day")?.value;
+      return `${y}-${m}-${day}`;
+    } catch { return "none"; }
+  };
+
+  const insertOne = async (action: Action): Promise<"created" | "duplicate"> => {
+    if (!user) return "duplicate";
+    const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
+    if (action.type === "task") {
+      // Dedupe: same title (case-insensitive) and same day in user TZ
+      const { data: existing } = await supabase
+        .from("tasks")
+        .select("title, due_date")
+        .eq("user_id", user.id)
+        .ilike("title", action.title.trim());
+      const newKey = dayKeyInTz(dt, userTimeZone);
+      const dup = (existing ?? []).some((t: any) =>
+        t.title.trim().toLowerCase() === action.title.trim().toLowerCase()
+        && dayKeyInTz(t.due_date, userTimeZone) === newKey,
+      );
+      if (dup) return "duplicate";
+      await supabase.from("tasks").insert({
+        user_id: user.id,
+        title: action.title,
+        description: action.description ?? null,
+        priority: action.priority ?? "medium",
+        due_date: dt,
+      });
+    } else if (action.type === "meeting") {
+      await supabase.from("meetings").insert({
+        user_id: user.id,
+        title: action.title,
+        datetime: dt ?? new Date().toISOString(),
+        duration_minutes: action.duration_minutes ?? 60,
+        notes: action.description ?? null,
+      });
+    } else if (action.type === "reminder") {
+      await supabase.from("reminders").insert({
+        user_id: user.id,
+        title: action.title,
+        datetime: dt ?? new Date().toISOString(),
+      });
+    } else if (action.type === "note") {
+      await supabase.from("notes").insert({
+        user_id: user.id,
+        content: action.description || action.title,
+        type: "note",
+      });
+    }
+    return "created";
+  };
+
   const confirmAction = async (msgId: string, action: Action) => {
     if (!user) return;
     try {
-      const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
-      if (action.type === "task") {
-        await supabase.from("tasks").insert({
-          user_id: user.id,
-          title: action.title,
-          description: action.description ?? null,
-          priority: action.priority ?? "medium",
-          due_date: dt,
-        });
-      } else if (action.type === "meeting") {
-        await supabase.from("meetings").insert({
-          user_id: user.id,
-          title: action.title,
-          datetime: dt ?? new Date().toISOString(),
-          duration_minutes: action.duration_minutes ?? 60,
-          notes: action.description ?? null,
-        });
-      } else if (action.type === "reminder") {
-        await supabase.from("reminders").insert({
-          user_id: user.id,
-          title: action.title,
-          datetime: dt ?? new Date().toISOString(),
-        });
+      if (action.type === "bulk" && action.items?.length) {
+        let created = 0;
+        let dup = 0;
+        for (const item of action.items) {
+          const r = await insertOne(item);
+          if (r === "created") created++;
+          else dup++;
+        }
+        setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
+        if (dup > 0 && created > 0) toast.success(`${created} creadas, ${dup} ya existían.`);
+        else if (dup > 0 && created === 0) toast.success(`Ya existían todas (${dup}).`);
+        else toast.success(`${created} creadas.`);
       } else {
-        await supabase.from("notes").insert({
-          user_id: user.id,
-          content: action.description || action.title,
-          type: "note",
-        });
+        const r = await insertOne(action);
+        setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
+        toast.success(r === "duplicate" ? "Ya existía." : "Listo.");
       }
-      setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
-      toast.success("Listo.");
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -313,6 +360,7 @@ export function ChatInterface() {
   const declineAction = (msgId: string) => {
     setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "declined" } : x));
   };
+
 
   const isEmpty = messages.length === 0 && !initialLoading;
   const greeting = useMemo(() => {
