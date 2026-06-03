@@ -148,7 +148,7 @@ function RemindersPage() {
 }
 
 function Section({
-  label, items, onToggle, onEdit, onDelete, empty,
+  label, items, onToggle, onEdit, onDelete, empty, expired,
 }: {
   label: string;
   items: Reminder[];
@@ -156,6 +156,7 @@ function Section({
   onEdit: (r: Reminder) => void;
   onDelete: (r: Reminder) => void;
   empty?: string;
+  expired?: boolean;
 }) {
   return (
     <section>
@@ -171,6 +172,7 @@ function Section({
               onToggle={() => onToggle(r)}
               onEdit={() => onEdit(r)}
               onDelete={() => onDelete(r)}
+              expired={expired}
             />
           ))}
         </ul>
