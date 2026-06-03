@@ -199,40 +199,48 @@ export function ChatInterface() {
 
   // (auto-resize handled inside MentionInput)
 
-  const sendText = async (text: string) => {
-    if (!text.trim() || !user || streaming) return;
-    const userMsg: Msg = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text.trim(),
-      createdAt: Date.now(),
-    };
-    const next = [...messages, userMsg];
-    setMessages(next);
-    setInput("");
+  // Runs an assistant turn. `visibleUserMsg` is shown + persisted; `hiddenUserSignal` is
+  // sent to the model but NOT shown in the UI nor saved. Used to continue a chain of
+  // one-action-at-a-time proposals after the user confirms/declines an action card.
+  const runAssistantTurn = async (opts: {
+    visibleUserMsg?: Msg;
+    hiddenUserSignal?: string;
+  }) => {
+    if (!user || streaming) return;
+
+    let next = messages;
+    if (opts.visibleUserMsg) {
+      next = [...messages, opts.visibleUserMsg];
+      setMessages(next);
+      void supabase.from("chat_messages").insert({
+        user_id: user.id,
+        role: "user",
+        content: opts.visibleUserMsg.content,
+      }).then(({ error }) => { if (error) console.error("save user msg", error); });
+    } else {
+      // Read latest messages from state ref via setMessages callback
+      next = await new Promise<Msg[]>((resolve) => {
+        setMessages((m) => { resolve(m); return m; });
+      });
+    }
+
     setStreaming(true);
-
-    void supabase.from("chat_messages").insert({
-      user_id: user.id,
-      role: "user",
-      content: userMsg.content,
-    }).then(({ error }) => { if (error) console.error("save user msg", error); });
-
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", createdAt: Date.now() }]);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const payloadMessages = next.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+      if (opts.hiddenUserSignal) {
+        payloadMessages.push({ role: "user", content: opts.hiddenUserSignal });
+      }
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({
-          timezone: userTimeZone,
-          messages: next.slice(-20).map((m) => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify({ timezone: userTimeZone, messages: payloadMessages }),
       });
       if (!res.ok || !res.body) {
         const errText = await res.text().catch(() => "");
@@ -268,6 +276,19 @@ export function ChatInterface() {
     } finally {
       setStreaming(false);
     }
+  };
+
+  const sendText = async (text: string) => {
+    if (!text.trim() || !user || streaming) return;
+    await runAssistantTurn({
+      visibleUserMsg: {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: text.trim(),
+        createdAt: Date.now(),
+      },
+    });
+    setInput("");
   };
 
   const dayKeyInTz = (iso: string | null | undefined, tz: string): string => {
