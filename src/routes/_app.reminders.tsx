@@ -72,7 +72,9 @@ function RemindersPage() {
     if (error) toast.error(error.message);
   };
 
-  const upcoming = items.filter((r) => !r.done);
+  const now = new Date();
+  const expired = items.filter((r) => !r.done && new Date(r.datetime) < now);
+  const upcoming = items.filter((r) => !r.done && new Date(r.datetime) >= now);
   const completed = items.filter((r) => !!r.done);
 
   return (
@@ -88,6 +90,16 @@ function RemindersPage() {
         <Skeletons />
       ) : (
         <div className="space-y-8">
+          {expired.length > 0 && (
+            <Section
+              label="VENCIDOS"
+              items={expired}
+              onToggle={toggle}
+              onEdit={setEditing}
+              onDelete={setDeleting}
+              expired
+            />
+          )}
           <Section
             label="PRÓXIMOS"
             items={upcoming}
