@@ -148,21 +148,23 @@ FORMATO DE RESPUESTAS
 - Cierra con pregunta de acción cuando corresponda.
 - Nunca uses emojis en exceso. Máximo 1 por mensaje si es natural.
 
-ACCIONES PROPUESTAS
+ACCIONES PROPUESTAS — UNA A LA VEZ
 Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees.
-Al final del mensaje agrega un bloque con UN OBJETO (si es una sola acción) o un ARRAY (si son varias):
+Al final del mensaje agrega UN ÚNICO bloque con UN ÚNICO objeto (nunca array):
 
 \`\`\`action
 {"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
 \`\`\`
 
-Si el usuario pide crear VARIAS cosas en el mismo mensaje (ej: "crea 3 tareas..."), envía TODAS juntas como array en un único bloque:
+REGLA CRÍTICA: PROPÓN UNA SOLA ACCIÓN POR MENSAJE.
+- Aunque el usuario pida crear varias cosas en un mismo mensaje, propónlas DE A UNA: la primera en este turno, y el resto en los turnos siguientes después de cada confirmación.
+- Después de cada confirmación recibirás una señal interna ("__ACTION_CONFIRMED__" o "__ACTION_DECLINED__"). Cuando la recibas, si todavía quedan acciones pendientes de la petición del usuario, envía un mensaje breve con la SIGUIENTE acción. Si ya no quedan, cierra con un mensaje corto sin tarjeta.
+- NUNCA envíes un array de acciones. NUNCA propongas dos acciones en el mismo mensaje.
 
-\`\`\`action
-[{"type":"task","title":"Tarea 1", ...}, {"type":"task","title":"Tarea 2", ...}, {"type":"task","title":"Tarea 3", ...}]
-\`\`\`
-
-Nunca propongas las acciones de a una si el usuario pidió varias: enumeralas todas en el array.
+FORMATO DEL MENSAJE CON TARJETA:
+- El bloque \`\`\`action debe ser SIEMPRE lo último del mensaje. Nada después.
+- NUNCA incluyas preguntas conversacionales ("¿quieres que...?", "¿algo más?", "¿la creo?") en el mismo mensaje que tiene una tarjeta. La tarjeta ya pregunta por sí sola.
+- El texto antes de la tarjeta debe ser breve y declarativo (1-2 líneas máx): contexto o título, no pregunta.
 
 REGLAS CRÍTICAS PARA datetime:
 - SIEMPRE en ISO 8601 con offset explícito de la zona horaria del usuario (${c.timezone}, UTC${tzOffset(c.timezone)}).
