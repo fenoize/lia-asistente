@@ -72,7 +72,9 @@ function RemindersPage() {
     if (error) toast.error(error.message);
   };
 
-  const upcoming = items.filter((r) => !r.done);
+  const now = new Date();
+  const expired = items.filter((r) => !r.done && new Date(r.datetime) < now);
+  const upcoming = items.filter((r) => !r.done && new Date(r.datetime) >= now);
   const completed = items.filter((r) => !!r.done);
 
   return (
@@ -88,6 +90,16 @@ function RemindersPage() {
         <Skeletons />
       ) : (
         <div className="space-y-8">
+          {expired.length > 0 && (
+            <Section
+              label="VENCIDOS"
+              items={expired}
+              onToggle={toggle}
+              onEdit={setEditing}
+              onDelete={setDeleting}
+              expired
+            />
+          )}
           <Section
             label="PRÓXIMOS"
             items={upcoming}
@@ -136,7 +148,7 @@ function RemindersPage() {
 }
 
 function Section({
-  label, items, onToggle, onEdit, onDelete, empty,
+  label, items, onToggle, onEdit, onDelete, empty, expired,
 }: {
   label: string;
   items: Reminder[];
@@ -144,6 +156,7 @@ function Section({
   onEdit: (r: Reminder) => void;
   onDelete: (r: Reminder) => void;
   empty?: string;
+  expired?: boolean;
 }) {
   return (
     <section>
@@ -159,6 +172,7 @@ function Section({
               onToggle={() => onToggle(r)}
               onEdit={() => onEdit(r)}
               onDelete={() => onDelete(r)}
+              expired={expired}
             />
           ))}
         </ul>
@@ -168,38 +182,52 @@ function Section({
 }
 
 function ReminderRow({
-  reminder: r, onToggle, onEdit, onDelete,
+  reminder: r, onToggle, onEdit, onDelete, expired,
 }: {
   reminder: Reminder;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  expired?: boolean;
 }) {
-  const fmt = formatDateTimeInTimeZone(r.datetime, detectUserTimeZone());
+  const userTimeZone = detectUserTimeZone();
+  const fmt = formatDateTimeInTimeZone(r.datetime, userTimeZone);
 
   return (
     <li
       className="group flex items-center gap-3"
       style={{
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
+        border: `1px solid ${expired ? "var(--overdue)" : "var(--border)"}`,
         borderRadius: "var(--radius-md)",
         padding: "12px 14px",
         opacity: r.done ? 0.55 : 1,
         transition: "opacity 200ms ease, transform 200ms ease",
       }}
     >
-      <IconBell size={16} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
+      <IconBell
+        size={16}
+        style={{ color: expired ? "var(--overdue)" : "var(--accent-color)", flexShrink: 0 }}
+      />
       <div className="flex-1 min-w-0">
         <div
           style={{
-            fontSize: 14, color: "var(--text-primary)",
+            fontSize: 14,
+            color: expired ? "var(--overdue)" : "var(--text-primary)",
             textDecoration: r.done ? "line-through" : "none",
           }}
         >
           {r.title}
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{fmt}</div>
+        <div
+          style={{
+            fontSize: 12,
+            color: expired ? "var(--overdue)" : "var(--text-secondary)",
+            marginTop: 2,
+          }}
+        >
+          {fmt}
+        </div>
       </div>
 
       <div className="flex items-center gap-1">
