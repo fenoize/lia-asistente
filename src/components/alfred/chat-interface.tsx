@@ -357,6 +357,7 @@ export function ChatInterface() {
     if (!user) return;
     try {
       if (action.type === "bulk" && action.items?.length) {
+        // Legacy bulk (mensajes antiguos en historial). El nuevo flujo es una acción a la vez.
         let created = 0;
         let dup = 0;
         for (const item of action.items) {
@@ -373,6 +374,11 @@ export function ChatInterface() {
         setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
         toast.success(r === "duplicate" ? "Ya existía." : "Listo.");
       }
+      // Continúa la cadena: si quedan más acciones pendientes de la última petición,
+      // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
+      void runAssistantTurn({
+        hiddenUserSignal: "__ACTION_CONFIRMED__ Si queda otra acción pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada, cierra con un mensaje breve sin tarjeta.",
+      });
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -380,6 +386,9 @@ export function ChatInterface() {
 
   const declineAction = (msgId: string) => {
     setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "declined" } : x));
+    void runAssistantTurn({
+      hiddenUserSignal: "__ACTION_DECLINED__ Si queda otra acción pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada, cierra con un mensaje breve sin tarjeta.",
+    });
   };
 
 
