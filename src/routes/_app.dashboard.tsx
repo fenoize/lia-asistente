@@ -248,6 +248,17 @@ function Dashboard() {
     (t) => t.status !== "done" && isOverdue(t.due_date),
   ).length;
 
+  const projectMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of projects) map[p.id] = p.name;
+    return map;
+  }, [projects]);
+  const contactMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of allContacts) map[c.id] = c.name;
+    return map;
+  }, [allContacts]);
+
   const visiblePending = showAllTasks ? pendingTodayTasks : pendingTodayTasks.slice(0, 4);
 
   const upcomingMeetings = meetings.filter(
