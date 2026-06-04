@@ -328,6 +328,7 @@ export function ChatInterface() {
         description: action.description ?? null,
         priority: action.priority ?? "medium",
         due_date: dt,
+        project_id: action.project_id ?? null,
       });
     } else if (action.type === "meeting") {
       await supabase.from("meetings").insert({
