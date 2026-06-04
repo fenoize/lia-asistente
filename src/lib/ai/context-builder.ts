@@ -198,5 +198,12 @@ export async function buildContext(
       }),
       "(sin vínculos)",
     ),
+    projectsCatalog: bullets(
+      projects.map((p: any) => {
+        const client = contacts.find((c: any) => c.id === p.client_id);
+        return `- ${p.name}${client ? ` (cliente: ${client.name})` : ""}${p.status ? ` [${p.status}]` : ""} [id: ${p.id}]`;
+      }),
+      "(sin proyectos)",
+    ),
   };
 }
