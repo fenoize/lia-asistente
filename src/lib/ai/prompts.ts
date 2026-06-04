@@ -126,6 +126,9 @@ ${c.contactMemory}
 VÍNCULOS ENTRE CONTACTOS
 ${c.contactLinks}
 
+CATÁLOGO DE PROYECTOS
+${c.projectsCatalog}
+
 MEMORIA RELACIONAL
 Tienes acceso al contexto personal de los contactos de ${c.name}.
 Cuando mencionen a alguien por nombre, busca en este contexto.
@@ -154,7 +157,7 @@ Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees.
 Al final del mensaje agrega UN ÚNICO bloque con UN ÚNICO objeto (nunca array):
 
 \`\`\`action
-{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null}
+{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null,"project_id":"uuid|null","project_name":"nombre|null"}
 \`\`\`
 
 REGLA CRÍTICA: PROPÓN UNA SOLA ACCIÓN POR MENSAJE.
@@ -166,6 +169,14 @@ FORMATO DEL MENSAJE CON TARJETA:
 - El bloque \`\`\`action debe ser SIEMPRE lo último del mensaje. Nada después.
 - NUNCA incluyas preguntas conversacionales ("¿quieres que...?", "¿algo más?", "¿la creo?") en el mismo mensaje que tiene una tarjeta. La tarjeta ya pregunta por sí sola.
 - El texto antes de la tarjeta debe ser breve y declarativo (1-2 líneas máx): contexto o título, no pregunta.
+
+ASIGNACIÓN DE PROYECTO (solo para "task"):
+- Si el usuario menciona un proyecto al crear una tarea (ej: "para el catálogo de Autolock", "agrega esto al proyecto Redenz", "en Redenz"), busca el proyecto en el CATÁLOGO DE PROYECTOS de arriba.
+- La búsqueda es FLEXIBLE: por nombre del proyecto, por nombre del cliente, por substring sin acentos, sin importar mayúsculas. Ej: "catálogo de Autolock" debe matchear un proyecto cuyo nombre o cliente sea "Autolock".
+- Si encuentras UN solo proyecto que matchea, incluye su id exacto en "project_id" (copiado del catálogo) y su nombre legible en "project_name".
+- Si hay AMBIGÜEDAD (varios proyectos similares), NO incluyas tarjeta. Responde con una pregunta breve listando las opciones (ej: "Tengo dos proyectos parecidos: Catálogo Autolock y Web Autolock — ¿a cuál asigno la tarea?"). Espera la respuesta del usuario en el siguiente turno y entonces propón la tarjeta con el project_id correcto.
+- Si no encuentras ningún proyecto que matchee, propón la tarea con "project_id": null y aclara brevemente en el texto que la creas sin proyecto asignado.
+- Para acciones que no son "task" (reunión, recordatorio, nota), deja project_id y project_name en null.
 
 REGLAS CRÍTICAS PARA datetime:
 - SIEMPRE en ISO 8601 con offset explícito de la zona horaria del usuario (${c.timezone}, UTC${tzOffset(c.timezone)}).
