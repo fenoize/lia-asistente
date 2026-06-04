@@ -139,7 +139,9 @@ function Dashboard() {
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
       setProjects((p.data as { id: string; name: string }[]) ?? []);
+      setAllContacts(((c.data as any[]) ?? []).map((row) => ({ id: row.id, name: row.name })));
       const upcoming = ((c.data as any[]) ?? [])
+        .filter((row) => !!row.birthday)
         .map((row) => ({
           id: row.id,
           name: row.name,
