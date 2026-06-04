@@ -510,6 +510,8 @@ function Dashboard() {
                     key={t.id}
                     task={t}
                     overdue={isOverdue(t.due_date)}
+                    projectName={t.project_id ? projectMap[t.project_id] : undefined}
+                    assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
                     onToggle={() => toggleTask(t)}
                     onOpen={() => setEditingTask(t)}
                   />
