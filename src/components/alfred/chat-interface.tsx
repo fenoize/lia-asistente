@@ -328,6 +328,7 @@ export function ChatInterface() {
         description: action.description ?? null,
         priority: action.priority ?? "medium",
         due_date: dt,
+        project_id: action.project_id ?? null,
       });
     } else if (action.type === "meeting") {
       await supabase.from("meetings").insert({
@@ -735,6 +736,11 @@ function ActionCard({
               {it.datetime && (
                 <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                   {formatDateTimeInTimeZone(it.datetime, tz)}
+                </p>
+              )}
+              {it.type === "task" && it.project_name && (
+                <p style={{ fontSize: 12, color: "var(--accent-color)", marginTop: 2 }}>
+                  Proyecto: {it.project_name}
                 </p>
               )}
               {it.description && !isBulk && (

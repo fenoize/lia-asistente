@@ -7,6 +7,8 @@ export type ChatAction = {
   datetime?: string | null;
   priority?: "low" | "medium" | "high" | null;
   duration_minutes?: number | null;
+  project_id?: string | null;
+  project_name?: string | null;
   items?: ChatAction[];
 };
 
