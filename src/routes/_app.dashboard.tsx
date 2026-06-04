@@ -33,6 +33,7 @@ type Task = {
   due_date: string | null;
   description: string | null;
   project_id: string | null;
+  assigned_to: string | null;
 };
 type Meeting = {
   id: string;
@@ -79,7 +80,8 @@ function Dashboard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-  
+  const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
+
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
 
