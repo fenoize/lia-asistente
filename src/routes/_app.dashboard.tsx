@@ -14,8 +14,9 @@ import {
   IconCake,
   IconAlertTriangle,
   IconClock,
-  
   IconSparkles,
+  IconFolder,
+  IconUser,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
@@ -32,6 +33,7 @@ type Task = {
   due_date: string | null;
   description: string | null;
   project_id: string | null;
+  assigned_to: string | null;
 };
 type Meeting = {
   id: string;
@@ -78,7 +80,8 @@ function Dashboard() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
-  
+  const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
+
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
 
@@ -128,8 +131,7 @@ function Dashboard() {
           .order("datetime"),
         supabase
           .from("contacts")
-          .select("id,name,birthday,context")
-          .not("birthday", "is", null),
+          .select("id,name,birthday,context"),
         supabase.from("projects").select("id,name").order("name"),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
@@ -137,7 +139,9 @@ function Dashboard() {
       setMeetings((m.data as Meeting[]) ?? []);
       setReminders((r.data as Reminder[]) ?? []);
       setProjects((p.data as { id: string; name: string }[]) ?? []);
+      setAllContacts(((c.data as any[]) ?? []).map((row) => ({ id: row.id, name: row.name })));
       const upcoming = ((c.data as any[]) ?? [])
+        .filter((row) => !!row.birthday)
         .map((row) => ({
           id: row.id,
           name: row.name,
@@ -243,6 +247,17 @@ function Dashboard() {
   const overdueCount = tasks.filter(
     (t) => t.status !== "done" && isOverdue(t.due_date),
   ).length;
+
+  const projectMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of projects) map[p.id] = p.name;
+    return map;
+  }, [projects]);
+  const contactMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of allContacts) map[c.id] = c.name;
+    return map;
+  }, [allContacts]);
 
   const visiblePending = showAllTasks ? pendingTodayTasks : pendingTodayTasks.slice(0, 4);
 
@@ -495,6 +510,8 @@ function Dashboard() {
                     key={t.id}
                     task={t}
                     overdue={isOverdue(t.due_date)}
+                    projectName={t.project_id ? projectMap[t.project_id] : undefined}
+                    assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
                     onToggle={() => toggleTask(t)}
                     onOpen={() => setEditingTask(t)}
                   />
@@ -519,6 +536,8 @@ function Dashboard() {
                     key={t.id}
                     task={t}
                     overdue={false}
+                    projectName={t.project_id ? projectMap[t.project_id] : undefined}
+                    assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
                     onToggle={() => toggleTask(t)}
                     onOpen={() => setEditingTask(t)}
                   />
@@ -662,11 +681,15 @@ function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; 
 function TaskRow({
   task,
   overdue,
+  projectName,
+  assigneeName,
   onToggle,
   onOpen,
 }: {
   task: Task;
   overdue: boolean;
+  projectName?: string;
+  assigneeName?: string;
   onToggle: () => void;
   onOpen?: () => void;
 }) {
@@ -676,7 +699,7 @@ function TaskRow({
     <motion.div
       layout
       transition={{ type: "spring", stiffness: 400, damping: 36, duration: 0.35 }}
-      className="flex items-center gap-3 group"
+      className="flex items-start gap-3 group"
       style={{
         padding: "8px 10px",
         borderRadius: 8,
@@ -704,6 +727,7 @@ function TaskRow({
           alignItems: "center",
           justifyContent: "center",
           transition: "all 0.15s",
+          marginTop: 3,
         }}
         onMouseEnter={(e) => {
           if (!done) e.currentTarget.style.borderColor = "var(--accent-color)";
@@ -714,24 +738,56 @@ function TaskRow({
       >
         {done && <IconCheck size={11} stroke={3} color="white" />}
       </button>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex-1 min-w-0 text-left bg-transparent"
-        style={{
-          fontSize: 14,
-          color: "#d0d0d0",
-          textDecoration: done ? "line-through" : "none",
-          wordBreak: "break-word",
-          overflowWrap: "anywhere",
-          whiteSpace: "normal",
-          cursor: onOpen ? "pointer" : "default",
-          padding: 0,
-          border: "none",
-        }}
-      >
-        {task.title}
-      </button>
+      <div className="flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="w-full text-left bg-transparent"
+          style={{
+            fontSize: 14,
+            color: "#d0d0d0",
+            textDecoration: done ? "line-through" : "none",
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+            whiteSpace: "normal",
+            cursor: onOpen ? "pointer" : "default",
+            padding: 0,
+            border: "none",
+            display: "block",
+          }}
+        >
+          {task.title}
+        </button>
+        {(projectName || assigneeName) && (
+          <div
+            className="flex items-center gap-3 mt-0.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen?.();
+            }}
+            style={{ cursor: onOpen ? "pointer" : "default" }}
+          >
+            {projectName && (
+              <span
+                className="inline-flex items-center gap-1"
+                style={{ fontSize: 11, color: "var(--text-tertiary)" }}
+              >
+                <IconFolder size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
+                <span className="truncate">{projectName}</span>
+              </span>
+            )}
+            {assigneeName && (
+              <span
+                className="inline-flex items-center gap-1"
+                style={{ fontSize: 11, color: "var(--text-tertiary)" }}
+              >
+                <IconUser size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
+                <span className="truncate">{assigneeName}</span>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
       {done && (
         <span
           style={{
@@ -739,6 +795,7 @@ function TaskRow({
             color: "var(--text-tertiary)",
             textTransform: "uppercase",
             letterSpacing: "0.08em",
+            marginTop: 2,
           }}
         >
           Completada
@@ -752,6 +809,7 @@ function TaskRow({
             color: "#f87171",
             borderRadius: 100,
             padding: "2px 10px",
+            marginTop: 2,
           }}
         >
           Alta
@@ -765,6 +823,7 @@ function TaskRow({
             color: "#f87171",
             borderRadius: 100,
             padding: "2px 10px",
+            marginTop: 2,
           }}
         >
           Atrasada
