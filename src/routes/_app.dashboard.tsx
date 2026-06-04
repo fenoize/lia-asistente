@@ -131,8 +131,7 @@ function Dashboard() {
           .order("datetime"),
         supabase
           .from("contacts")
-          .select("id,name,birthday,context")
-          .not("birthday", "is", null),
+          .select("id,name,birthday,context"),
         supabase.from("projects").select("id,name").order("name"),
       ]);
       setName((profile.data?.name ?? "").split(" ")[0] || "");
