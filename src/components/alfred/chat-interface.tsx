@@ -738,6 +738,11 @@ function ActionCard({
                   {formatDateTimeInTimeZone(it.datetime, tz)}
                 </p>
               )}
+              {it.type === "task" && it.project_name && (
+                <p style={{ fontSize: 12, color: "var(--accent-color)", marginTop: 2 }}>
+                  Proyecto: {it.project_name}
+                </p>
+              )}
               {it.description && !isBulk && (
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
                   {it.description}
