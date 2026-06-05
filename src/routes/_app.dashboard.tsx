@@ -13,6 +13,8 @@ import {
   IconCheck,
   IconCake,
   IconAlertTriangle,
+  IconAlertCircle,
+  IconCalendar,
   IconClock,
   IconSparkles,
   IconFolder,
@@ -81,6 +83,7 @@ function Dashboard() {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
+  const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
@@ -140,6 +143,16 @@ function Dashboard() {
       setReminders((r.data as Reminder[]) ?? []);
       setProjects((p.data as { id: string; name: string }[]) ?? []);
       setAllContacts(((c.data as any[]) ?? []).map((row) => ({ id: row.id, name: row.name })));
+
+      // Month progress: tasks created this month, done vs total
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const [totalRes, doneRes] = await Promise.all([
+        supabase.from("tasks").select("id", { head: true, count: "exact" }).gte("created_at", monthStart.toISOString()),
+        supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("status", "done").gte("created_at", monthStart.toISOString()),
+      ]);
+      setMonthProgress({ done: doneRes.count ?? 0, total: totalRes.count ?? 0 });
       const upcoming = ((c.data as any[]) ?? [])
         .filter((row) => !!row.birthday)
         .map((row) => ({
@@ -426,36 +439,47 @@ function Dashboard() {
       })}
 
       {/* 2. Requiere atención */}
-      {(overdueCount > 0 || nextMeeting) && (
-        <Block label="REQUIERE ATENCIÓN">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            {overdueCount > 0 && (
-              <AttentionCard
-                to="/tasks"
-                icon={<IconAlertTriangle size={14} stroke={1.75} color="#f87171" />}
-                bg="#3d1515"
-                border="rgba(220,38,38,0.35)"
-                accent="#f87171"
-                label="Tareas vencidas"
-                value={`${overdueCount}`}
-                hint={overdueCount === 1 ? "tarea atrasada" : "tareas atrasadas"}
-              />
-            )}
-            {nextMeeting && (
-              <AttentionCard
-                to="/meetings"
-                icon={<IconClock size={14} stroke={1.75} color="#fbbf24" />}
-                bg="#2e1f00"
-                border="rgba(217,119,6,0.35)"
-                accent="#fbbf24"
-                label="Próxima reunión"
-                value={formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
-                hint={nextMeeting.title}
-              />
-            )}
-          </div>
-        </Block>
-      )}
+      <Block label="REQUIERE ATENCIÓN">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <AttentionMiniCard
+            to="/tasks"
+            icon={<IconAlertCircle size={16} stroke={1.75} color="#f87171" />}
+            label="Vencidas"
+            valueNode={
+              <span style={{ color: "#f87171" }}>{overdueCount}</span>
+            }
+            hint="tareas"
+          />
+          <AttentionMiniCard
+            to="/meetings"
+            icon={<IconCalendar size={16} stroke={1.75} color="#818cf8" />}
+            label="Reunión"
+            valueNode={
+              nextMeeting ? (
+                <span style={{ color: "#f2f2f2" }}>
+                  {formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
+                </span>
+              ) : (
+                <span style={{ color: "#444" }}>—</span>
+              )
+            }
+            hint={nextMeeting ? timeUntil(nextMeeting.datetime) : "sin próximas"}
+          />
+          <AttentionMiniCard
+            to="/tasks"
+            icon={<IconCheck size={16} stroke={2.5} color="#4ade80" />}
+            label="Progreso"
+            valueNode={
+              <>
+                <span style={{ color: "#f2f2f2" }}>{monthProgress.done}</span>
+                <span style={{ color: "#444" }}>/{monthProgress.total}</span>
+              </>
+            }
+            hint="este mes"
+          />
+        </div>
+      </Block>
+
 
       {/* 3. Recordatorios y eventos (combinado) */}
       {timeline.length > 0 && (
@@ -963,16 +987,25 @@ function BriefCompact({ text }: { text: string }) {
   );
 }
 
-function AttentionCard({
-  to, icon, bg, border, accent, label, value, hint,
+function timeUntil(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return "ahora";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `en ${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m > 0 ? `en ${h}h ${m}m` : `en ${h}h`;
+  const d = Math.floor(h / 24);
+  return `en ${d}d`;
+}
+
+function AttentionMiniCard({
+  to, icon, label, valueNode, hint,
 }: {
   to: string;
   icon: React.ReactNode;
-  bg: string;
-  border: string;
-  accent: string;
   label: string;
-  value: string;
+  valueNode: React.ReactNode;
   hint?: string;
 }) {
   return (
@@ -980,22 +1013,22 @@ function AttentionCard({
       to={to}
       style={{
         display: "block",
-        background: bg,
-        border: `1px solid ${border}`,
-        borderRadius: 10,
-        padding: "10px 12px",
+        background: "#161628",
+        border: "1px solid #1e2035",
+        borderRadius: 12,
+        padding: "12px 14px",
         textDecoration: "none",
         transition: "transform 0.15s, border-color 0.15s",
       }}
       className="hover:scale-[1.01]"
     >
-      <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
         {icon}
         <span
           style={{
-            fontSize: 10,
-            color: accent,
-            letterSpacing: "0.08em",
+            fontSize: 9,
+            color: "#8a8aa0",
+            letterSpacing: "0.1em",
             fontWeight: 600,
             textTransform: "uppercase",
           }}
@@ -1005,22 +1038,21 @@ function AttentionCard({
       </div>
       <div
         style={{
-          fontSize: 18,
-          color: "#f2f2f2",
-          fontWeight: 600,
+          fontSize: 24,
+          fontWeight: 700,
           letterSpacing: "-0.02em",
           fontVariantNumeric: "tabular-nums",
           lineHeight: 1.1,
         }}
       >
-        {value}
+        {valueNode}
       </div>
       {hint && (
         <div
           style={{
             fontSize: 11,
             color: "#888",
-            marginTop: 2,
+            marginTop: 4,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -1032,3 +1064,4 @@ function AttentionCard({
     </Link>
   );
 }
+
