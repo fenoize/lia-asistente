@@ -745,8 +745,29 @@ function ActionCard({
                   </span>
                 </div>
               )}
-              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>{it.title}</p>
-              {it.datetime && (
+              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                {it.type === "task_update" && it.new_title ? (
+                  <>
+                    <span style={{ textDecoration: "line-through", color: "var(--text-tertiary)" }}>{it.title}</span>
+                    {" → "}
+                    {it.new_title}
+                  </>
+                ) : it.title}
+              </p>
+              {it.type === "task_update" && (
+                <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                  {it.datetime && (
+                    <div>Nueva fecha: <span style={{ color: "var(--text-primary)" }}>{formatDateTimeInTimeZone(it.datetime, tz)}</span></div>
+                  )}
+                  {it.priority && (
+                    <div>Nueva prioridad: <span style={{ color: "var(--text-primary)" }}>{it.priority === "high" ? "Alta" : it.priority === "medium" ? "Media" : "Baja"}</span></div>
+                  )}
+                  {it.project_name && (
+                    <div>Nuevo proyecto: <span style={{ color: "var(--accent-color)" }}>{it.project_name}</span></div>
+                  )}
+                </div>
+              )}
+              {it.type !== "task_update" && it.datetime && (
                 <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                   {formatDateTimeInTimeZone(it.datetime, tz)}
                 </p>
