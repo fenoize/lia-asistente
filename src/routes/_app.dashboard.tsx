@@ -439,35 +439,46 @@ function Dashboard() {
       })}
 
       {/* 2. Requiere atención */}
-      {(overdueCount > 0 || nextMeeting) && (
-        <Block label="REQUIERE ATENCIÓN">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            {overdueCount > 0 && (
-              <AttentionCard
-                to="/tasks"
-                icon={<IconAlertTriangle size={14} stroke={1.75} color="#f87171" />}
-                bg="#3d1515"
-                border="rgba(220,38,38,0.35)"
-                accent="#f87171"
-                label="Tareas vencidas"
-                value={`${overdueCount}`}
-                hint={overdueCount === 1 ? "tarea atrasada" : "tareas atrasadas"}
-              />
-            )}
-            {nextMeeting && (
-              <AttentionCard
-                to="/meetings"
-                icon={<IconClock size={14} stroke={1.75} color="#fbbf24" />}
-                bg="#2e1f00"
-                border="rgba(217,119,6,0.35)"
-                accent="#fbbf24"
-                label="Próxima reunión"
-                value={formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
-                hint={nextMeeting.title}
-              />
-            )}
-          </div>
-        </Block>
+      <Block label="REQUIERE ATENCIÓN">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <AttentionMiniCard
+            to="/tasks"
+            icon={<IconAlertCircle size={16} stroke={1.75} color="#f87171" />}
+            label="Vencidas"
+            valueNode={
+              <span style={{ color: "#f87171" }}>{overdueCount}</span>
+            }
+            hint="tareas"
+          />
+          <AttentionMiniCard
+            to="/meetings"
+            icon={<IconCalendar size={16} stroke={1.75} color="#818cf8" />}
+            label="Reunión"
+            valueNode={
+              nextMeeting ? (
+                <span style={{ color: "#f2f2f2" }}>
+                  {formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
+                </span>
+              ) : (
+                <span style={{ color: "#444" }}>—</span>
+              )
+            }
+            hint={nextMeeting ? timeUntil(nextMeeting.datetime) : "sin próximas"}
+          />
+          <AttentionMiniCard
+            to="/tasks"
+            icon={<IconCheck size={16} stroke={2.5} color="#4ade80" />}
+            label="Progreso"
+            valueNode={
+              <>
+                <span style={{ color: "#f2f2f2" }}>{monthProgress.done}</span>
+                <span style={{ color: "#444" }}>/{monthProgress.total}</span>
+              </>
+            }
+            hint="este mes"
+          />
+        </div>
+      </Block>
       )}
 
       {/* 3. Recordatorios y eventos (combinado) */}
