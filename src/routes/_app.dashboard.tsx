@@ -81,6 +81,7 @@ function Dashboard() {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
+  const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
   const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
   const fetchedBriefRef = useRef(false);
