@@ -130,6 +130,9 @@ ${c.contactLinks}
 CATÁLOGO DE PROYECTOS
 ${c.projectsCatalog}
 
+TAREAS ABIERTAS (con id para editar)
+${c.openTasksCatalog}
+
 MEMORIA RELACIONAL
 Tienes acceso al contexto personal de los contactos de ${c.name}.
 Cuando mencionen a alguien por nombre, busca en este contexto.
