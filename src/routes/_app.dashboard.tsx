@@ -143,6 +143,16 @@ function Dashboard() {
       setReminders((r.data as Reminder[]) ?? []);
       setProjects((p.data as { id: string; name: string }[]) ?? []);
       setAllContacts(((c.data as any[]) ?? []).map((row) => ({ id: row.id, name: row.name })));
+
+      // Month progress: tasks created this month, done vs total
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const [totalRes, doneRes] = await Promise.all([
+        supabase.from("tasks").select("id", { head: true, count: "exact" }).gte("created_at", monthStart.toISOString()),
+        supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("status", "done").gte("created_at", monthStart.toISOString()),
+      ]);
+      setMonthProgress({ done: doneRes.count ?? 0, total: totalRes.count ?? 0 });
       const upcoming = ((c.data as any[]) ?? [])
         .filter((row) => !!row.birthday)
         .map((row) => ({
