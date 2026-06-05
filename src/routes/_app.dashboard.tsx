@@ -479,7 +479,7 @@ function Dashboard() {
           />
         </div>
       </Block>
-      )}
+
 
       {/* 3. Recordatorios y eventos (combinado) */}
       {timeline.length > 0 && (
