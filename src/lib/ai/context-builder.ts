@@ -205,5 +205,12 @@ export async function buildContext(
       }),
       "(sin proyectos)",
     ),
+    openTasksCatalog: bullets(
+      tasks.map((t: any) => {
+        const proj = projects.find((p: any) => p.id === t.project_id);
+        return `- "${t.title}" [id: ${t.id}]${t.due_date ? ` · vence ${fmtDate(t.due_date, timezone)}` : " · sin fecha"} · prioridad ${PRIORITY_LABEL[t.priority] ?? "media"}${proj ? ` · proyecto ${proj.name}` : ""}`;
+      }),
+      "(sin tareas abiertas)",
+    ),
   };
 }
