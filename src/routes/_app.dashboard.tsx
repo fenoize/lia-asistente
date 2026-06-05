@@ -13,6 +13,8 @@ import {
   IconCheck,
   IconCake,
   IconAlertTriangle,
+  IconAlertCircle,
+  IconCalendar,
   IconClock,
   IconSparkles,
   IconFolder,
