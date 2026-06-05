@@ -18,6 +18,7 @@ export type AlfredContext = {
   contactMemory: string;
   contactLinks: string;
   projectsCatalog: string;
+  openTasksCatalog: string;
   briefTaskCount: number;
   briefTasksList: string;
   briefClientCount: number;
