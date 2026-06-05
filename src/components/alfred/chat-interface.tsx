@@ -385,7 +385,7 @@ export function ChatInterface() {
       } else {
         const r = await insertOne(action);
         setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
-        toast.success(r === "duplicate" ? "Ya existía." : "Listo.");
+        toast.success(r === "duplicate" ? "Ya existía." : r === "updated" ? "Actualizado." : "Listo.");
       }
       // Continúa la cadena: si quedan más acciones pendientes de la última petición,
       // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
