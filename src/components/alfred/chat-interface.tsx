@@ -675,6 +675,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   reminder: { label: "Crear recordatorio", Icon: IconBell },
   note: { label: "Guardar nota", Icon: IconPencil },
   bulk: { label: "Crear varios", Icon: IconCircleCheck },
+  task_update: { label: "Editar tarea", Icon: IconPencil },
 };
 
 function ActionCard({
