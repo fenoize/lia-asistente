@@ -28,7 +28,7 @@ const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 function isValidSingle(obj: any): obj is Action {
   return obj && typeof obj === "object"
     && typeof obj.type === "string"
-    && ["task", "meeting", "reminder", "note"].includes(obj.type)
+    && ["task", "meeting", "reminder", "note", "task_update"].includes(obj.type)
     && typeof obj.title === "string";
 }
 
