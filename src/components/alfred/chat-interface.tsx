@@ -317,7 +317,7 @@ export function ChatInterface() {
       if (action.priority) patch.priority = action.priority;
       if (action.project_id !== undefined && action.project_id !== null) patch.project_id = action.project_id;
       if (Object.keys(patch).length === 0) return "duplicate";
-      const { error } = await supabase.from("tasks").update(patch).eq("id", action.task_id).eq("user_id", user.id);
+      const { error } = await (supabase.from("tasks") as any).update(patch).eq("id", action.task_id).eq("user_id", user.id);
       if (error) throw error;
       return "updated";
     }
