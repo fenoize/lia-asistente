@@ -801,7 +801,7 @@ function ActionCard({
               fontWeight: 500,
             }}
           >
-            {isBulk ? `Sí, crear ${items.length}` : "Sí, crear"}
+            {isBulk ? `Sí, crear ${items.length}` : action.type === "task_update" ? "Sí, actualizar" : "Sí, crear"}
           </button>
           <button
             onClick={onDecline}
