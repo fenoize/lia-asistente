@@ -38,7 +38,7 @@ export async function buildContext(
   const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes, relationsRes] = await Promise.all([
     supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
-      .select("title, priority, due_date, status, assigned_to, project_id")
+      .select("id, title, priority, due_date, status, assigned_to, project_id")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(80),
     supabase.from("meetings")
