@@ -817,7 +817,7 @@ function ActionCard({
         </div>
       ) : (
         <p style={{ marginTop: 8, fontSize: 12, color: "var(--text-tertiary)" }}>
-          {status === "accepted" ? "✓ Creado." : "Descartado."}
+          {status === "accepted" ? (action.type === "task_update" ? "✓ Actualizado." : "✓ Creado.") : "Descartado."}
         </p>
       )}
     </div>
