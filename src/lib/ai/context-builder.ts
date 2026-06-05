@@ -38,7 +38,7 @@ export async function buildContext(
   const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes, relationsRes] = await Promise.all([
     supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
-      .select("title, priority, due_date, status, assigned_to, project_id")
+      .select("id, title, priority, due_date, status, assigned_to, project_id")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(80),
     supabase.from("meetings")
@@ -204,6 +204,13 @@ export async function buildContext(
         return `- ${p.name}${client ? ` (cliente: ${client.name})` : ""}${p.status ? ` [${p.status}]` : ""} [id: ${p.id}]`;
       }),
       "(sin proyectos)",
+    ),
+    openTasksCatalog: bullets(
+      tasks.map((t: any) => {
+        const proj = projects.find((p: any) => p.id === t.project_id);
+        return `- "${t.title}" [id: ${t.id}]${t.due_date ? ` · vence ${fmtDate(t.due_date, timezone)}` : " · sin fecha"} · prioridad ${PRIORITY_LABEL[t.priority] ?? "media"}${proj ? ` · proyecto ${proj.name}` : ""}`;
+      }),
+      "(sin tareas abiertas)",
     ),
   };
 }

@@ -18,6 +18,7 @@ export type AlfredContext = {
   contactMemory: string;
   contactLinks: string;
   projectsCatalog: string;
+  openTasksCatalog: string;
   briefTaskCount: number;
   briefTasksList: string;
   briefClientCount: number;
@@ -129,6 +130,9 @@ ${c.contactLinks}
 CATÁLOGO DE PROYECTOS
 ${c.projectsCatalog}
 
+TAREAS ABIERTAS (con id para editar)
+${c.openTasksCatalog}
+
 MEMORIA RELACIONAL
 Tienes acceso al contexto personal de los contactos de ${c.name}.
 Cuando mencionen a alguien por nombre, busca en este contexto.
@@ -160,10 +164,23 @@ Al final del mensaje agrega UN ÚNICO bloque con UN ÚNICO objeto (nunca array):
 {"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null,"project_id":"uuid|null","project_name":"nombre|null"}
 \`\`\`
 
+Para EDITAR una tarea existente (reprogramar, cambiar hora, cambiar prioridad, renombrar, mover de proyecto), usa:
+
+\`\`\`action
+{"type":"task_update","task_id":"uuid-de-la-tarea","title":"título actual","new_title":"nuevo o null","datetime":"ISO o null si no cambia","priority":"low|medium|high o null si no cambia","project_id":"uuid o null si no cambia","project_name":"nombre o null"}
+\`\`\`
+
 REGLA CRÍTICA: PROPÓN UNA SOLA ACCIÓN POR MENSAJE.
-- Aunque el usuario pida crear varias cosas en un mismo mensaje, propónlas DE A UNA: la primera en este turno, y el resto en los turnos siguientes después de cada confirmación.
+- Aunque el usuario pida crear/editar varias cosas en un mismo mensaje, propónlas DE A UNA: la primera en este turno, y el resto en los turnos siguientes después de cada confirmación.
 - Después de cada confirmación recibirás una señal interna ("__ACTION_CONFIRMED__" o "__ACTION_DECLINED__"). Cuando la recibas, si todavía quedan acciones pendientes de la petición del usuario, envía un mensaje breve con la SIGUIENTE acción. Si ya no quedan, cierra con un mensaje corto sin tarjeta.
 - NUNCA envíes un array de acciones. NUNCA propongas dos acciones en el mismo mensaje.
+
+EDITAR vs CREAR (REGLA CRÍTICA):
+- Si el usuario pide modificar, reprogramar, mover, cambiar fecha/hora/prioridad/nombre o reasignar proyecto de una tarea, busca primero en TAREAS ABIERTAS por nombre (búsqueda flexible: substring, sin acentos, sin importar mayúsculas).
+- Si encuentras UNA tarea que matchea, propón tarjeta "task_update" con el task_id exacto del catálogo y solo los campos que cambian. NUNCA crees una tarea nueva en este caso.
+- Si hay AMBIGÜEDAD (varias tareas similares), NO incluyas tarjeta; pregunta cuál editar listando opciones.
+- Si NO encuentras la tarea, pregunta si quiere crearla nueva antes de proponer "task".
+- "Cambia la prioridad de X a alta" → task_update. "Mueve X a mañana" → task_update. "Renombra X" → task_update.
 
 FORMATO DEL MENSAJE CON TARJETA:
 - El bloque \`\`\`action debe ser SIEMPRE lo último del mensaje. Nada después.

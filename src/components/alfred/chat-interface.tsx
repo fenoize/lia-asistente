@@ -28,7 +28,7 @@ const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 function isValidSingle(obj: any): obj is Action {
   return obj && typeof obj === "object"
     && typeof obj.type === "string"
-    && ["task", "meeting", "reminder", "note"].includes(obj.type)
+    && ["task", "meeting", "reminder", "note", "task_update"].includes(obj.type)
     && typeof obj.title === "string";
 }
 
@@ -306,9 +306,21 @@ export function ChatInterface() {
     } catch { return "none"; }
   };
 
-  const insertOne = async (action: Action): Promise<"created" | "duplicate"> => {
+  const insertOne = async (action: Action): Promise<"created" | "duplicate" | "updated"> => {
     if (!user) return "duplicate";
     const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
+    if (action.type === "task_update") {
+      if (!action.task_id) return "duplicate";
+      const patch: Record<string, any> = {};
+      if (action.new_title && action.new_title.trim()) patch.title = action.new_title.trim();
+      if (dt) patch.due_date = dt;
+      if (action.priority) patch.priority = action.priority;
+      if (action.project_id !== undefined && action.project_id !== null) patch.project_id = action.project_id;
+      if (Object.keys(patch).length === 0) return "duplicate";
+      const { error } = await (supabase.from("tasks") as any).update(patch).eq("id", action.task_id).eq("user_id", user.id);
+      if (error) throw error;
+      return "updated";
+    }
     if (action.type === "task") {
       // Dedupe: same title (case-insensitive) and same day in user TZ
       const { data: existing } = await supabase
@@ -373,7 +385,7 @@ export function ChatInterface() {
       } else {
         const r = await insertOne(action);
         setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
-        toast.success(r === "duplicate" ? "Ya existía." : "Listo.");
+        toast.success(r === "duplicate" ? "Ya existía." : r === "updated" ? "Actualizado." : "Listo.");
       }
       // Continúa la cadena: si quedan más acciones pendientes de la última petición,
       // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
@@ -675,6 +687,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   reminder: { label: "Crear recordatorio", Icon: IconBell },
   note: { label: "Guardar nota", Icon: IconPencil },
   bulk: { label: "Crear varios", Icon: IconCircleCheck },
+  task_update: { label: "Editar tarea", Icon: IconPencil },
 };
 
 function ActionCard({
@@ -732,8 +745,29 @@ function ActionCard({
                   </span>
                 </div>
               )}
-              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>{it.title}</p>
-              {it.datetime && (
+              <p style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                {it.type === "task_update" && it.new_title ? (
+                  <>
+                    <span style={{ textDecoration: "line-through", color: "var(--text-tertiary)" }}>{it.title}</span>
+                    {" → "}
+                    {it.new_title}
+                  </>
+                ) : it.title}
+              </p>
+              {it.type === "task_update" && (
+                <div style={{ marginTop: 4, fontSize: 12, color: "var(--text-secondary)" }}>
+                  {it.datetime && (
+                    <div>Nueva fecha: <span style={{ color: "var(--text-primary)" }}>{formatDateTimeInTimeZone(it.datetime, tz)}</span></div>
+                  )}
+                  {it.priority && (
+                    <div>Nueva prioridad: <span style={{ color: "var(--text-primary)" }}>{it.priority === "high" ? "Alta" : it.priority === "medium" ? "Media" : "Baja"}</span></div>
+                  )}
+                  {it.project_name && (
+                    <div>Nuevo proyecto: <span style={{ color: "var(--accent-color)" }}>{it.project_name}</span></div>
+                  )}
+                </div>
+              )}
+              {it.type !== "task_update" && it.datetime && (
                 <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
                   {formatDateTimeInTimeZone(it.datetime, tz)}
                 </p>
@@ -767,7 +801,7 @@ function ActionCard({
               fontWeight: 500,
             }}
           >
-            {isBulk ? `Sí, crear ${items.length}` : "Sí, crear"}
+            {isBulk ? `Sí, crear ${items.length}` : action.type === "task_update" ? "Sí, actualizar" : "Sí, crear"}
           </button>
           <button
             onClick={onDecline}
@@ -783,7 +817,7 @@ function ActionCard({
         </div>
       ) : (
         <p style={{ marginTop: 8, fontSize: 12, color: "var(--text-tertiary)" }}>
-          {status === "accepted" ? "✓ Creado." : "Descartado."}
+          {status === "accepted" ? (action.type === "task_update" ? "✓ Actualizado." : "✓ Creado.") : "Descartado."}
         </p>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 
 export type ChatAction = {
-  type: "task" | "meeting" | "reminder" | "note" | "bulk";
+  type: "task" | "meeting" | "reminder" | "note" | "bulk" | "task_update";
   title: string;
   description?: string | null;
   datetime?: string | null;
@@ -9,6 +9,8 @@ export type ChatAction = {
   duration_minutes?: number | null;
   project_id?: string | null;
   project_name?: string | null;
+  task_id?: string | null;
+  new_title?: string | null;
   items?: ChatAction[];
 };
 
