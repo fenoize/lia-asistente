@@ -306,9 +306,21 @@ export function ChatInterface() {
     } catch { return "none"; }
   };
 
-  const insertOne = async (action: Action): Promise<"created" | "duplicate"> => {
+  const insertOne = async (action: Action): Promise<"created" | "duplicate" | "updated"> => {
     if (!user) return "duplicate";
     const dt = toUTCISOString(action.datetime ?? null, userTimeZone, { treatZuluAsLocal: true });
+    if (action.type === "task_update") {
+      if (!action.task_id) return "duplicate";
+      const patch: Record<string, any> = {};
+      if (action.new_title && action.new_title.trim()) patch.title = action.new_title.trim();
+      if (dt) patch.due_date = dt;
+      if (action.priority) patch.priority = action.priority;
+      if (action.project_id !== undefined && action.project_id !== null) patch.project_id = action.project_id;
+      if (Object.keys(patch).length === 0) return "duplicate";
+      const { error } = await supabase.from("tasks").update(patch).eq("id", action.task_id).eq("user_id", user.id);
+      if (error) throw error;
+      return "updated";
+    }
     if (action.type === "task") {
       // Dedupe: same title (case-insensitive) and same day in user TZ
       const { data: existing } = await supabase
