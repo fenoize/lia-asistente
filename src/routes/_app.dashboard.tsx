@@ -987,16 +987,25 @@ function BriefCompact({ text }: { text: string }) {
   );
 }
 
-function AttentionCard({
-  to, icon, bg, border, accent, label, value, hint,
+function timeUntil(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return "ahora";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `en ${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h < 24) return m > 0 ? `en ${h}h ${m}m` : `en ${h}h`;
+  const d = Math.floor(h / 24);
+  return `en ${d}d`;
+}
+
+function AttentionMiniCard({
+  to, icon, label, valueNode, hint,
 }: {
   to: string;
   icon: React.ReactNode;
-  bg: string;
-  border: string;
-  accent: string;
   label: string;
-  value: string;
+  valueNode: React.ReactNode;
   hint?: string;
 }) {
   return (
@@ -1004,22 +1013,22 @@ function AttentionCard({
       to={to}
       style={{
         display: "block",
-        background: bg,
-        border: `1px solid ${border}`,
-        borderRadius: 10,
-        padding: "10px 12px",
+        background: "#161628",
+        border: "1px solid #1e2035",
+        borderRadius: 12,
+        padding: "12px 14px",
         textDecoration: "none",
         transition: "transform 0.15s, border-color 0.15s",
       }}
       className="hover:scale-[1.01]"
     >
-      <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
+      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
         {icon}
         <span
           style={{
-            fontSize: 10,
-            color: accent,
-            letterSpacing: "0.08em",
+            fontSize: 9,
+            color: "#8a8aa0",
+            letterSpacing: "0.1em",
             fontWeight: 600,
             textTransform: "uppercase",
           }}
@@ -1029,22 +1038,21 @@ function AttentionCard({
       </div>
       <div
         style={{
-          fontSize: 18,
-          color: "#f2f2f2",
-          fontWeight: 600,
+          fontSize: 24,
+          fontWeight: 700,
           letterSpacing: "-0.02em",
           fontVariantNumeric: "tabular-nums",
           lineHeight: 1.1,
         }}
       >
-        {value}
+        {valueNode}
       </div>
       {hint && (
         <div
           style={{
             fontSize: 11,
             color: "#888",
-            marginTop: 2,
+            marginTop: 4,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -1056,3 +1064,4 @@ function AttentionCard({
     </Link>
   );
 }
+
