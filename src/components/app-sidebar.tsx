@@ -22,7 +22,7 @@ const items = [
   { to: "/chat", label: "Chat", icon: IconMessageCircle },
   { to: "/tasks", label: "Tareas", icon: IconCircleCheck },
   { to: "/projects", label: "Proyectos", icon: IconBriefcase },
-  { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
+  { to: "/meetings", label: "Calendario", icon: IconCalendarEvent },
   { to: "/reminders", label: "Recordatorios", icon: IconBell },
   { to: "/notes", label: "Notas", icon: IconPencil },
   { to: "/finanzas", label: "Finanzas", icon: IconCurrencyDollar },
