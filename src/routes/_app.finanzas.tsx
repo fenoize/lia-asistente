@@ -205,8 +205,8 @@ function FinanzasPage() {
           onClick={(r) => openEdit("cobro", r)}
           empty={{
             icon: <IconReceipt size={28} stroke={1.5} color="#444" />,
-            title: "Aún no hay cobros.",
-            subtitle: "Registra facturas o cobros pendientes para llevarlos en una sola vista.",
+            title: "Aún no hay ingresos.",
+            subtitle: "Registra facturas o ingresos pendientes para llevarlos en una sola vista.",
           }}
           render={(r) => ({
             primary: r.description ?? "Sin descripción",
