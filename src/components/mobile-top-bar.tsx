@@ -23,7 +23,7 @@ function formatWhen(iso: string) {
 const GROUP_META: Record<EntityType, { label: string; icon: typeof IconBell }> = {
   reminder: { label: "Recordatorios", icon: IconCalendarEvent },
   task: { label: "Tareas", icon: IconChecklist },
-  meeting: { label: "Reuniones", icon: IconUsers },
+  meeting: { label: "Calendario", icon: IconUsers },
 };
 
 const CACHE_TTL_MS = 60_000;

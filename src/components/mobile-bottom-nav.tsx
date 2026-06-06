@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 const menuItems = [
   { to: "/chat", label: "Chat con Lia", icon: IconMessageCircle },
-  { to: "/meetings", label: "Reuniones", icon: IconCalendarEvent },
+  { to: "/meetings", label: "Calendario", icon: IconCalendarEvent },
   { to: "/reminders", label: "Recordatorios", icon: IconBell },
   { to: "/projects", label: "Proyectos", icon: IconBriefcase },
   { to: "/notes", label: "Notas", icon: IconPencil },

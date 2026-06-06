@@ -25,7 +25,7 @@ type Tab = "resumen" | "cobros" | "gastos" | "subs" | "cuentas" | "deudas";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
-  { id: "cobros", label: "Cobros" },
+  { id: "cobros", label: "Ingresos" },
   { id: "gastos", label: "Gastos" },
   { id: "subs", label: "Suscripciones" },
   { id: "cuentas", label: "Cuentas" },
@@ -205,8 +205,8 @@ function FinanzasPage() {
           onClick={(r) => openEdit("cobro", r)}
           empty={{
             icon: <IconReceipt size={28} stroke={1.5} color="#444" />,
-            title: "Aún no hay cobros.",
-            subtitle: "Registra facturas o cobros pendientes para llevarlos en una sola vista.",
+            title: "Aún no hay ingresos.",
+            subtitle: "Registra facturas o ingresos pendientes para llevarlos en una sola vista.",
           }}
           render={(r) => ({
             primary: r.description ?? "Sin descripción",
@@ -481,10 +481,10 @@ function ResumenTab({
     accounts[0]?.currency ?? incomes[0]?.currency ?? expenses[0]?.currency ?? "CLP";
 
   const cards = [
-    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Cobros pagados este mes" : "Sin cobros pagados" },
+    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Ingresos cobrados este mes" : "Sin ingresos cobrados" },
     { label: "GASTOS DEL MES", value: mask(fmt(expenseMonth, currency)), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
     { label: "BALANCE", value: mask(fmt(balance, currency)), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
-    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Cobros pendientes" : "Sin cobros pendientes" },
+    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Ingresos pendientes" : "Sin ingresos pendientes" },
     { label: "DEUDAS ACTIVAS", value: mask(fmt(debtsActive, currency)), hint: debtsActive ? `${debts.filter((d) => d.status === "active").length} deuda${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"} pendiente${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"}` : "Sin deudas activas" },
   ];
 
