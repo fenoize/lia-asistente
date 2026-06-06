@@ -25,7 +25,7 @@ type Tab = "resumen" | "cobros" | "gastos" | "subs" | "cuentas" | "deudas";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "resumen", label: "Resumen" },
-  { id: "cobros", label: "Cobros" },
+  { id: "cobros", label: "Ingresos" },
   { id: "gastos", label: "Gastos" },
   { id: "subs", label: "Suscripciones" },
   { id: "cuentas", label: "Cuentas" },
