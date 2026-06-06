@@ -283,14 +283,20 @@ function Dashboard() {
     (m) => new Date(m.datetime).getTime() + (m.duration_minutes || 60) * 60000 <= Date.now() && (!m.notes || m.notes.trim() === "")
   );
 
-  // Combined timeline: reminders + meetings sorted chronologically
+  // Combined timeline: reminders first (sorted by time), then meetings (sorted by time).
   type TimelineItem =
     | { kind: "reminder"; id: string; datetime: string; data: Reminder }
     | { kind: "meeting"; id: string; datetime: string; data: Meeting };
+  const sortedReminders = [...reminders].sort(
+    (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+  );
+  const sortedMeetings = [...upcomingMeetings].sort(
+    (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+  );
   const timeline: TimelineItem[] = [
-    ...reminders.map((r) => ({ kind: "reminder" as const, id: r.id, datetime: r.datetime, data: r })),
-    ...upcomingMeetings.map((m) => ({ kind: "meeting" as const, id: m.id, datetime: m.datetime, data: m })),
-  ].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    ...sortedReminders.map((r) => ({ kind: "reminder" as const, id: r.id, datetime: r.datetime, data: r })),
+    ...sortedMeetings.map((m) => ({ kind: "meeting" as const, id: m.id, datetime: m.datetime, data: m })),
+  ];
 
   const toggleTask = async (task: Task) => {
     const wasDone = task.status === "done";
@@ -859,6 +865,7 @@ function TaskRow({
 
 function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () => void }) {
   const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
+  const overdue = new Date(reminder.datetime).getTime() < Date.now();
   return (
     <button
       type="button"
@@ -866,18 +873,47 @@ function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () 
       className="flex items-center gap-2 w-full text-left"
       style={{
         background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
+        border: `1px solid ${overdue ? "rgba(248,113,113,0.35)" : "var(--border)"}`,
         borderRadius: "var(--radius-pill)",
         padding: "6px 14px",
         fontSize: 12,
         cursor: onClick ? "pointer" : "default",
       }}
     >
-      <IconBell size={12} stroke={1.75} style={{ color: "var(--accent-color)", flexShrink: 0 }} />
-      <span className="flex-1 truncate" style={{ color: "var(--text-primary)" }}>
+      <IconBell
+        size={12}
+        stroke={1.75}
+        style={{ color: overdue ? "#f87171" : "var(--accent-color)", flexShrink: 0 }}
+      />
+      <span
+        className="flex-1 truncate"
+        style={{ color: overdue ? "#f87171" : "var(--text-primary)" }}
+      >
         {reminder.title}
       </span>
-      <span style={{ color: "var(--text-tertiary)", fontVariantNumeric: "tabular-nums" }}>
+      {overdue && (
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: "#f87171",
+            background: "rgba(248,113,113,0.12)",
+            border: "1px solid rgba(248,113,113,0.25)",
+            borderRadius: 999,
+            padding: "1px 8px",
+          }}
+        >
+          Vencido
+        </span>
+      )}
+      <span
+        style={{
+          color: overdue ? "#f87171" : "var(--text-tertiary)",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
         {time}
       </span>
     </button>
