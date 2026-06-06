@@ -81,7 +81,7 @@ function MeetingsPage() {
   return (
     <div>
       <header className="flex items-center justify-between mb-6">
-        <h1 className="alfred-h1">Reuniones</h1>
+        <h1 className="alfred-h1">Calendario</h1>
         <button onClick={openCapture} className="alfred-new-btn">
           <IconPlus size={14} /> Nueva reunión
         </button>
