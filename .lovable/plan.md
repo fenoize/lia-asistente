@@ -1,41 +1,43 @@
-## Objetivo
-Hacer que la activación de notificaciones funcione de verdad en PWA/web móvil: que el botón no quede pegado en “Activando…”, que la suscripción quede creada correctamente y que el dispositivo pueda recibir notificaciones.
+## 1. Inicio — Sección "Recordatorios y eventos"
 
-## Qué voy a corregir
-1. Endurecer el flujo de activación en `src/hooks/use-push-notifications.tsx`.
-   - Quitar la lógica frágil basada en `Promise.race` que hoy puede dar un falso “avance” o dejar la suscripción a medias.
-   - Ejecutar la solicitud de permiso y el alta de OneSignal de forma compatible con gesto de usuario.
-   - Esperar no solo `Notification.permission === "granted"`, sino también una suscripción real (`optedIn` y/o `PushSubscription.id`) antes de marcar éxito.
-   - Mantener `try/catch/finally` para que `loading` siempre vuelva a `false`.
+Archivo: `src/routes/_app.dashboard.tsx`
 
-2. Sincronizar correctamente el alta con el backend.
-   - Solo guardar `profiles.onesignal_player_id` cuando exista un `player_id`/subscription id real.
-   - Evitar guardar “granted” localmente si el dispositivo todavía no quedó realmente suscrito.
-   - Reforzar la sincronización posterior al login en `src/hooks/use-auth.tsx` para capturar el ID si aparece unos segundos después en móvil/PWA.
+- Ya existe un bloque `timeline` (reminders + upcomingMeetings combinados) renderizado entre "Requiere atención" y "Tareas del día". Lo voy a reusar / renombrar.
+- Cambios:
+  - Cambiar la consulta de `reminders` para traer también recordatorios `done=false` de hoy aunque ya hayan vencido (hoy ya filtra por rango del día — verificar que incluya los vencidos del día; los pasados de días anteriores no se incluyen, que es lo correcto).
+  - Reordenar `timeline`: primero todos los recordatorios de hoy ordenados por hora, después todos los eventos/reuniones ordenados por hora (no intercalados).
+  - Si un recordatorio tiene `datetime < now`, mostrar un badge rojo "vencido" junto al título.
+  - Envolver toda la sección en `{ (reminders.length + upcomingMeetings.length) > 0 && ... }` con label `RECORDATORIOS Y EVENTOS`. Si está vacío, no renderizar nada (sin label, sin espacio).
+  - Mantener el estilo oscuro existente (mismos tokens / mismas cards que ya usa el timeline actual).
 
-3. Revisar la inicialización web de OneSignal en `src/routes/__root.tsx`.
-   - Alinear `OneSignal.init(...)` con configuración más segura para custom code setup.
-   - Si hace falta, declarar explícitamente la ruta del worker (`serviceWorkerPath`) para que el SDK use el worker correcto en PWA.
-   - Añadir logging de diagnóstico mínimo para distinguir: SDK no listo, permiso concedido pero sin suscripción, y fallo al registrar el worker.
+No se tocan: tarjetas de tareas (folder+proyecto), mini-cards de atención, resumen LIA.
 
-4. Validar el worker y la ruta de servicio para PWA.
-   - Confirmar que `public/OneSignalSDKWorker.js` sea suficiente para el flujo actual.
-   - Si el SDK móvil requiere archivo/ruta adicional esperada por OneSignal, lo dejaré servido desde `public/`.
+## 2. Inicio — Nombres de tareas sin truncar
 
-## Resultado esperado
-- El botón deja de quedarse pegado en “Activando…”.
-- Tras aceptar el permiso, el modal/pantalla se cierra correctamente.
-- El usuario queda realmente suscrito en el dispositivo.
-- El `player_id` queda persistido en `profiles.onesignal_player_id`.
-- La app queda lista para que las notificaciones puedan llegar.
+Archivo: `src/routes/_app.dashboard.tsx` (componente `TaskRow`)
 
-## Validación
-- Verificar que el estado `loading` siempre se limpie.
-- Verificar que el flujo no marque éxito sin `player_id` real.
-- Verificar que el hook refleje `isSubscribed` correctamente después del alta.
-- Revisar logs de cliente para detectar si el bloqueo venía del SDK, del permiso o del worker.
+- Quitar `truncate` / `whitespace-nowrap` / `text-overflow: ellipsis` del título de la tarea.
+- Permitir wrap a 2+ líneas (`whiteSpace: normal`, `wordBreak: break-word`).
+- No tocar tamaño de fuente, ícono de folder/proyecto, assignee, checkbox ni el resto del layout.
 
-## Detalles técnicos
-- Archivos a tocar: `src/hooks/use-push-notifications.tsx`, `src/hooks/use-auth.tsx`, `src/routes/__root.tsx`.
-- Posible archivo adicional: `public/OneSignalSDKUpdaterWorker.js` o ajuste equivalente si el SDK lo necesita en esta configuración.
-- Mantendré el cambio enfocado solo en el sistema de push, sin tocar otras áreas.
+## 3. Chat — Scroll solo vertical
+
+Archivo: `src/components/alfred/chat-interface.tsx` (y CSS si hace falta en `src/styles.css`).
+
+- En el contenedor scroll del chat: añadir `overflow-x: hidden` y `max-width: 100%`.
+- En los bubbles/mensajes: aplicar `max-width: 100%`, `word-break: break-word`, `overflow-wrap: anywhere` para que URLs largas / código inline no rompan el layout horizontalmente.
+- Revisar bloques de markdown / `pre`/`code` y agregarles `overflow-x: auto` propio (scroll interno) en vez de empujar el ancho de la pantalla.
+- Verificar el input `MentionInput` y la lista de mensajes — sin alterar la lógica del chat.
+
+## 4. Toasts arriba (global)
+
+Archivo: `src/components/ui/sonner.tsx`
+
+- Ya está configurado con `position="top-center"`. Voy a confirmar por inspección si el Toaster está montado una sola vez (en `__root.tsx` o `_app.tsx`). Si hay un segundo `<Toaster />` con default `bottom-right`, lo elimino o le paso `position="top-center"`.
+- Resultado: todos los `toast(...)` aparecen arriba, no tapan los botones de acción.
+
+---
+
+### Notas técnicas
+- Plan limitado a frontend/presentation. No toco esquema, queries de otros módulos, ni lógica de acciones del chat.
+- Sin nuevas dependencias.

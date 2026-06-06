@@ -135,6 +135,8 @@
 
 .alfred-chat-route-frame {
   height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @media (max-width: 767px) {
