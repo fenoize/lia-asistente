@@ -52,15 +52,48 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
+    <div
+      className="min-h-screen flex items-center justify-center px-6"
+      style={{ background: "#0d0d1a" }}
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 mb-4">
-            <span className="text-primary font-semibold">L</span>
+          <div
+            className="inline-flex items-center justify-center mb-5"
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: "linear-gradient(135deg, #6366f1 0%, #818cf8 100%)",
+              boxShadow: "0 12px 40px -10px rgba(99,102,241,0.55)",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 30,
+                fontWeight: 700,
+                letterSpacing: "-0.04em",
+                color: "#ffffff",
+              }}
+            >
+              LIA
+            </span>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">LIA</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {mode === "signin" ? "Bienvenido de vuelta." : "Crea tu cuenta."}
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              color: "#f2f2f7",
+            }}
+          >
+            LIA
+          </h1>
+          <p style={{ marginTop: 6, fontSize: 13, color: "#8a8a99" }}>
+            Tu asistente personal
+          </p>
+          <p style={{ marginTop: 18, fontSize: 14, color: "#c4c4cf" }}>
+            {mode === "signin" ? "Bienvenido de vuelta" : "Crea tu cuenta"}
           </p>
         </div>
 
