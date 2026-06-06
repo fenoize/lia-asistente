@@ -481,10 +481,10 @@ function ResumenTab({
     accounts[0]?.currency ?? incomes[0]?.currency ?? expenses[0]?.currency ?? "CLP";
 
   const cards = [
-    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Cobros pagados este mes" : "Sin cobros pagados" },
+    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Ingresos cobrados este mes" : "Sin ingresos cobrados" },
     { label: "GASTOS DEL MES", value: mask(fmt(expenseMonth, currency)), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
     { label: "BALANCE", value: mask(fmt(balance, currency)), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
-    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Cobros pendientes" : "Sin cobros pendientes" },
+    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Ingresos pendientes" : "Sin ingresos pendientes" },
     { label: "DEUDAS ACTIVAS", value: mask(fmt(debtsActive, currency)), hint: debtsActive ? `${debts.filter((d) => d.status === "active").length} deuda${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"} pendiente${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"}` : "Sin deudas activas" },
   ];
 
