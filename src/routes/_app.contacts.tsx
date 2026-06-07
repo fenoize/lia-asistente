@@ -741,25 +741,27 @@ function ContactModal({
           </button>
         </div>
 
-        {/* Relationship type */}
-        <SectionLabel>Tipo de relación</SectionLabel>
+        {/* Etiquetas (multi-select) */}
+        <SectionLabel>Etiquetas</SectionLabel>
         <div className="flex flex-wrap items-center gap-2 mb-5">
-          {REL_TYPES.map((t) => {
-            const active = relType === t.id;
+          {TAG_OPTIONS.map((t) => {
+            const active = tags.includes(t);
+            const s = tagStyle(t);
             return (
               <button
-                key={t.id}
-                onClick={() => setRelType(t.id)}
+                key={t}
+                onClick={() => toggleTag(t)}
                 style={{
-                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                  border: `1px solid ${active ? "rgba(99,102,241,0.3)" : "#222"}`,
-                  color: active ? "#818cf8" : "#666",
+                  background: active ? s.bg : "transparent",
+                  border: `1px solid ${active ? s.border : "#222"}`,
+                  color: active ? s.fg : "#666",
                   borderRadius: 100,
                   padding: "5px 14px",
                   fontSize: 12,
+                  fontWeight: 500,
                 }}
               >
-                {t.label}
+                {t}
               </button>
             );
           })}
