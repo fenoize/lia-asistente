@@ -38,10 +38,52 @@ const REL_LABEL: Record<RelType, string> = Object.fromEntries(
 
 const WORK_TYPES: RelType[] = ["client", "collaborator"];
 
+/* Multi-tag system: a contact can have multiple labels simultaneously. */
+const TAG_OPTIONS = [
+  "Cliente",
+  "Proveedor",
+  "Colaborador",
+  "Amigo",
+  "Familia",
+  "Otro",
+] as const;
+type TagOption = (typeof TAG_OPTIONS)[number];
+
+const TAG_TO_REL: Record<TagOption, RelType> = {
+  Cliente: "client",
+  Proveedor: "collaborator",
+  Colaborador: "collaborator",
+  Amigo: "friend",
+  Familia: "family",
+  Otro: "other",
+};
+
+function relTypeFromTags(tags: string[] | null | undefined, fallback: RelType): RelType {
+  if (!tags || tags.length === 0) return fallback;
+  if (tags.includes("Cliente")) return "client";
+  for (const t of tags) {
+    if ((TAG_OPTIONS as readonly string[]).includes(t)) return TAG_TO_REL[t as TagOption];
+  }
+  return fallback;
+}
+
+const TAG_COLORS: Record<string, { bg: string; fg: string; border: string }> = {
+  Cliente:     { bg: "rgba(16,185,129,0.10)", fg: "#34d399", border: "rgba(16,185,129,0.25)" },
+  Proveedor:   { bg: "rgba(245,158,11,0.10)", fg: "#fbbf24", border: "rgba(245,158,11,0.25)" },
+  Colaborador: { bg: "rgba(99,102,241,0.12)", fg: "#818cf8", border: "rgba(99,102,241,0.28)" },
+  Amigo:       { bg: "rgba(236,72,153,0.10)", fg: "#f472b6", border: "rgba(236,72,153,0.25)" },
+  Familia:     { bg: "rgba(168,85,247,0.10)", fg: "#c084fc", border: "rgba(168,85,247,0.25)" },
+  Otro:        { bg: "rgba(120,120,120,0.10)", fg: "#9ca3af", border: "rgba(120,120,120,0.25)" },
+};
+function tagStyle(tag: string) {
+  return TAG_COLORS[tag] ?? TAG_COLORS.Otro;
+}
+
 type Contact = {
   id: string;
   type: "client" | "collaborator";
   relationship_type: RelType;
+  tags: string[] | null;
   name: string;
   email: string | null;
   phone: string | null;
