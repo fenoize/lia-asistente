@@ -343,23 +343,62 @@ export function ChatInterface() {
         project_id: action.project_id ?? null,
       });
     } else if (action.type === "meeting") {
+      const mDt = dt ?? new Date().toISOString();
+      const { data: existingM } = await supabase
+        .from("meetings")
+        .select("title,datetime")
+        .eq("user_id", user.id)
+        .ilike("title", action.title.trim());
+      const mKey = dayKeyInTz(mDt, userTimeZone);
+      const dupM = (existingM ?? []).some((x: any) =>
+        x.title.trim().toLowerCase() === action.title.trim().toLowerCase()
+        && dayKeyInTz(x.datetime, userTimeZone) === mKey,
+      );
+      if (dupM) return "duplicate";
       await supabase.from("meetings").insert({
         user_id: user.id,
         title: action.title,
-        datetime: dt ?? new Date().toISOString(),
+        datetime: mDt,
         duration_minutes: action.duration_minutes ?? 60,
         notes: action.description ?? null,
       });
     } else if (action.type === "reminder") {
+      const rDt = dt ?? new Date().toISOString();
+      // Dedupe: same title (case-insensitive) and same day/hour in user TZ
+      const { data: existingR } = await supabase
+        .from("reminders")
+        .select("title,datetime")
+        .eq("user_id", user.id)
+        .ilike("title", action.title.trim());
+      const rKey = dayKeyInTz(rDt, userTimeZone);
+      const newHour = new Date(rDt).getUTCHours() + ":" + new Date(rDt).getUTCMinutes();
+      const dupR = (existingR ?? []).some((x: any) => {
+        if (x.title.trim().toLowerCase() !== action.title.trim().toLowerCase()) return false;
+        if (dayKeyInTz(x.datetime, userTimeZone) !== rKey) return false;
+        const xHour = new Date(x.datetime).getUTCHours() + ":" + new Date(x.datetime).getUTCMinutes();
+        return xHour === newHour;
+      });
+      if (dupR) return "duplicate";
       await supabase.from("reminders").insert({
         user_id: user.id,
         title: action.title,
-        datetime: dt ?? new Date().toISOString(),
+        datetime: rDt,
       });
     } else if (action.type === "note") {
+      const content = action.description || action.title;
+      const { data: existingN } = await supabase
+        .from("notes")
+        .select("content")
+        .eq("user_id", user.id)
+        .eq("type", "note")
+        .ilike("content", content.trim());
+      const dupN = (existingN ?? []).some((x: any) =>
+        x.content.trim().toLowerCase() === content.trim().toLowerCase(),
+      );
+      if (dupN) return "duplicate";
       await supabase.from("notes").insert({
         user_id: user.id,
-        content: action.description || action.title,
+        content,
         type: "note",
       });
     }
@@ -389,8 +428,11 @@ export function ChatInterface() {
       }
       // Continúa la cadena: si quedan más acciones pendientes de la última petición,
       // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
+      const justDone = action.type === "task_update"
+        ? `tarea actualizada (id ${action.task_id})`
+        : `${action.type} "${action.title}"${action.datetime ? ` para ${action.datetime}` : ""}`;
       void runAssistantTurn({
-        hiddenUserSignal: "__ACTION_CONFIRMED__ Si queda otra acción pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada, cierra con un mensaje breve sin tarjeta.",
+        hiddenUserSignal: `__ACTION_CONFIRMED__ Acabo de confirmar y YA quedó guardado: ${justDone}. NO vuelvas a proponer esta misma acción ni una equivalente (mismo título y misma fecha/hora) — ya existe. Si queda OTRA acción distinta pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada distinto, cierra con un mensaje breve sin tarjeta.`,
       });
     } catch (e: any) {
       toast.error(e.message);
