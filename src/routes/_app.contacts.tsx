@@ -222,7 +222,7 @@ function ContactsPage() {
     () =>
       contacts
         .filter((c) => {
-          const rt = c.relationship_type ?? c.type;
+          const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
           if (tab === "client") return rt === "client";
           if (tab === "collaborator")
             return rt !== "client";
@@ -252,7 +252,7 @@ function ContactsPage() {
     let clients = 0;
     let others = 0;
     for (const c of contacts) {
-      const rt = c.relationship_type ?? c.type;
+      const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
       if (rt === "client") clients++;
       else others++;
     }
@@ -352,7 +352,7 @@ function ContactsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((c) => {
-            const rt = c.relationship_type ?? c.type;
+            const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
             const isClient = rt === "client";
             return (
               <ContactCard
@@ -409,7 +409,7 @@ function ContactsPage() {
           allContacts={contacts}
           projects={projectsForClient(openContact.id)}
           tasks={
-            (openContact.relationship_type ?? openContact.type) === "client"
+            relTypeFromTags(openContact.tags, openContact.relationship_type ?? openContact.type) === "client"
               ? tasksForClient(openContact.id)
               : tasksForCollaborator(openContact.id)
           }
@@ -442,7 +442,7 @@ function ContactCard({
   onDelete: () => void;
 }) {
   const [hover, setHover] = useState(false);
-  const rt = contact.relationship_type ?? contact.type;
+  const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const isClient = rt === "client";
 
   return (
@@ -1090,7 +1090,7 @@ function ContactPanel({
     setTab("profile");
   }, [contact.id]);
 
-  const rt = contact.relationship_type ?? contact.type;
+  const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const birthdayLabel = formatBirthday(contact.birthday);
   const days = daysUntilBirthday(contact.birthday);
   const birthdaySoon = days !== null && days <= 7;
