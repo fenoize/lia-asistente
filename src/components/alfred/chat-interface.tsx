@@ -428,8 +428,11 @@ export function ChatInterface() {
       }
       // Continúa la cadena: si quedan más acciones pendientes de la última petición,
       // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
+      const justDone = action.type === "task_update"
+        ? `tarea actualizada (id ${action.task_id})`
+        : `${action.type} "${action.title}"${action.datetime ? ` para ${action.datetime}` : ""}`;
       void runAssistantTurn({
-        hiddenUserSignal: "__ACTION_CONFIRMED__ Si queda otra acción pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada, cierra con un mensaje breve sin tarjeta.",
+        hiddenUserSignal: `__ACTION_CONFIRMED__ Acabo de confirmar y YA quedó guardado: ${justDone}. NO vuelvas a proponer esta misma acción ni una equivalente (mismo título y misma fecha/hora) — ya existe. Si queda OTRA acción distinta pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada distinto, cierra con un mensaje breve sin tarjeta.`,
       });
     } catch (e: any) {
       toast.error(e.message);
