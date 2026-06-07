@@ -38,10 +38,52 @@ const REL_LABEL: Record<RelType, string> = Object.fromEntries(
 
 const WORK_TYPES: RelType[] = ["client", "collaborator"];
 
+/* Multi-tag system: a contact can have multiple labels simultaneously. */
+const TAG_OPTIONS = [
+  "Cliente",
+  "Proveedor",
+  "Colaborador",
+  "Amigo",
+  "Familia",
+  "Otro",
+] as const;
+type TagOption = (typeof TAG_OPTIONS)[number];
+
+const TAG_TO_REL: Record<TagOption, RelType> = {
+  Cliente: "client",
+  Proveedor: "collaborator",
+  Colaborador: "collaborator",
+  Amigo: "friend",
+  Familia: "family",
+  Otro: "other",
+};
+
+function relTypeFromTags(tags: string[] | null | undefined, fallback: RelType): RelType {
+  if (!tags || tags.length === 0) return fallback;
+  if (tags.includes("Cliente")) return "client";
+  for (const t of tags) {
+    if ((TAG_OPTIONS as readonly string[]).includes(t)) return TAG_TO_REL[t as TagOption];
+  }
+  return fallback;
+}
+
+const TAG_COLORS: Record<string, { bg: string; fg: string; border: string }> = {
+  Cliente:     { bg: "rgba(16,185,129,0.10)", fg: "#34d399", border: "rgba(16,185,129,0.25)" },
+  Proveedor:   { bg: "rgba(245,158,11,0.10)", fg: "#fbbf24", border: "rgba(245,158,11,0.25)" },
+  Colaborador: { bg: "rgba(99,102,241,0.12)", fg: "#818cf8", border: "rgba(99,102,241,0.28)" },
+  Amigo:       { bg: "rgba(236,72,153,0.10)", fg: "#f472b6", border: "rgba(236,72,153,0.25)" },
+  Familia:     { bg: "rgba(168,85,247,0.10)", fg: "#c084fc", border: "rgba(168,85,247,0.25)" },
+  Otro:        { bg: "rgba(120,120,120,0.10)", fg: "#9ca3af", border: "rgba(120,120,120,0.25)" },
+};
+function tagStyle(tag: string) {
+  return TAG_COLORS[tag] ?? TAG_COLORS.Otro;
+}
+
 type Contact = {
   id: string;
   type: "client" | "collaborator";
   relationship_type: RelType;
+  tags: string[] | null;
   name: string;
   email: string | null;
   phone: string | null;
@@ -180,7 +222,7 @@ function ContactsPage() {
     () =>
       contacts
         .filter((c) => {
-          const rt = c.relationship_type ?? c.type;
+          const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
           if (tab === "client") return rt === "client";
           if (tab === "collaborator")
             return rt !== "client";
@@ -210,7 +252,7 @@ function ContactsPage() {
     let clients = 0;
     let others = 0;
     for (const c of contacts) {
-      const rt = c.relationship_type ?? c.type;
+      const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
       if (rt === "client") clients++;
       else others++;
     }
@@ -310,7 +352,7 @@ function ContactsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((c) => {
-            const rt = c.relationship_type ?? c.type;
+            const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
             const isClient = rt === "client";
             return (
               <ContactCard
@@ -367,7 +409,7 @@ function ContactsPage() {
           allContacts={contacts}
           projects={projectsForClient(openContact.id)}
           tasks={
-            (openContact.relationship_type ?? openContact.type) === "client"
+            relTypeFromTags(openContact.tags, openContact.relationship_type ?? openContact.type) === "client"
               ? tasksForClient(openContact.id)
               : tasksForCollaborator(openContact.id)
           }
@@ -400,7 +442,7 @@ function ContactCard({
   onDelete: () => void;
 }) {
   const [hover, setHover] = useState(false);
-  const rt = contact.relationship_type ?? contact.type;
+  const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const isClient = rt === "client";
 
   return (
@@ -434,36 +476,49 @@ function ContactCard({
         <div style={{ fontSize: 15, fontWeight: 500, color: "#f2f2f2" }}>
           {contact.name}
         </div>
-        {isClient && contact.status === "active" && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: "2px 10px",
-              borderRadius: 100,
-              background: "rgba(16,185,129,0.1)",
-              color: "#34d399",
-              border: "1px solid rgba(16,185,129,0.2)",
-              fontWeight: 500,
-            }}
-          >
-            Activo
-          </span>
-        )}
-        {!isClient && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: "2px 10px",
-              borderRadius: 100,
-              background: "rgba(99,102,241,0.1)",
-              color: "#818cf8",
-              border: "1px solid rgba(99,102,241,0.2)",
-              fontWeight: 500,
-            }}
-          >
-            {REL_LABEL[rt]}
-          </span>
-        )}
+        {(() => {
+          const tags = (contact.tags && contact.tags.length > 0)
+            ? contact.tags
+            : [REL_LABEL[rt]];
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tags.map((tag) => {
+                const s = tagStyle(tag);
+                return (
+                  <span
+                    key={tag}
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 10px",
+                      borderRadius: 100,
+                      background: s.bg,
+                      color: s.fg,
+                      border: `1px solid ${s.border}`,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                );
+              })}
+              {isClient && contact.status === "active" && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "2px 10px",
+                    borderRadius: 100,
+                    background: "rgba(16,185,129,0.1)",
+                    color: "#34d399",
+                    border: "1px solid rgba(16,185,129,0.2)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Activo
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
       <div style={{ fontSize: 12, color: "#555", marginLeft: 48 }}>
         {[isClient ? contact.company : contact.role, contact.email]
@@ -577,9 +632,21 @@ function ContactModal({
   userId: string;
 }) {
   const isEdit = !!contact;
-  const [relType, setRelType] = useState<RelType>(
-    (contact?.relationship_type as RelType) ?? "client",
-  );
+  const initialTags: string[] = (() => {
+    if (contact?.tags && contact.tags.length > 0) return contact.tags;
+    // Migrate existing contacts: seed from relationship_type label.
+    if (contact) {
+      const lbl = REL_LABEL[(contact.relationship_type as RelType) ?? "other"];
+      if ((TAG_OPTIONS as readonly string[]).includes(lbl)) return [lbl];
+    }
+    return ["Cliente"];
+  })();
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const relType: RelType = relTypeFromTags(tags, "other");
+  const toggleTag = (tag: string) =>
+    setTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
   const [name, setName] = useState(contact?.name ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
@@ -617,6 +684,7 @@ function ContactModal({
       phone: phone.trim() || null,
       relationship_type: relType,
       type: isWork ? relType : "collaborator", // legacy column
+      tags,
       context: context.trim() || null,
       birthday: birthday || null,
       address: address.trim() || null,
@@ -674,25 +742,27 @@ function ContactModal({
           </button>
         </div>
 
-        {/* Relationship type */}
-        <SectionLabel>Tipo de relación</SectionLabel>
+        {/* Etiquetas (multi-select) */}
+        <SectionLabel>Etiquetas</SectionLabel>
         <div className="flex flex-wrap items-center gap-2 mb-5">
-          {REL_TYPES.map((t) => {
-            const active = relType === t.id;
+          {TAG_OPTIONS.map((t) => {
+            const active = tags.includes(t);
+            const s = tagStyle(t);
             return (
               <button
-                key={t.id}
-                onClick={() => setRelType(t.id)}
+                key={t}
+                onClick={() => toggleTag(t)}
                 style={{
-                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                  border: `1px solid ${active ? "rgba(99,102,241,0.3)" : "#222"}`,
-                  color: active ? "#818cf8" : "#666",
+                  background: active ? s.bg : "transparent",
+                  border: `1px solid ${active ? s.border : "#222"}`,
+                  color: active ? s.fg : "#666",
                   borderRadius: 100,
                   padding: "5px 14px",
                   fontSize: 12,
+                  fontWeight: 500,
                 }}
               >
-                {t.label}
+                {t}
               </button>
             );
           })}
@@ -1048,7 +1118,7 @@ function ContactPanel({
     setTab("profile");
   }, [contact.id]);
 
-  const rt = contact.relationship_type ?? contact.type;
+  const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const birthdayLabel = formatBirthday(contact.birthday);
   const days = daysUntilBirthday(contact.birthday);
   const birthdaySoon = days !== null && days <= 7;
