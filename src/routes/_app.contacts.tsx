@@ -632,9 +632,21 @@ function ContactModal({
   userId: string;
 }) {
   const isEdit = !!contact;
-  const [relType, setRelType] = useState<RelType>(
-    (contact?.relationship_type as RelType) ?? "client",
-  );
+  const initialTags: string[] = (() => {
+    if (contact?.tags && contact.tags.length > 0) return contact.tags;
+    // Migrate existing contacts: seed from relationship_type label.
+    if (contact) {
+      const lbl = REL_LABEL[(contact.relationship_type as RelType) ?? "other"];
+      if ((TAG_OPTIONS as readonly string[]).includes(lbl)) return [lbl];
+    }
+    return ["Cliente"];
+  })();
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const relType: RelType = relTypeFromTags(tags, "other");
+  const toggleTag = (tag: string) =>
+    setTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
   const [name, setName] = useState(contact?.name ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
