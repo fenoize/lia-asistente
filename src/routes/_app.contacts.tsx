@@ -476,36 +476,49 @@ function ContactCard({
         <div style={{ fontSize: 15, fontWeight: 500, color: "#f2f2f2" }}>
           {contact.name}
         </div>
-        {isClient && contact.status === "active" && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: "2px 10px",
-              borderRadius: 100,
-              background: "rgba(16,185,129,0.1)",
-              color: "#34d399",
-              border: "1px solid rgba(16,185,129,0.2)",
-              fontWeight: 500,
-            }}
-          >
-            Activo
-          </span>
-        )}
-        {!isClient && (
-          <span
-            style={{
-              fontSize: 11,
-              padding: "2px 10px",
-              borderRadius: 100,
-              background: "rgba(99,102,241,0.1)",
-              color: "#818cf8",
-              border: "1px solid rgba(99,102,241,0.2)",
-              fontWeight: 500,
-            }}
-          >
-            {REL_LABEL[rt]}
-          </span>
-        )}
+        {(() => {
+          const tags = (contact.tags && contact.tags.length > 0)
+            ? contact.tags
+            : [REL_LABEL[rt]];
+          return (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {tags.map((tag) => {
+                const s = tagStyle(tag);
+                return (
+                  <span
+                    key={tag}
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 10px",
+                      borderRadius: 100,
+                      background: s.bg,
+                      color: s.fg,
+                      border: `1px solid ${s.border}`,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                );
+              })}
+              {isClient && contact.status === "active" && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    padding: "2px 10px",
+                    borderRadius: 100,
+                    background: "rgba(16,185,129,0.1)",
+                    color: "#34d399",
+                    border: "1px solid rgba(16,185,129,0.2)",
+                    fontWeight: 500,
+                  }}
+                >
+                  Activo
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
       <div style={{ fontSize: 12, color: "#555", marginLeft: 48 }}>
         {[isClient ? contact.company : contact.role, contact.email]
