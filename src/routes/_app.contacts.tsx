@@ -684,6 +684,7 @@ function ContactModal({
       phone: phone.trim() || null,
       relationship_type: relType,
       type: isWork ? relType : "collaborator", // legacy column
+      tags,
       context: context.trim() || null,
       birthday: birthday || null,
       address: address.trim() || null,
