@@ -247,6 +247,21 @@
   color: #444;
 }
 
+/* iOS PWA fix (BUG-025): prevent automatic zoom on focus.
+   iOS Safari/PWA zooms when an input/textarea has font-size < 16px.
+   Apply 16px to all editable controls on touch devices. If the design
+   needs a visually smaller field, use transform: scale() instead of
+   lowering font-size below 16px. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    font-size: 16px !important;
+  }
+}
+
 /* Placeholder para MentionInput (contenteditable) */
 .alfred-mention-editor[data-empty="true"]::before {
   content: attr(data-placeholder);
