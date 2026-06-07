@@ -111,6 +111,7 @@ export type Database = {
           relationship_type: string
           role: string | null
           status: string | null
+          tags: string[]
           type: string
           updated_at: string
           user_id: string
@@ -131,6 +132,7 @@ export type Database = {
           relationship_type?: string
           role?: string | null
           status?: string | null
+          tags?: string[]
           type?: string
           updated_at?: string
           user_id: string
@@ -151,6 +153,7 @@ export type Database = {
           relationship_type?: string
           role?: string | null
           status?: string | null
+          tags?: string[]
           type?: string
           updated_at?: string
           user_id?: string
