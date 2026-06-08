@@ -361,8 +361,8 @@ function ContactsPage() {
                 projectCount={isClient ? projectsForClient(c.id).length : 0}
                 taskCount={
                   isClient
-                    ? tasksForClient(c.id).filter((t) => t.status !== "done").length
-                    : tasksForCollaborator(c.id).filter((t) => t.status !== "done").length
+                    ? tasksForClient(c.id).filter((t) => t.status !== "listo").length
+                    : tasksForCollaborator(c.id).filter((t) => t.status !== "listo").length
                 }
                 onOpen={() => setOpenId(c.id)}
                 onEdit={() => setEditing(c)}
@@ -1294,7 +1294,7 @@ function ContactPanel({
               ) : (
                 projects.map((p) => {
                   const projTasks = tasks.filter((t) => t.project_id === p.id);
-                  const done = projTasks.filter((t) => t.status === "done").length;
+                  const done = projTasks.filter((t) => t.status === "listo").length;
                   return (
                     <div
                       key={p.id}

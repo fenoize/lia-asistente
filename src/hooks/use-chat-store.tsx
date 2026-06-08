@@ -5,12 +5,16 @@ export type ChatAction = {
   title: string;
   description?: string | null;
   datetime?: string | null;
+  start_date?: string | null;
   priority?: "low" | "medium" | "high" | null;
+  status?: "borrador" | "en_curso" | "listo" | null;
   duration_minutes?: number | null;
   project_id?: string | null;
   project_name?: string | null;
   task_id?: string | null;
   new_title?: string | null;
+  new_status?: "borrador" | "en_curso" | "listo" | null;
+  new_start_date?: string | null;
   items?: ChatAction[];
 };
 

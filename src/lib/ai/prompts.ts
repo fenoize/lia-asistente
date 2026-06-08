@@ -161,14 +161,23 @@ Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees.
 Al final del mensaje agrega UN ÚNICO bloque con UN ÚNICO objeto (nunca array):
 
 \`\`\`action
-{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","priority":"low|medium|high|null","duration_minutes":number|null,"project_id":"uuid|null","project_name":"nombre|null"}
+{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","start_date":"ISO|null","priority":"low|medium|high|null","status":"borrador|en_curso|listo|null","duration_minutes":number|null,"project_id":"uuid|null","project_name":"nombre|null"}
 \`\`\`
 
-Para EDITAR una tarea existente (reprogramar, cambiar hora, cambiar prioridad, renombrar, mover de proyecto), usa:
+Notas sobre los campos de TAREA:
+- "status": las tareas tienen 3 estados — "borrador" (anotada, no iniciada), "en_curso" (activamente en trabajo), "listo" (terminada). Si el usuario no especifica, deja status en null (se guarda como "borrador" por defecto). Si dice "que ya está en curso", "voy a empezarla", usa "en_curso".
+- "start_date" y "datetime": son el RANGO DE FECHAS de la tarea. "start_date" = fecha de inicio (opcional), "datetime" = fecha de término. Si el usuario dice "del lunes al miércoles", start_date = lunes, datetime = miércoles. Si solo da una fecha ("para el viernes"), va en "datetime" y start_date = null.
+
+Para EDITAR una tarea existente (reprogramar, cambiar hora, cambiar prioridad, renombrar, mover de proyecto, cambiar estado, cambiar fecha de inicio), usa:
 
 \`\`\`action
-{"type":"task_update","task_id":"uuid-de-la-tarea","title":"título actual","new_title":"nuevo o null","datetime":"ISO o null si no cambia","priority":"low|medium|high o null si no cambia","project_id":"uuid o null si no cambia","project_name":"nombre o null"}
+{"type":"task_update","task_id":"uuid-de-la-tarea","title":"título actual","new_title":"nuevo o null","datetime":"ISO o null si no cambia","new_start_date":"ISO o null si no cambia","priority":"low|medium|high o null si no cambia","new_status":"borrador|en_curso|listo o null si no cambia","project_id":"uuid o null si no cambia","project_name":"nombre o null"}
 \`\`\`
+
+Reconoce estos cambios de estado naturalmente:
+- "marca X como en curso", "estoy con X", "empecé X" → new_status: "en_curso"
+- "X ya está lista/listo", "terminé X", "completa X" → new_status: "listo"
+- "ponla en borrador", "todavía no la empiezo" → new_status: "borrador"
 
 REGLA CRÍTICA: PROPÓN UNA SOLA ACCIÓN POR MENSAJE.
 - Aunque el usuario pida crear/editar varias cosas en un mismo mensaje, propónlas DE A UNA: la primera en este turno, y el resto en los turnos siguientes después de cada confirmación.
@@ -176,11 +185,11 @@ REGLA CRÍTICA: PROPÓN UNA SOLA ACCIÓN POR MENSAJE.
 - NUNCA envíes un array de acciones. NUNCA propongas dos acciones en el mismo mensaje.
 
 EDITAR vs CREAR (REGLA CRÍTICA):
-- Si el usuario pide modificar, reprogramar, mover, cambiar fecha/hora/prioridad/nombre o reasignar proyecto de una tarea, busca primero en TAREAS ABIERTAS por nombre (búsqueda flexible: substring, sin acentos, sin importar mayúsculas).
+- Si el usuario pide modificar, reprogramar, mover, cambiar fecha/hora/prioridad/estado/nombre o reasignar proyecto de una tarea, busca primero en TAREAS ABIERTAS por nombre (búsqueda flexible: substring, sin acentos, sin importar mayúsculas).
 - Si encuentras UNA tarea que matchea, propón tarjeta "task_update" con el task_id exacto del catálogo y solo los campos que cambian. NUNCA crees una tarea nueva en este caso.
 - Si hay AMBIGÜEDAD (varias tareas similares), NO incluyas tarjeta; pregunta cuál editar listando opciones.
 - Si NO encuentras la tarea, pregunta si quiere crearla nueva antes de proponer "task".
-- "Cambia la prioridad de X a alta" → task_update. "Mueve X a mañana" → task_update. "Renombra X" → task_update.
+- "Cambia la prioridad de X a alta" → task_update. "Mueve X a mañana" → task_update. "Renombra X" → task_update. "Marca X como en curso" → task_update con new_status.
 
 FORMATO DEL MENSAJE CON TARJETA:
 - El bloque \`\`\`action debe ser SIEMPRE lo último del mensaje. Nada después.

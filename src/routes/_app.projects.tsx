@@ -269,7 +269,7 @@ function ProjectCard({
 }) {
   const client = contacts.find((c) => c.id === project.client_id);
   const projTasks = tasks.filter((t) => t.project_id === project.id);
-  const done = projTasks.filter((t) => t.status === "done").length;
+  const done = projTasks.filter((t) => t.status === "listo").length;
   const total = projTasks.length;
   const pct = total ? (done / total) * 100 : 0;
   const collabs = Array.from(
@@ -727,7 +727,7 @@ function ProjectDetailModal({
                     width: 6,
                     height: 6,
                     borderRadius: "50%",
-                    background: t.status === "done" ? "var(--accent-color)" : "#444",
+                    background: t.status === "listo" ? "var(--accent-color)" : "#444",
                     flexShrink: 0,
                   }}
                 />
@@ -735,8 +735,8 @@ function ProjectDetailModal({
                   className="flex-1 truncate"
                   style={{
                     fontSize: 13,
-                    color: t.status === "done" ? "#444" : "#ccc",
-                    textDecoration: t.status === "done" ? "line-through" : "none",
+                    color: t.status === "listo" ? "#444" : "#ccc",
+                    textDecoration: t.status === "listo" ? "line-through" : "none",
                   }}
                 >
                   {t.title}
