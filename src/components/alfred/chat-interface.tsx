@@ -162,7 +162,7 @@ export function ChatInterface() {
           .order("created_at", { ascending: false })
           .limit(PAGE_SIZE),
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
-        supabase.from("tasks").select("title,due_date,priority,status").eq("status", "pending").limit(20),
+        supabase.from("tasks").select("title,due_date,priority,status").in("status", ["borrador", "en_curso"]).limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
       ]);
@@ -314,7 +314,12 @@ export function ChatInterface() {
       const patch: Record<string, any> = {};
       if (action.new_title && action.new_title.trim()) patch.title = action.new_title.trim();
       if (dt) patch.due_date = dt;
+      if (action.new_start_date !== undefined && action.new_start_date !== null) {
+        const sdt = toUTCISOString(action.new_start_date, userTimeZone, { treatZuluAsLocal: true });
+        if (sdt) patch.start_date = sdt;
+      }
       if (action.priority) patch.priority = action.priority;
+      if (action.new_status) patch.status = action.new_status;
       if (action.project_id !== undefined && action.project_id !== null) patch.project_id = action.project_id;
       if (Object.keys(patch).length === 0) return "duplicate";
       const { error } = await (supabase.from("tasks") as any).update(patch).eq("id", action.task_id).eq("user_id", user.id);
@@ -334,11 +339,16 @@ export function ChatInterface() {
         && dayKeyInTz(t.due_date, userTimeZone) === newKey,
       );
       if (dup) return "duplicate";
+      const startDt = action.start_date
+        ? toUTCISOString(action.start_date, userTimeZone, { treatZuluAsLocal: true })
+        : null;
       await supabase.from("tasks").insert({
         user_id: user.id,
         title: action.title,
         description: action.description ?? null,
         priority: action.priority ?? "medium",
+        status: action.status ?? "borrador",
+        start_date: startDt,
         due_date: dt,
         project_id: action.project_id ?? null,
       });
