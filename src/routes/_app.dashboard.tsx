@@ -151,7 +151,7 @@ function Dashboard() {
       monthStart.setHours(0, 0, 0, 0);
       const [totalRes, doneRes] = await Promise.all([
         supabase.from("tasks").select("id", { head: true, count: "exact" }).gte("created_at", monthStart.toISOString()),
-        supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("status", "done").gte("created_at", monthStart.toISOString()),
+        supabase.from("tasks").select("id", { head: true, count: "exact" }).eq("status", "listo").gte("created_at", monthStart.toISOString()),
       ]);
       setMonthProgress({ done: doneRes.count ?? 0, total: totalRes.count ?? 0 });
       const upcoming = ((c.data as any[]) ?? [])
@@ -243,23 +243,23 @@ function Dashboard() {
   // Tasks for today's view: due today, overdue (pending), or pending high priority
   const todayTasks = tasks.filter((t) => {
     if (isToday(t.due_date)) return true;
-    if (t.status !== "done") {
+    if (t.status !== "listo") {
       if (isOverdue(t.due_date)) return true;
       if (t.priority === "high") return true;
     }
     return false;
   });
   const [completedAt, setCompletedAt] = useState<Record<string, number>>({});
-  const pendingTodayTasks = todayTasks.filter((t) => t.status !== "done");
+  const pendingTodayTasks = todayTasks.filter((t) => t.status !== "listo");
   const doneTodayTasks = useMemo(
     () =>
       todayTasks
-        .filter((t) => t.status === "done")
+        .filter((t) => t.status === "listo")
         .sort((a, b) => (completedAt[a.id] ?? 0) - (completedAt[b.id] ?? 0)),
     [todayTasks, completedAt],
   );
   const overdueCount = tasks.filter(
-    (t) => t.status !== "done" && isOverdue(t.due_date),
+    (t) => t.status !== "listo" && isOverdue(t.due_date),
   ).length;
 
   const projectMap = useMemo(() => {
@@ -300,7 +300,7 @@ function Dashboard() {
   ];
 
   const toggleTask = async (task: Task) => {
-    const wasDone = task.status === "done";
+    const wasDone = task.status === "listo";
     const newStatus = wasDone ? "pending" : "done";
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
@@ -724,7 +724,7 @@ function TaskRow({
   onToggle: () => void;
   onOpen?: () => void;
 }) {
-  const done = task.status === "done";
+  const done = task.status === "listo";
   const high = task.priority === "high";
   return (
     <motion.div
