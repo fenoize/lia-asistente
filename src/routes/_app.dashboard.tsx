@@ -301,7 +301,7 @@ function Dashboard() {
 
   const toggleTask = async (task: Task) => {
     const wasDone = task.status === "listo";
-    const newStatus = wasDone ? "pending" : "done";
+    const newStatus = wasDone ? "borrador" : "listo";
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
     );
