@@ -38,7 +38,7 @@ export async function buildContext(
   const [profileRes, tasksRes, meetingsRes, remindersRes, contactsRes, projectsRes, relationsRes] = await Promise.all([
     supabase.from("profiles").select("name, role, goals, timezone, assistant_name, assistant_gender").maybeSingle(),
     supabase.from("tasks")
-      .select("id, title, priority, due_date, status, assigned_to, project_id")
+      .select("id, title, priority, start_date, due_date, status, assigned_to, project_id")
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(80),
     supabase.from("meetings")
@@ -64,7 +64,7 @@ export async function buildContext(
 
   const profile = profileRes.data ?? {};
   const allTasks = tasksRes.data ?? [];
-  const tasks = allTasks.filter((t: any) => t.status !== "done");
+  const tasks = allTasks.filter((t: any) => t.status !== "listo");
   const meetings = meetingsRes.data ?? [];
   const reminders = remindersRes.data ?? [];
   const contacts = contactsRes.data ?? [];

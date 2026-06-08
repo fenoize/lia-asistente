@@ -32,6 +32,7 @@ type Task = {
   title: string;
   status: string;
   priority: string;
+  start_date: string | null;
   due_date: string | null;
   description: string | null;
   project_id: string | null;
