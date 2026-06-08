@@ -26,7 +26,7 @@ async function buildMentionsBlock(sb: any, lastUserText: string): Promise<string
   const contactsById = new Map<string, any>((cRes.data ?? []).map((c: any) => [c.id, c]));
   const tasksByProject = new Map<string, number>();
   (tRes.data ?? []).forEach((t: any) => {
-    if (t.status !== "done") tasksByProject.set(t.project_id, (tasksByProject.get(t.project_id) ?? 0) + 1);
+    if (t.status !== "listo") tasksByProject.set(t.project_id, (tasksByProject.get(t.project_id) ?? 0) + 1);
   });
   // Resolve client names for projects
   const clientIds = (pRes.data ?? []).map((p: any) => p.client_id).filter(Boolean);
