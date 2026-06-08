@@ -811,8 +811,14 @@ function ActionCard({
                   {it.datetime && (
                     <div>Nueva fecha: <span style={{ color: "var(--text-primary)" }}>{formatDateTimeInTimeZone(it.datetime, tz)}</span></div>
                   )}
+                  {it.new_start_date && (
+                    <div>Nueva fecha de inicio: <span style={{ color: "var(--text-primary)" }}>{formatDateTimeInTimeZone(it.new_start_date, tz)}</span></div>
+                  )}
                   {it.priority && (
                     <div>Nueva prioridad: <span style={{ color: "var(--text-primary)" }}>{it.priority === "high" ? "Alta" : it.priority === "medium" ? "Media" : "Baja"}</span></div>
+                  )}
+                  {it.new_status && (
+                    <div>Nuevo estado: <span style={{ color: "var(--text-primary)" }}>{it.new_status === "listo" ? "Listo" : it.new_status === "en_curso" ? "En Curso" : "Borrador"}</span></div>
                   )}
                   {it.project_name && (
                     <div>Nuevo proyecto: <span style={{ color: "var(--accent-color)" }}>{it.project_name}</span></div>
