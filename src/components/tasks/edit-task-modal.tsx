@@ -7,6 +7,7 @@ export type EditableTask = {
   title: string;
   description: string | null;
   priority: string;
+  start_date: string | null;
   due_date: string | null;
   project_id: string | null;
   status: string;
@@ -19,6 +20,12 @@ const PRIORITIES: { id: string; label: string; color: string; bg: string; border
   { id: "high", label: "Alta", color: "#fb923c", bg: "rgba(234,88,12,0.15)", border: "rgba(234,88,12,0.35)" },
   { id: "medium", label: "Media", color: "#fbbf24", bg: "rgba(217,119,6,0.15)", border: "rgba(217,119,6,0.35)" },
   { id: "low", label: "Baja", color: "#9ca3af", bg: "rgba(156,163,175,0.1)", border: "rgba(156,163,175,0.25)" },
+];
+
+const STATUSES: { id: string; label: string; color: string; bg: string; border: string }[] = [
+  { id: "borrador", label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
+  { id: "en_curso", label: "En Curso", color: "#a78bfa", bg: "rgba(139,92,246,0.15)", border: "rgba(139,92,246,0.4)" },
+  { id: "listo", label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
 ];
 
 export function EditTaskModal({
@@ -37,6 +44,10 @@ export function EditTaskModal({
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [priority, setPriority] = useState(task.priority || "medium");
+  const [status, setStatus] = useState(task.status || "borrador");
+  const [startDate, setStartDate] = useState(
+    task.start_date ? new Date(task.start_date).toISOString().slice(0, 10) : "",
+  );
   const [dueDate, setDueDate] = useState(
     task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : "",
   );
@@ -58,6 +69,8 @@ export function EditTaskModal({
       title: title.trim(),
       description: description.trim() || null,
       priority,
+      status,
+      start_date: startDate ? new Date(startDate).toISOString() : null,
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
       project_id: projectId || null,
     };
@@ -97,6 +110,8 @@ export function EditTaskModal({
           border: "1px solid #1e1e1e",
           borderRadius: 16,
           padding: 24,
+          maxHeight: "90vh",
+          overflowY: "auto",
         }}
       >
         <input
@@ -114,6 +129,31 @@ export function EditTaskModal({
             marginBottom: 18,
           }}
         />
+
+        <Field label="Estado">
+          <div className="flex gap-1.5 flex-wrap">
+            {STATUSES.map((s) => {
+              const active = status === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setStatus(s.id)}
+                  style={{
+                    fontSize: 12,
+                    padding: "5px 14px",
+                    borderRadius: 100,
+                    background: active ? s.bg : "transparent",
+                    border: `1px solid ${active ? s.border : "#1e1e1e"}`,
+                    color: active ? s.color : "#666",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
 
         <Field label="Proyecto">
           <select
@@ -156,15 +196,27 @@ export function EditTaskModal({
           </div>
         </Field>
 
-        <Field label="Fecha límite">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="w-full focus:outline-none"
-            style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
-          />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Inicio">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full focus:outline-none"
+              style={{ ...fieldStyle(!!startDate), colorScheme: "dark" }}
+            />
+          </Field>
+
+          <Field label="Término">
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full focus:outline-none"
+              style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
+            />
+          </Field>
+        </div>
 
         <Field label="Descripción">
           <textarea

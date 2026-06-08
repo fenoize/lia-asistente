@@ -15,6 +15,7 @@ type Task = {
   title: string;
   status: string;
   priority: string;
+  start_date: string | null;
   due_date: string | null;
   project: string | null;
   project_id: string | null;
@@ -32,6 +33,12 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "week", label: "Esta semana" },
   { id: "done", label: "Completadas" },
 ];
+
+const STATUS_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  borrador: { label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
+  en_curso: { label: "En Curso", color: "#a78bfa", bg: "rgba(139,92,246,0.15)", border: "rgba(139,92,246,0.4)" },
+  listo: { label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
+};
 
 const startOfToday = () => {
   const d = new Date(); d.setHours(0, 0, 0, 0); return d;
@@ -73,11 +80,10 @@ function TasksPage() {
   }, [user]);
 
   const filtered = useMemo(() => {
-    const now = new Date();
     return tasks.filter((t) => {
-      if (filter === "done") return t.status === "done";
-      if (t.status === "done") return false;
-      if (filter === "urgent") return t.priority === "high";
+      if (filter === "done") return t.status === "listo";
+      if (t.status === "listo") return false;
+      if (filter === "urgent") return t.priority === "high" || t.priority === "urgent";
       if (filter === "today") {
         if (!t.due_date) return false;
         const d = new Date(t.due_date);
@@ -105,7 +111,7 @@ function TasksPage() {
   }, [filtered]);
 
   const toggle = async (t: Task) => {
-    const status = t.status === "done" ? "pending" : "done";
+    const status = t.status === "listo" ? "borrador" : "listo";
     setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, status } : x)));
     const { error } = await supabase.from("tasks").update({ status }).eq("id", t.id);
     if (error) toast.error(error.message);
@@ -126,6 +132,8 @@ function TasksPage() {
               title: updated.title,
               description: updated.description,
               priority: updated.priority,
+              status: updated.status,
+              start_date: updated.start_date,
               due_date: updated.due_date,
               project_id: updated.project_id,
             }
@@ -136,7 +144,7 @@ function TasksPage() {
   const removeTask = (id: string) => setTasks((prev) => prev.filter((x) => x.id !== id));
 
 
-  const counts = useMemo(() => tasks.filter((t) => t.status !== "done").length, [tasks]);
+  const counts = useMemo(() => tasks.filter((t) => t.status !== "listo").length, [tasks]);
 
   return (
     <div>
@@ -227,9 +235,10 @@ function TasksPage() {
             title: editing.title,
             description: editing.description,
             priority: editing.priority,
+            status: editing.status,
+            start_date: editing.start_date,
             due_date: editing.due_date,
             project_id: editing.project_id,
-            status: editing.status,
           }}
           projects={projects}
           onClose={() => setEditing(null)}
@@ -241,6 +250,19 @@ function TasksPage() {
   );
 }
 
+function formatRange(start: string | null, end: string | null): string | null {
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("es-CL", {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago",
+      day: "numeric",
+      month: "short",
+    }).format(new Date(iso));
+  if (start && end) return `${fmt(start)} → ${fmt(end)}`;
+  if (end) return fmt(end);
+  if (start) return `desde ${fmt(start)}`;
+  return null;
+}
+
 function TaskRow({
   task, onOpen, onToggle, onRemove,
 }: {
@@ -249,8 +271,9 @@ function TaskRow({
   onToggle: () => void;
   onRemove: () => void;
 }) {
-  const done = task.status === "done";
+  const done = task.status === "listo";
   const overdue = !!task.due_date && new Date(task.due_date) < new Date() && !done;
+  const rangeText = formatRange(task.start_date, task.due_date);
 
   return (
     <li
@@ -269,11 +292,11 @@ function TaskRow({
     >
       <button
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        aria-label={done ? "Marcar pendiente" : "Marcar completada"}
+        aria-label={done ? "Marcar pendiente" : "Marcar listo"}
         style={{
           width: 16, height: 16, borderRadius: "50%",
-          border: `1.5px solid ${done ? "var(--accent-color)" : "#333"}`,
-          background: done ? "var(--accent-color)" : "transparent",
+          border: `1.5px solid ${done ? "#22c55e" : "#333"}`,
+          background: done ? "#22c55e" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
           transition: "transform 120ms ease, background 120ms ease",
@@ -294,20 +317,18 @@ function TaskRow({
         {task.title}
       </span>
 
+      <StatusBadge status={task.status} />
       <PriorityBadge priority={task.priority} />
 
-      {task.due_date && (
+      {rangeText && (
         <span
           style={{
             fontSize: 12,
             color: overdue ? "#f87171" : "#555",
+            whiteSpace: "nowrap",
           }}
         >
-          {new Intl.DateTimeFormat("es-CL", {
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago",
-            day: "numeric",
-            month: "short",
-          }).format(new Date(task.due_date))}
+          {rangeText}
         </span>
       )}
 
@@ -322,6 +343,25 @@ function TaskRow({
         </button>
       </div>
     </li>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const m = STATUS_META[status] ?? STATUS_META.borrador;
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        padding: "2px 10px",
+        borderRadius: 100,
+        background: m.bg,
+        color: m.color,
+        border: `1px solid ${m.border}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {m.label}
+    </span>
   );
 }
 
