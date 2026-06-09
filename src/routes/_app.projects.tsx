@@ -725,8 +725,18 @@ function ProjectDetailModal({
             {linked.map((t) => (
               <li
                 key={t.id}
-                className="group flex items-center gap-3"
+                className="group flex items-center gap-3 cursor-pointer"
                 style={{ padding: "8px 10px", borderRadius: 8, background: "#0d0d0d" }}
+                onClick={() => setEditingTask({
+                  id: t.id,
+                  title: t.title,
+                  description: t.description,
+                  priority: t.priority,
+                  status: t.status,
+                  start_date: t.start_date,
+                  due_date: t.due_date,
+                  project_id: t.project_id,
+                })}
               >
                 <span
                   style={{
@@ -756,7 +766,7 @@ function ProjectDetailModal({
                   </span>
                 )}
                 <button
-                  onClick={() => unlink(t.id)}
+                  onClick={(e) => { e.stopPropagation(); unlink(t.id); }}
                   className="opacity-0 group-hover:opacity-100"
                   style={{ fontSize: 11, color: "#666", padding: "2px 8px" }}
                   title="Desvincular"
