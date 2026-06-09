@@ -65,13 +65,17 @@ function MeetingsPage() {
     const startDayOffset = Math.round((weekStart.getTime() - startOfWeek(new Date()).getTime()) / 86_400_000);
     const startRange = getDayRangeUTC(userTimeZone, startDayOffset);
     const endRange = getDayRangeUTC(userTimeZone, startDayOffset + 7);
-    const { data } = await supabase
-      .from("meetings")
-      .select("*")
-      .gte("datetime", startRange.startIso)
-      .lt("datetime", endRange.startIso)
-      .order("datetime", { ascending: true });
-    setMeetings((data as Meeting[]) ?? []);
+    const [m, p] = await Promise.all([
+      supabase
+        .from("meetings")
+        .select("*")
+        .gte("datetime", startRange.startIso)
+        .lt("datetime", endRange.startIso)
+        .order("datetime", { ascending: true }),
+      supabase.from("projects").select("id,name").order("name"),
+    ]);
+    setMeetings((m.data as Meeting[]) ?? []);
+    setProjects((p.data as ProjectOption[]) ?? []);
     setLoading(false);
   };
 
