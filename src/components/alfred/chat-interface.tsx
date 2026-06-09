@@ -280,6 +280,7 @@ export function ChatInterface() {
 
   const sendText = async (text: string) => {
     if (!text.trim() || !user || streaming) return;
+    setInput("");
     await runAssistantTurn({
       visibleUserMsg: {
         id: crypto.randomUUID(),
@@ -288,8 +289,8 @@ export function ChatInterface() {
         createdAt: Date.now(),
       },
     });
-    setInput("");
   };
+
 
   const dayKeyInTz = (iso: string | null | undefined, tz: string): string => {
     if (!iso) return "none";
