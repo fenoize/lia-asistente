@@ -867,6 +867,15 @@ function ProjectDetailModal({
           </button>
         </div>
       </div>
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          onClose={() => setEditingTask(null)}
+          onSaved={() => { setEditingTask(null); onChanged(); }}
+          onDeleted={() => { setEditingTask(null); onChanged(); }}
+        />
+      )}
     </div>
   );
 }
