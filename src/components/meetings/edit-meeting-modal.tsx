@@ -18,10 +18,12 @@ export type ProjectOption = { id: string; name: string };
 
 export function EditMeetingModal({
   meeting,
+  projects = [],
   onClose,
   onSaved,
 }: {
   meeting: EditableMeeting;
+  projects?: ProjectOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -32,6 +34,7 @@ export function EditMeetingModal({
   const [location, setLocation] = useState(meeting.location ?? "");
   const [notes, setNotes] = useState(meeting.notes ?? "");
   const [prep, setPrep] = useState(!!meeting.preparation_needed);
+  const [projectId, setProjectId] = useState<string>(meeting.project_id ?? "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
