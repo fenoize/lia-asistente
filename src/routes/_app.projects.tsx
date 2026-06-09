@@ -204,6 +204,7 @@ function ProjectsPage() {
           project={openProject}
           contacts={contacts}
           tasks={tasks}
+          projects={projects}
           onClose={() => setOpenProject(null)}
           onChanged={reload}
         />
