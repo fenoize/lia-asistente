@@ -49,7 +49,8 @@ export function EditMeetingModal({
         location: location.trim() || null,
         notes: notes.trim() || null,
         preparation_needed: prep,
-      })
+        project_id: projectId || null,
+      } as any)
       .eq("id", meeting.id);
     setSaving(false);
     onSaved();
