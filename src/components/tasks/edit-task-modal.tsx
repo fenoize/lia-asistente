@@ -115,7 +115,7 @@ export function EditTaskModal({
         }}
       >
         <input
-          autoFocus
+
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Nombre de la tarea"
