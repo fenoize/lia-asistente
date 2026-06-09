@@ -417,6 +417,7 @@ export type Database = {
           location: string | null
           notes: string | null
           preparation_needed: boolean | null
+          project_id: string | null
           title: string
           user_id: string
         }
@@ -428,6 +429,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           preparation_needed?: boolean | null
+          project_id?: string | null
           title: string
           user_id: string
         }
@@ -439,10 +441,18 @@ export type Database = {
           location?: string | null
           notes?: string | null
           preparation_needed?: boolean | null
+          project_id?: string | null
           title?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meetings_user_id_fkey"
             columns: ["user_id"]
