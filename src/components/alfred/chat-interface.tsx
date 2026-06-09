@@ -686,8 +686,8 @@ function AlfredBubble({
                   }}
                 />
               )}
-              {!text && streaming && <TypingDots />}
             </div>
+
           ) : null}
         </div>
         {action && (
