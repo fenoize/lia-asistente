@@ -45,6 +45,7 @@ function MeetingsPage() {
   const { user } = useAuth();
   const userTimeZone = detectUserTimeZone();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [selected, setSelected] = useState<Date>(() => {
