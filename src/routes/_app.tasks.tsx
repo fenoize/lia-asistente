@@ -272,9 +272,78 @@ function TaskRow({
   onToggle: () => void;
   onRemove: () => void;
 }) {
+  const isMobile = useIsMobile();
   const done = task.status === "listo";
   const overdue = !!task.due_date && new Date(task.due_date) < new Date() && !done;
   const rangeText = formatRange(task.start_date, task.due_date);
+
+  const checkBtn = (
+    <button
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      aria-label={done ? "Marcar pendiente" : "Marcar listo"}
+      style={{
+        width: 16, height: 16, borderRadius: "50%",
+        border: `1.5px solid ${done ? "#22c55e" : "#333"}`,
+        background: done ? "#22c55e" : "transparent",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+        transition: "transform 120ms ease, background 120ms ease",
+      }}
+      className="hover:scale-110"
+    >
+      {done && <IconCheck size={10} stroke={3} color="white" />}
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <li
+        className="group cursor-pointer transition-colors"
+        style={{ padding: "10px 12px", borderRadius: 8 }}
+        onClick={onOpen}
+      >
+        <div className="flex items-start gap-3">
+          <div style={{ marginTop: 2 }}>{checkBtn}</div>
+          <div className="flex-1 min-w-0">
+            <div
+              style={{
+                fontSize: 14,
+                color: done ? "#444" : "#ccc",
+                textDecoration: done ? "line-through" : "none",
+                wordBreak: "break-word",
+                lineHeight: 1.35,
+              }}
+            >
+              {task.title}
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5" style={{ marginTop: 6 }}>
+              <StatusBadge status={task.status} />
+              <PriorityBadge priority={task.priority} />
+              {rangeText && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: overdue ? "#f87171" : "#555",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {rangeText}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            aria-label="Eliminar"
+            style={{ color: "#666", padding: 4 }}
+            className="hover:text-red-400"
+          >
+            <IconTrash size={14} />
+          </button>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <li
@@ -291,21 +360,7 @@ function TaskRow({
         e.currentTarget.style.background = "transparent";
       }}
     >
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggle(); }}
-        aria-label={done ? "Marcar pendiente" : "Marcar listo"}
-        style={{
-          width: 16, height: 16, borderRadius: "50%",
-          border: `1.5px solid ${done ? "#22c55e" : "#333"}`,
-          background: done ? "#22c55e" : "transparent",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-          transition: "transform 120ms ease, background 120ms ease",
-        }}
-        className="hover:scale-110"
-      >
-        {done && <IconCheck size={10} stroke={3} color="white" />}
-      </button>
+      {checkBtn}
 
       <span
         className="flex-1 truncate"
@@ -346,6 +401,7 @@ function TaskRow({
     </li>
   );
 }
+
 
 function StatusBadge({ status }: { status: string }) {
   const m = STATUS_META[status] ?? STATUS_META.borrador;
