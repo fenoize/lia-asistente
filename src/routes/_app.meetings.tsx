@@ -158,6 +158,7 @@ function MeetingsPage() {
       {editing && (
         <EditMeetingModal
           meeting={editing}
+          projects={projects}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); await load(); }}
         />
