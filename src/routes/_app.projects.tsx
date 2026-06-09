@@ -74,7 +74,7 @@ function ProjectsPage() {
     const [p, c, t] = await Promise.all([
       supabase.from("projects").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id,name,type"),
-      supabase.from("tasks").select("id,title,status,priority,due_date,description,project_id,assigned_to"),
+      supabase.from("tasks").select("id,title,status,priority,due_date,start_date,description,project_id,assigned_to"),
     ]);
     setProjects((p.data as Project[]) ?? []);
     setContacts((c.data as Contact[]) ?? []);
