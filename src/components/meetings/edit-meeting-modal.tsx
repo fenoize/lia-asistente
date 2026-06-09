@@ -11,7 +11,10 @@ export type EditableMeeting = {
   location: string | null;
   notes: string | null;
   preparation_needed: boolean | null;
+  project_id?: string | null;
 };
+
+export type ProjectOption = { id: string; name: string };
 
 export function EditMeetingModal({
   meeting,
