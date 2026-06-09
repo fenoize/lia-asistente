@@ -11,14 +11,19 @@ export type EditableMeeting = {
   location: string | null;
   notes: string | null;
   preparation_needed: boolean | null;
+  project_id?: string | null;
 };
+
+export type ProjectOption = { id: string; name: string };
 
 export function EditMeetingModal({
   meeting,
+  projects = [],
   onClose,
   onSaved,
 }: {
   meeting: EditableMeeting;
+  projects?: ProjectOption[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -29,6 +34,7 @@ export function EditMeetingModal({
   const [location, setLocation] = useState(meeting.location ?? "");
   const [notes, setNotes] = useState(meeting.notes ?? "");
   const [prep, setPrep] = useState(!!meeting.preparation_needed);
+  const [projectId, setProjectId] = useState<string>(meeting.project_id ?? "");
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -43,7 +49,8 @@ export function EditMeetingModal({
         location: location.trim() || null,
         notes: notes.trim() || null,
         preparation_needed: prep,
-      })
+        project_id: projectId || null,
+      } as any)
       .eq("id", meeting.id);
     setSaving(false);
     onSaved();
@@ -93,6 +100,18 @@ export function EditMeetingModal({
           </Field>
           <Field label="Ubicación o link">
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="https://meet.google.com/..." style={inputStyle} />
+          </Field>
+          <Field label="Proyecto">
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Sin proyecto</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
           </Field>
           <Field label="Notas">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} />

@@ -6,6 +6,7 @@ import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EditProjectModal } from "@/components/projects/edit-project-modal";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ type TaskRow = {
   status: string;
   priority: string;
   due_date: string | null;
+  start_date: string | null;
   description: string | null;
   project_id: string | null;
   assigned_to: string | null;
@@ -72,7 +74,7 @@ function ProjectsPage() {
     const [p, c, t] = await Promise.all([
       supabase.from("projects").select("*").order("created_at", { ascending: false }),
       supabase.from("contacts").select("id,name,type"),
-      supabase.from("tasks").select("id,title,status,priority,due_date,description,project_id,assigned_to"),
+      supabase.from("tasks").select("id,title,status,priority,due_date,start_date,description,project_id,assigned_to"),
     ]);
     setProjects((p.data as Project[]) ?? []);
     setContacts((c.data as Contact[]) ?? []);
@@ -202,6 +204,7 @@ function ProjectsPage() {
           project={openProject}
           contacts={contacts}
           tasks={tasks}
+          projects={projects}
           onClose={() => setOpenProject(null)}
           onChanged={reload}
         />
@@ -624,12 +627,14 @@ function ProjectDetailModal({
   project,
   contacts,
   tasks,
+  projects,
   onClose,
   onChanged,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
+  projects: Project[];
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -638,6 +643,7 @@ function ProjectDetailModal({
   const unassigned = tasks.filter((t) => t.project_id == null);
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
+  const [editingTask, setEditingTask] = useState<EditableTask | null>(null);
   const filtered = unassigned.filter((t) =>
     t.title.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -719,8 +725,18 @@ function ProjectDetailModal({
             {linked.map((t) => (
               <li
                 key={t.id}
-                className="group flex items-center gap-3"
+                className="group flex items-center gap-3 cursor-pointer"
                 style={{ padding: "8px 10px", borderRadius: 8, background: "#0d0d0d" }}
+                onClick={() => setEditingTask({
+                  id: t.id,
+                  title: t.title,
+                  description: t.description,
+                  priority: t.priority,
+                  status: t.status,
+                  start_date: t.start_date,
+                  due_date: t.due_date,
+                  project_id: t.project_id,
+                })}
               >
                 <span
                   style={{
@@ -750,7 +766,7 @@ function ProjectDetailModal({
                   </span>
                 )}
                 <button
-                  onClick={() => unlink(t.id)}
+                  onClick={(e) => { e.stopPropagation(); unlink(t.id); }}
                   className="opacity-0 group-hover:opacity-100"
                   style={{ fontSize: 11, color: "#666", padding: "2px 8px" }}
                   title="Desvincular"
@@ -851,6 +867,15 @@ function ProjectDetailModal({
           </button>
         </div>
       </div>
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+          onClose={() => setEditingTask(null)}
+          onSaved={() => { setEditingTask(null); onChanged(); }}
+          onDeleted={() => { setEditingTask(null); onChanged(); }}
+        />
+      )}
     </div>
   );
 }

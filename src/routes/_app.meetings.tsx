@@ -18,7 +18,10 @@ type Meeting = {
   location: string | null;
   notes: string | null;
   preparation_needed: boolean | null;
+  project_id: string | null;
 };
+
+type ProjectOption = { id: string; name: string };
 
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -42,6 +45,7 @@ function MeetingsPage() {
   const { user } = useAuth();
   const userTimeZone = detectUserTimeZone();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [selected, setSelected] = useState<Date>(() => {
@@ -61,13 +65,17 @@ function MeetingsPage() {
     const startDayOffset = Math.round((weekStart.getTime() - startOfWeek(new Date()).getTime()) / 86_400_000);
     const startRange = getDayRangeUTC(userTimeZone, startDayOffset);
     const endRange = getDayRangeUTC(userTimeZone, startDayOffset + 7);
-    const { data } = await supabase
-      .from("meetings")
-      .select("*")
-      .gte("datetime", startRange.startIso)
-      .lt("datetime", endRange.startIso)
-      .order("datetime", { ascending: true });
-    setMeetings((data as Meeting[]) ?? []);
+    const [m, p] = await Promise.all([
+      supabase
+        .from("meetings")
+        .select("*")
+        .gte("datetime", startRange.startIso)
+        .lt("datetime", endRange.startIso)
+        .order("datetime", { ascending: true }),
+      supabase.from("projects").select("id,name").order("name"),
+    ]);
+    setMeetings((m.data as Meeting[]) ?? []);
+    setProjects((p.data as ProjectOption[]) ?? []);
     setLoading(false);
   };
 
@@ -150,6 +158,7 @@ function MeetingsPage() {
       {editing && (
         <EditMeetingModal
           meeting={editing}
+          projects={projects}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); await load(); }}
         />
