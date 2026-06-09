@@ -627,12 +627,14 @@ function ProjectDetailModal({
   project,
   contacts,
   tasks,
+  projects,
   onClose,
   onChanged,
 }: {
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
+  projects: Project[];
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -641,6 +643,7 @@ function ProjectDetailModal({
   const unassigned = tasks.filter((t) => t.project_id == null);
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
+  const [editingTask, setEditingTask] = useState<EditableTask | null>(null);
   const filtered = unassigned.filter((t) =>
     t.title.toLowerCase().includes(search.trim().toLowerCase()),
   );
