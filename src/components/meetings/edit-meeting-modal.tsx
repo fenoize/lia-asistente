@@ -101,6 +101,18 @@ export function EditMeetingModal({
           <Field label="Ubicación o link">
             <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="https://meet.google.com/..." style={inputStyle} />
           </Field>
+          <Field label="Proyecto">
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Sin proyecto</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="Notas">
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
           </Field>
