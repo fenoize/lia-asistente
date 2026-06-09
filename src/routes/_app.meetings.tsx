@@ -18,7 +18,10 @@ type Meeting = {
   location: string | null;
   notes: string | null;
   preparation_needed: boolean | null;
+  project_id: string | null;
 };
+
+type ProjectOption = { id: string; name: string };
 
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
