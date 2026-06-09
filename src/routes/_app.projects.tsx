@@ -6,6 +6,7 @@ import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EditProjectModal } from "@/components/projects/edit-project-modal";
+import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 import {
   AlertDialog,
   AlertDialogAction,
