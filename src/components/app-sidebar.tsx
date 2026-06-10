@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { cn } from "@/lib/utils";
+import { LiaLogo } from "@/components/lia-logo";
 
 const items = [
   { to: "/dashboard", label: "Hoy", icon: IconHome },
