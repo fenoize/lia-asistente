@@ -17,6 +17,7 @@ type Gender = "feminine" | "masculine";
 function SettingsPage() {
   const { user } = useAuth();
   const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
+  const [checkedOnce, setCheckedOnce] = useState(false);
   const { hidden: hideAmounts, set: setHideAmounts } = useHideAmounts();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
