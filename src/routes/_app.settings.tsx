@@ -301,7 +301,11 @@ function SettingsPage() {
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: hasUpdate ? "var(--accent-subtle)" : "var(--bg-base)",
+              background: hasUpdate
+                ? "var(--accent-subtle)"
+                : checkedOnce && !checking
+                ? "rgba(34,197,94,0.12)"
+                : "var(--bg-base)",
               border: "1px solid var(--border-subtle)",
               display: "flex",
               alignItems: "center",
@@ -310,18 +314,26 @@ function SettingsPage() {
           >
             {hasUpdate ? (
               <IconReload size={20} color="var(--accent-color)" stroke={1.5} />
+            ) : checkedOnce && !checking ? (
+              <IconCheck size={20} color="#22c55e" stroke={2} />
             ) : (
               <IconRefresh size={20} color="var(--text-tertiary)" stroke={1.5} />
             )}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
-              {hasUpdate ? "Actualización disponible" : "Versión actual"}
+              {hasUpdate
+                ? "¡Hay una nueva versión disponible!"
+                : checkedOnce && !checking
+                ? "Estás en la última versión"
+                : "Versión actual"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
               {hasUpdate
-                ? "Hay una nueva versión. Reinicia para aplicarla."
-                : "Buscando actualizaciones…"}
+                ? "Reinicia para aplicar la actualización."
+                : checking
+                ? "Buscando actualizaciones…"
+                : "v0.4.0"}
             </div>
           </div>
         </div>
@@ -342,7 +354,10 @@ function SettingsPage() {
           </button>
         ) : (
           <button
-            onClick={update}
+            onClick={async () => {
+              await update();
+              setCheckedOnce(true);
+            }}
             disabled={checking}
             style={{
               background: "transparent",
