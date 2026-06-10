@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { cn } from "@/lib/utils";
+import { LiaLogo } from "@/components/lia-logo";
 
 const items = [
   { to: "/dashboard", label: "Hoy", icon: IconHome },
@@ -50,10 +51,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       {/* Top: logo */}
       <div className="px-4 pt-5">
         <div className="flex items-center gap-2">
-          <div
-            className="h-4 w-4 rounded-[4px]"
-            style={{ background: "var(--accent-color)" }}
-          />
+          <LiaLogo size={28} animated={false} />
           <span
             className="text-[15px]"
             style={{
@@ -62,7 +60,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
               color: "var(--text-primary)",
             }}
           >
-            {assistant.name.toLowerCase()}
+            lia
           </span>
         </div>
       </div>
