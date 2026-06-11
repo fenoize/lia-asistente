@@ -452,6 +452,8 @@ function Dashboard() {
       </section>
       )}
 
+      {isReady && (
+      <>
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
