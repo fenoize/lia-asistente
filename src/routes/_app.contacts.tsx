@@ -626,7 +626,7 @@ function ContactCard({
         </div>
         <div
           className="flex items-center gap-2"
-          style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s" }}
+          style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s", pointerEvents: hover ? "auto" : "none" }}
         >
           <button
             onClick={(e) => {
@@ -727,8 +727,11 @@ function ContactModal({
     if (contact?.tags && contact.tags.length > 0) return contact.tags;
     // Migrate existing contacts: seed from relationship_type label.
     if (contact) {
-      const lbl = REL_LABEL[(contact.relationship_type as RelType) ?? "other"];
-      if ((TAG_OPTIONS as readonly string[]).includes(lbl)) return [lbl];
+      const rt = (contact.relationship_type as RelType) ?? "other";
+      const tag = (TAG_OPTIONS as readonly string[]).find(
+        (t) => TAG_TO_REL[t as TagOption] === rt,
+      );
+      if (tag) return [tag];
     }
     return ["Cliente"];
   })();
@@ -860,7 +863,7 @@ function ContactModal({
         </div>
 
         <div className="space-y-3 mb-5">
-          <BareInput value={name} onChange={setName} placeholder="Nombre completo" autoFocus />
+          <BareInput value={name} onChange={setName} placeholder="Nombre completo" />
           <div className="grid grid-cols-2 gap-2">
             <BareInput value={email} onChange={setEmail} placeholder="email@ejemplo.com" />
             <BareInput value={phone} onChange={setPhone} placeholder="Teléfono" />
