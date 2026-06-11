@@ -542,8 +542,14 @@ export function ChatInterface() {
       </div>
 
       {/* Suggestions + input */}
-      <div style={{ borderTop: "1px solid var(--border)" }}>
-        <div className="mx-auto w-full" style={{ maxWidth: 680, padding: "12px 24px 16px" }}>
+      <div style={{
+        position: "relative",
+        background: "linear-gradient(to bottom, transparent 0%, #080808 28%)",
+      }}>
+        <div
+          className="mx-auto w-full"
+          style={{ maxWidth: 680, padding: "8px 16px 20px" }}
+        >
           {isEmpty && (
             <div
               className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-thin"
@@ -969,31 +975,16 @@ function InputBar({
   const hasText = value.trim().length > 0;
   return (
     <div
-      className="flex items-end gap-2.5"
+      className="flex items-end gap-2"
       style={{
-        background: "#111111",
-        border: `1px solid ${focused ? "rgba(99,102,241,0.5)" : "#222"}`,
-        borderRadius: 14,
-        padding: "14px 16px",
-        transition: "border-color 0.15s",
+        background: "rgba(255,255,255,0.04)",
+        border: `1.5px solid ${focused ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.07)"}`,
+        borderRadius: 22,
+        padding: "10px 10px 10px 16px",
+        transition: "border-color 0.2s",
+        boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
       }}
     >
-      <div
-        className="shrink-0 flex items-center justify-center"
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: "50%",
-          background: "rgba(99,102,241,0.15)",
-          color: "#818cf8",
-          fontSize: 11,
-          fontWeight: 600,
-          marginBottom: 6,
-        }}
-        aria-hidden
-      >
-        A
-      </div>
       <div className="flex-1 min-w-0">
         <MentionInput
           ref={taRef}
@@ -1008,7 +999,7 @@ function InputBar({
           placeholder={placeholder ?? "Pregúntale algo a tu asistente..."}
           className="w-full bg-transparent resize-none focus:outline-none alfred-chat-input"
           style={{
-            fontSize: 14,
+            fontSize: 15,
             lineHeight: "22px",
             color: "var(--text-primary)",
             minHeight: 22,
@@ -1022,20 +1013,21 @@ function InputBar({
         disabled={!hasText || disabled}
         aria-label="Enviar"
         style={{
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           borderRadius: "50%",
-          background: hasText ? "#6366f1" : "#1a1a1a",
-          color: hasText ? "white" : "#555",
+          background: hasText ? "#6366f1" : "transparent",
+          border: hasText ? "none" : "1.5px solid rgba(255,255,255,0.08)",
+          color: hasText ? "white" : "#444",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "background 0.15s",
+          transition: "all 0.2s",
           opacity: disabled ? 0.5 : 1,
           flexShrink: 0,
         }}
       >
-        <IconArrowUp size={16} stroke={2.25} />
+        <IconArrowUp size={17} stroke={2.25} />
       </button>
     </div>
   );
