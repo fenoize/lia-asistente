@@ -910,50 +910,6 @@ function TaskRow({
           )}
         </div>
       </div>
-      {done && (
-        <span
-          style={{
-            fontSize: 10,
-            color: "var(--text-tertiary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            marginTop: 2,
-          }}
-        >
-          Completada
-        </span>
-      )}
-      {!done && (
-        <StatusBadge status={task.status} />
-      )}
-      {high && !done && (
-        <span
-          style={{
-            fontSize: 11,
-            background: "rgba(220,38,38,0.12)",
-            color: "#f87171",
-            borderRadius: 100,
-            padding: "2px 10px",
-            marginTop: 2,
-          }}
-        >
-          Alta
-        </span>
-      )}
-      {overdue && !done && !high && (
-        <span
-          style={{
-            fontSize: 11,
-            background: "rgba(220,38,38,0.12)",
-            color: "#f87171",
-            borderRadius: 100,
-            padding: "2px 10px",
-            marginTop: 2,
-          }}
-        >
-          Atrasada
-        </span>
-      )}
     </motion.div>
   );
 }
