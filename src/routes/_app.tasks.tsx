@@ -185,37 +185,69 @@ function TasksPage() {
         </button>
       </header>
 
-      <div className="flex flex-wrap gap-1.5 mb-6">
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              style={{
-                fontSize: 12,
-                padding: "6px 16px",
-                borderRadius: 100,
-                border: active
-                  ? "1px solid rgba(99,102,241,0.3)"
-                  : "1px solid #222",
-                background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                color: active ? "#818cf8" : "#555",
-                transition: "color 0.15s, border-color 0.15s",
-              }}
-            >
-              {f.label}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                style={{
+                  fontSize: 12,
+                  padding: "6px 16px",
+                  borderRadius: 100,
+                  border: active ? "1px solid rgba(99,102,241,0.3)" : "1px solid #222",
+                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                  color: active ? "#818cf8" : "#555",
+                  transition: "color 0.15s, border-color 0.15s",
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
+          {(["cards", "table"] as const).map((v) => {
+            const active = view === v;
+            const Icon = v === "cards" ? IconLayoutGrid : IconTable;
+            return (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                aria-label={v === "cards" ? "Vista cards" : "Vista tabla"}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  padding: "5px 12px",
+                  borderRadius: 100,
+                  background: active ? "rgba(99,102,241,0.18)" : "transparent",
+                  color: active ? "#818cf8" : "#666",
+                  transition: "all 0.15s",
+                }}
+              >
+                <Icon size={13} />
+                {v === "cards" ? "Cards" : "Tabla"}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading ? (
         <SkeletonList />
       ) : filtered.length === 0 ? (
-        <Empty
-          title="Cero tareas en esta lista."
-          subtitle="Capturalas con ⌘K o el botón Nueva tarea."
+        <Empty title="Cero tareas en esta lista." subtitle="Capturalas con ⌘K o el botón Nueva tarea." />
+      ) : view === "table" ? (
+        <TaskTable
+          tasks={filtered}
+          projects={projects}
+          onOpen={(t) => setEditing(t)}
+          onPatch={patchInline}
+          onRemove={remove}
         />
       ) : (
         <div className="space-y-6">
