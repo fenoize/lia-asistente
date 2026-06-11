@@ -23,6 +23,12 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
+import {
+  PriorityActionsWidget,
+  WeeklyInsightsWidget,
+  ActiveProjectsWidget,
+  FinanceSnapshotWidget,
+} from "@/components/dashboard/intelligent-widgets";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -430,6 +436,14 @@ function Dashboard() {
         )}
       </section>
 
+      {/* Priority actions (smart ranking) */}
+      <PriorityActionsWidget
+        tasks={tasks}
+        reminders={reminders}
+        meetings={meetings}
+        projectMap={projectMap}
+      />
+
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
@@ -592,6 +606,17 @@ function Dashboard() {
           </div>
         </Block>
       )}
+
+      {/* Intelligent widgets */}
+      {user && (
+        <>
+          <ActiveProjectsWidget userId={user.id} />
+          <WeeklyInsightsWidget userId={user.id} />
+          <FinanceSnapshotWidget userId={user.id} />
+        </>
+      )}
+
+
 
       {editingMeeting && (
         <EditMeetingModal
