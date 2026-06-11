@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
-import { useDashboardBlocks, DASHBOARD_BLOCKS } from "@/hooks/use-dashboard-blocks";
+import { useDashboardBlocks, DASHBOARD_BLOCKS, type DashboardBlockKey } from "@/hooks/use-dashboard-blocks";
 import { startGoogleOAuth, getGoogleStatus, disconnectGoogle } from "@/lib/google-oauth.functions";
 import { pullGoogleEvents } from "@/lib/google-sync.functions";
 
