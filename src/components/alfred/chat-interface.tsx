@@ -737,6 +737,107 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   task_update: { label: "Editar tarea", Icon: IconPencil },
 };
 
+
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  borrador: { label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
+  en_curso: { label: "En Curso", color: "#a78bfa", bg: "rgba(139,92,246,0.15)", border: "rgba(139,92,246,0.4)" },
+  listo: { label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
+};
+
+const PRIORITY_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  urgent: { label: "Urgente", color: "#f87171", bg: "rgba(220,38,38,0.12)", border: "rgba(220,38,38,0.3)" },
+  high: { label: "Alta", color: "#fb923c", bg: "rgba(234,88,12,0.12)", border: "rgba(234,88,12,0.3)" },
+  medium: { label: "Media", color: "#fbbf24", bg: "rgba(217,119,6,0.12)", border: "rgba(217,119,6,0.3)" },
+  low: { label: "Baja", color: "#9ca3af", bg: "rgba(156,163,175,0.08)", border: "rgba(156,163,175,0.22)" },
+};
+
+function Chip({ label, color, bg, border }: { label: string; color: string; bg: string; border: string }) {
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        padding: "2px 9px",
+        borderRadius: 100,
+        background: bg,
+        color,
+        border: `1px solid ${border}`,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function TaskItemCard({ item, tz, isBulk }: { item: Action; tz: string; isBulk: boolean }) {
+  const isUpdate = item.type === "task_update";
+  const title = isUpdate && item.new_title ? item.new_title : item.title;
+  const oldTitle = isUpdate && item.new_title ? item.title : null;
+  const status = isUpdate ? item.new_status : item.status;
+  const statusMeta = status ? STATUS_LABELS[status] : null;
+  const priorityMeta = item.priority ? PRIORITY_LABELS[item.priority] : null;
+  const dueIso = item.datetime;
+  const startIso = isUpdate ? item.new_start_date : item.start_date;
+
+  return (
+    <div
+      style={{
+        padding: "12px 14px",
+        background: "var(--bg-base)",
+        borderRadius: "var(--radius-sm)",
+        border: "1px solid var(--border)",
+      }}
+    >
+      <div className="flex items-start gap-2">
+        <IconCircleCheck size={15} stroke={1.75} style={{ color: "var(--accent-color)", marginTop: 2, flexShrink: 0 }} />
+        <div className="flex-1 min-w-0">
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.35, wordBreak: "break-word" }}>
+            {oldTitle ? (
+              <>
+                <span style={{ textDecoration: "line-through", color: "var(--text-tertiary)", fontWeight: 400 }}>{oldTitle}</span>
+                {" → "}
+                {title}
+              </>
+            ) : (
+              title
+            )}
+          </div>
+
+          {(statusMeta || priorityMeta || dueIso || startIso || item.project_name) && (
+            <div className="flex flex-wrap items-center gap-1.5" style={{ marginTop: 8 }}>
+              {statusMeta && <Chip {...statusMeta} />}
+              {priorityMeta && <Chip {...priorityMeta} />}
+              {item.project_name && (
+                <Chip
+                  label={item.project_name}
+                  color="var(--accent-color)"
+                  bg="color-mix(in srgb, var(--accent-color) 12%, transparent)"
+                  border="color-mix(in srgb, var(--accent-color) 30%, transparent)"
+                />
+              )}
+              {(startIso || dueIso) && (
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
+                  {startIso && dueIso
+                    ? `${formatDateTimeInTimeZone(startIso, tz)} → ${formatDateTimeInTimeZone(dueIso, tz)}`
+                    : dueIso
+                      ? formatDateTimeInTimeZone(dueIso, tz)
+                      : `desde ${formatDateTimeInTimeZone(startIso!, tz)}`}
+                </span>
+              )}
+            </div>
+          )}
+
+          {item.description && !isBulk && (
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5 }}>
+              {item.description}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ActionCard({
   action,
   status,
@@ -940,103 +1041,3 @@ function InputBar({
   );
 }
 
-
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  borrador: { label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
-  en_curso: { label: "En Curso", color: "#a78bfa", bg: "rgba(139,92,246,0.15)", border: "rgba(139,92,246,0.4)" },
-  listo: { label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
-};
-
-const PRIORITY_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  urgent: { label: "Urgente", color: "#f87171", bg: "rgba(220,38,38,0.12)", border: "rgba(220,38,38,0.3)" },
-  high: { label: "Alta", color: "#fb923c", bg: "rgba(234,88,12,0.12)", border: "rgba(234,88,12,0.3)" },
-  medium: { label: "Media", color: "#fbbf24", bg: "rgba(217,119,6,0.12)", border: "rgba(217,119,6,0.3)" },
-  low: { label: "Baja", color: "#9ca3af", bg: "rgba(156,163,175,0.08)", border: "rgba(156,163,175,0.22)" },
-};
-
-function Chip({ label, color, bg, border }: { label: string; color: string; bg: string; border: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        padding: "2px 9px",
-        borderRadius: 100,
-        background: bg,
-        color,
-        border: `1px solid ${border}`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
-
-function TaskItemCard({ item, tz, isBulk }: { item: Action; tz: string; isBulk: boolean }) {
-  const isUpdate = item.type === "task_update";
-  const title = isUpdate && item.new_title ? item.new_title : item.title;
-  const oldTitle = isUpdate && item.new_title ? item.title : null;
-  const status = isUpdate ? item.new_status : item.status;
-  const statusMeta = status ? STATUS_LABELS[status] : null;
-  const priorityMeta = item.priority ? PRIORITY_LABELS[item.priority] : null;
-  const dueIso = item.datetime;
-  const startIso = isUpdate ? item.new_start_date : item.start_date;
-
-  return (
-    <div
-      style={{
-        padding: "12px 14px",
-        background: "var(--bg-base)",
-        borderRadius: "var(--radius-sm)",
-        border: "1px solid var(--border)",
-      }}
-    >
-      <div className="flex items-start gap-2">
-        <IconCircleCheck size={15} stroke={1.75} style={{ color: "var(--accent-color)", marginTop: 2, flexShrink: 0 }} />
-        <div className="flex-1 min-w-0">
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.35, wordBreak: "break-word" }}>
-            {oldTitle ? (
-              <>
-                <span style={{ textDecoration: "line-through", color: "var(--text-tertiary)", fontWeight: 400 }}>{oldTitle}</span>
-                {" → "}
-                {title}
-              </>
-            ) : (
-              title
-            )}
-          </div>
-
-          {(statusMeta || priorityMeta || dueIso || startIso || item.project_name) && (
-            <div className="flex flex-wrap items-center gap-1.5" style={{ marginTop: 8 }}>
-              {statusMeta && <Chip {...statusMeta} />}
-              {priorityMeta && <Chip {...priorityMeta} />}
-              {item.project_name && (
-                <Chip
-                  label={item.project_name}
-                  color="var(--accent-color)"
-                  bg="color-mix(in srgb, var(--accent-color) 12%, transparent)"
-                  border="color-mix(in srgb, var(--accent-color) 30%, transparent)"
-                />
-              )}
-              {(startIso || dueIso) && (
-                <span style={{ fontSize: 11, color: "var(--text-tertiary)", whiteSpace: "nowrap" }}>
-                  {startIso && dueIso
-                    ? `${formatDateTimeInTimeZone(startIso, tz)} → ${formatDateTimeInTimeZone(dueIso, tz)}`
-                    : dueIso
-                      ? formatDateTimeInTimeZone(dueIso, tz)
-                      : `desde ${formatDateTimeInTimeZone(startIso!, tz)}`}
-                </span>
-              )}
-            </div>
-          )}
-
-          {item.description && !isBulk && (
-            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5 }}>
-              {item.description}
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
