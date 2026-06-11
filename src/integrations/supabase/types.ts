@@ -501,6 +501,7 @@ export type Database = {
           created_at: string | null
           id: string
           linked_task_id: string | null
+          title: string | null
           type: string | null
           user_id: string
         }
@@ -509,6 +510,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           linked_task_id?: string | null
+          title?: string | null
           type?: string | null
           user_id: string
         }
@@ -517,6 +519,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           linked_task_id?: string | null
+          title?: string | null
           type?: string | null
           user_id?: string
         }
