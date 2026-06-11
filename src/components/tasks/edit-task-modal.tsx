@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { IconX, IconCheck, IconTrash, IconLoader2 } from "@tabler/icons-react";
 
 export type EditableTask = {
   id: string;
@@ -15,18 +16,20 @@ export type EditableTask = {
 
 type ProjectOption = { id: string; name: string };
 
-const PRIORITIES: { id: string; label: string; color: string; bg: string; border: string }[] = [
+const PRIORITIES = [
   { id: "urgent", label: "Urgente", color: "#f87171", bg: "rgba(220,38,38,0.15)", border: "rgba(220,38,38,0.35)" },
   { id: "high", label: "Alta", color: "#fb923c", bg: "rgba(234,88,12,0.15)", border: "rgba(234,88,12,0.35)" },
   { id: "medium", label: "Media", color: "#fbbf24", bg: "rgba(217,119,6,0.15)", border: "rgba(217,119,6,0.35)" },
   { id: "low", label: "Baja", color: "#9ca3af", bg: "rgba(156,163,175,0.1)", border: "rgba(156,163,175,0.25)" },
 ];
 
-const STATUSES: { id: string; label: string; color: string; bg: string; border: string }[] = [
+const STATUSES = [
   { id: "borrador", label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
   { id: "en_curso", label: "En Curso", color: "#a78bfa", bg: "rgba(139,92,246,0.15)", border: "rgba(139,92,246,0.4)" },
   { id: "listo", label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
 ];
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function EditTaskModal({
   task,
@@ -52,7 +55,9 @@ export function EditTaskModal({
     task.due_date ? new Date(task.due_date).toISOString().slice(0, 10) : "",
   );
   const [projectId, setProjectId] = useState<string>(task.project_id ?? "");
-  const [busy, setBusy] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const firstRender = useRef(true);
+  const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -62,27 +67,38 @@ export function EditTaskModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const save = async () => {
-    if (!title.trim()) return;
-    setBusy(true);
-    const patch = {
-      title: title.trim(),
-      description: description.trim() || null,
-      priority,
-      status,
-      start_date: startDate ? new Date(startDate).toISOString() : null,
-      due_date: dueDate ? new Date(dueDate).toISOString() : null,
-      project_id: projectId || null,
-    };
-    const { error } = await supabase.from("tasks").update(patch).eq("id", task.id);
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
+  // Auto-save debounced
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
       return;
     }
-    onSaved({ ...task, ...patch });
-    onClose();
-  };
+    if (!title.trim()) return;
+    setSaveStatus("saving");
+    const handle = setTimeout(async () => {
+      const patch = {
+        title: title.trim(),
+        description: description.trim() || null,
+        priority,
+        status,
+        start_date: startDate ? new Date(startDate).toISOString() : null,
+        due_date: dueDate ? new Date(dueDate).toISOString() : null,
+        project_id: projectId || null,
+      };
+      const { error } = await supabase.from("tasks").update(patch).eq("id", task.id);
+      if (error) {
+        setSaveStatus("error");
+        toast.error(error.message);
+        return;
+      }
+      onSaved({ ...task, ...patch });
+      setSaveStatus("saved");
+      if (savedTimeout.current) clearTimeout(savedTimeout.current);
+      savedTimeout.current = setTimeout(() => setSaveStatus("idle"), 1500);
+    }, 600);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, description, priority, status, startDate, dueDate, projectId]);
 
   const remove = async () => {
     if (!confirm("¿Eliminar esta tarea?")) return;
@@ -97,174 +113,157 @@ export function EditTaskModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
-      onClick={onClose}
+      className="fixed inset-0 z-50 animate-fade-in"
+      style={{ background: "var(--bg-base, #08081a)" }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 480,
-          maxWidth: "100%",
-          background: "#111111",
-          border: "1px solid #1e1e1e",
-          borderRadius: 16,
-          padding: 24,
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-      >
-        <input
-
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Nombre de la tarea"
-          className="w-full bg-transparent focus:outline-none"
+      <div className="flex flex-col h-full">
+        {/* Top bar */}
+        <header
+          className="flex items-center justify-between flex-shrink-0"
           style={{
-            fontSize: 16,
-            color: "#eaeaea",
-            border: "none",
-            borderBottom: "1px solid #1e1e1e",
-            padding: "6px 0 10px",
-            marginBottom: 18,
+            padding: "14px 20px",
+            borderBottom: "1px solid var(--border, #1e1e1e)",
           }}
-        />
-
-        <Field label="Estado">
-          <div className="flex gap-1.5 flex-wrap">
-            {STATUSES.map((s) => {
-              const active = status === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setStatus(s.id)}
-                  style={{
-                    fontSize: 12,
-                    padding: "5px 14px",
-                    borderRadius: 100,
-                    background: active ? s.bg : "transparent",
-                    border: `1px solid ${active ? s.border : "#1e1e1e"}`,
-                    color: active ? s.color : "#666",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
-        </Field>
-
-        <Field label="Proyecto">
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="w-full focus:outline-none"
-            style={fieldStyle(!!projectId)}
+        >
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="flex items-center gap-2"
+            style={{ color: "var(--text-secondary, #999)", fontSize: 13 }}
           >
-            <option value="">Sin proyecto</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+            <IconX size={18} />
+            <span className="hidden sm:inline">Volver</span>
+          </button>
 
-        <Field label="Prioridad">
-          <div className="flex gap-1.5 flex-wrap">
-            {PRIORITIES.map((p) => {
-              const active = priority === p.id;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => setPriority(p.id)}
-                  style={{
-                    fontSize: 12,
-                    padding: "5px 14px",
-                    borderRadius: 100,
-                    background: active ? p.bg : "transparent",
-                    border: `1px solid ${active ? p.border : "#1e1e1e"}`,
-                    color: active ? p.color : "#666",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
-        </Field>
+          <SaveIndicator status={saveStatus} />
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Inicio">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full focus:outline-none"
-              style={{ ...fieldStyle(!!startDate), colorScheme: "dark" }}
-            />
-          </Field>
-
-          <Field label="Término">
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full focus:outline-none"
-              style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
-            />
-          </Field>
-        </div>
-
-        <Field label="Descripción">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Notas adicionales..."
-            rows={3}
-            className="w-full focus:outline-none resize-none"
-            style={fieldStyle(!!description)}
-          />
-        </Field>
-
-        <div className="flex items-center justify-between mt-6">
           <button
             onClick={remove}
-            style={{ fontSize: 12, color: "#f87171", cursor: "pointer", background: "transparent" }}
+            aria-label="Eliminar"
+            style={{ color: "#f87171", padding: 6 }}
+            className="hover:opacity-80"
           >
-            Eliminar tarea
+            <IconTrash size={16} />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
+        </header>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto" style={{ maxWidth: 720, padding: "32px 24px 80px" }}>
+            <input
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Título de la tarea"
+              className="w-full bg-transparent focus:outline-none"
               style={{
-                fontSize: 13,
-                color: "#555",
-                border: "1px solid #1e1e1e",
-                borderRadius: 100,
-                padding: "7px 16px",
-                background: "transparent",
+                fontSize: 28,
+                fontWeight: 600,
+                color: "#eaeaea",
+                border: "none",
+                padding: "4px 0 16px",
+                marginBottom: 24,
+                borderBottom: "1px solid var(--border, #1e1e1e)",
               }}
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={save}
-              disabled={busy || !title.trim()}
-              style={{
-                fontSize: 13,
-                color: "white",
-                background: "#6366f1",
-                borderRadius: 100,
-                padding: "7px 16px",
-                fontWeight: 500,
-                opacity: busy || !title.trim() ? 0.5 : 1,
-              }}
-            >
-              {busy ? "Guardando…" : "Guardar"}
-            </button>
+            />
+
+            <Field label="Estado">
+              <div className="flex gap-1.5 flex-wrap">
+                {STATUSES.map((s) => {
+                  const active = status === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setStatus(s.id)}
+                      style={{
+                        fontSize: 12,
+                        padding: "6px 14px",
+                        borderRadius: 100,
+                        background: active ? s.bg : "transparent",
+                        border: `1px solid ${active ? s.border : "#1e1e1e"}`,
+                        color: active ? s.color : "#666",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field label="Prioridad">
+              <div className="flex gap-1.5 flex-wrap">
+                {PRIORITIES.map((p) => {
+                  const active = priority === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setPriority(p.id)}
+                      style={{
+                        fontSize: 12,
+                        padding: "6px 14px",
+                        borderRadius: 100,
+                        background: active ? p.bg : "transparent",
+                        border: `1px solid ${active ? p.border : "#1e1e1e"}`,
+                        color: active ? p.color : "#666",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field label="Proyecto">
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full focus:outline-none"
+                style={fieldStyle(!!projectId)}
+              >
+                <option value="">Sin proyecto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Inicio">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full focus:outline-none"
+                  style={{ ...fieldStyle(!!startDate), colorScheme: "dark" }}
+                />
+              </Field>
+              <Field label="Término">
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full focus:outline-none"
+                  style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
+                />
+              </Field>
+            </div>
+
+            <Field label="Descripción">
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Notas, contexto, enlaces…"
+                rows={8}
+                className="w-full focus:outline-none resize-none"
+                style={{ ...fieldStyle(!!description), minHeight: 200, lineHeight: 1.6 }}
+              />
+            </Field>
           </div>
         </div>
       </div>
@@ -272,16 +271,33 @@ export function EditTaskModal({
   );
 }
 
+function SaveIndicator({ status }: { status: SaveStatus }) {
+  if (status === "idle") return <span style={{ fontSize: 11, color: "#444" }}>Auto-guardado</span>;
+  if (status === "saving")
+    return (
+      <span className="flex items-center gap-1.5" style={{ fontSize: 11, color: "#888" }}>
+        <IconLoader2 size={12} className="animate-spin" /> Guardando…
+      </span>
+    );
+  if (status === "saved")
+    return (
+      <span className="flex items-center gap-1.5 animate-fade-in" style={{ fontSize: 11, color: "#4ade80" }}>
+        <IconCheck size={12} /> Guardado
+      </span>
+    );
+  return <span style={{ fontSize: 11, color: "#f87171" }}>Error al guardar</span>;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div style={{ marginBottom: 18 }}>
       <div
         style={{
           fontSize: 11,
           color: "#666",
           textTransform: "uppercase",
           letterSpacing: "0.05em",
-          marginBottom: 6,
+          marginBottom: 8,
         }}
       >
         {label}

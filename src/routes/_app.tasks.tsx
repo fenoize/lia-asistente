@@ -3,9 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconTrash, IconCheck } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCheck, IconLayoutGrid, IconTable } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
+
+type ViewMode = "cards" | "table";
 
 export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
@@ -62,6 +64,13 @@ function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Task | null>(null);
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "cards";
+    return (window.localStorage.getItem("tasks:view") as ViewMode) || "cards";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("tasks:view", view);
+  }, [view]);
 
   useEffect(() => {
     if (!user) return;
@@ -144,6 +153,12 @@ function TasksPage() {
   };
   const removeTask = (id: string) => setTasks((prev) => prev.filter((x) => x.id !== id));
 
+  const patchInline = async (id: string, patch: Partial<Task>) => {
+    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    const { error } = await supabase.from("tasks").update(patch).eq("id", id);
+    if (error) toast.error(error.message);
+  };
+
 
   const counts = useMemo(() => tasks.filter((t) => t.status !== "listo").length, [tasks]);
 
@@ -170,37 +185,69 @@ function TasksPage() {
         </button>
       </header>
 
-      <div className="flex flex-wrap gap-1.5 mb-6">
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              style={{
-                fontSize: 12,
-                padding: "6px 16px",
-                borderRadius: 100,
-                border: active
-                  ? "1px solid rgba(99,102,241,0.3)"
-                  : "1px solid #222",
-                background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                color: active ? "#818cf8" : "#555",
-                transition: "color 0.15s, border-color 0.15s",
-              }}
-            >
-              {f.label}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <div className="flex flex-wrap gap-1.5">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                style={{
+                  fontSize: 12,
+                  padding: "6px 16px",
+                  borderRadius: 100,
+                  border: active ? "1px solid rgba(99,102,241,0.3)" : "1px solid #222",
+                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                  color: active ? "#818cf8" : "#555",
+                  transition: "color 0.15s, border-color 0.15s",
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
+          {(["cards", "table"] as const).map((v) => {
+            const active = view === v;
+            const Icon = v === "cards" ? IconLayoutGrid : IconTable;
+            return (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                aria-label={v === "cards" ? "Vista cards" : "Vista tabla"}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  padding: "5px 12px",
+                  borderRadius: 100,
+                  background: active ? "rgba(99,102,241,0.18)" : "transparent",
+                  color: active ? "#818cf8" : "#666",
+                  transition: "all 0.15s",
+                }}
+              >
+                <Icon size={13} />
+                {v === "cards" ? "Cards" : "Tabla"}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {loading ? (
         <SkeletonList />
       ) : filtered.length === 0 ? (
-        <Empty
-          title="Cero tareas en esta lista."
-          subtitle="Capturalas con ⌘K o el botón Nueva tarea."
+        <Empty title="Cero tareas en esta lista." subtitle="Capturalas con ⌘K o el botón Nueva tarea." />
+      ) : view === "table" ? (
+        <TaskTable
+          tasks={filtered}
+          projects={projects}
+          onOpen={(t) => setEditing(t)}
+          onPatch={patchInline}
+          onRemove={remove}
         />
       ) : (
         <div className="space-y-6">
@@ -495,3 +542,113 @@ export function Empty({ title, subtitle }: { title: string; subtitle?: string })
     </div>
   );
 }
+
+function TaskTable({
+  tasks,
+  projects,
+  onOpen,
+  onPatch,
+  onRemove,
+}: {
+  tasks: Task[];
+  projects: ProjectOption[];
+  onOpen: (t: Task) => void;
+  onPatch: (id: string, patch: Partial<Task>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const projectMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projects) m.set(p.id, p.name);
+    return m;
+  }, [projects]);
+
+  return (
+    <div
+      className="overflow-x-auto"
+      style={{ border: "1px solid #1e1e1e", borderRadius: 12, background: "#0a0a0a" }}
+    >
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <th style={thStyle}>Tarea</th>
+            <th style={thStyle}>Estado</th>
+            <th style={thStyle}>Prioridad</th>
+            <th style={thStyle}>Proyecto</th>
+            <th style={thStyle}>Término</th>
+            <th style={{ ...thStyle, width: 40 }}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => {
+            const done = t.status === "listo";
+            const overdue = !!t.due_date && new Date(t.due_date) < new Date() && !done;
+            return (
+              <tr
+                key={t.id}
+                style={{ borderTop: "1px solid #141414", cursor: "pointer" }}
+                onClick={() => onOpen(t)}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#0f0f0f")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <td style={{ ...tdStyle, color: done ? "#444" : "#ddd", textDecoration: done ? "line-through" : "none" }}>
+                  {t.title}
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={t.status}
+                    onChange={(e) => onPatch(t.id, { status: e.target.value })}
+                    style={inlineSelect}
+                  >
+                    <option value="borrador">Borrador</option>
+                    <option value="en_curso">En Curso</option>
+                    <option value="listo">Listo</option>
+                  </select>
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={t.priority}
+                    onChange={(e) => onPatch(t.id, { priority: e.target.value })}
+                    style={inlineSelect}
+                  >
+                    <option value="urgent">Urgente</option>
+                    <option value="high">Alta</option>
+                    <option value="medium">Media</option>
+                    <option value="low">Baja</option>
+                  </select>
+                </td>
+                <td style={{ ...tdStyle, color: "#888" }}>{t.project_id ? projectMap.get(t.project_id) ?? "—" : "—"}</td>
+                <td style={{ ...tdStyle, color: overdue ? "#f87171" : "#888" }}>
+                  {t.due_date
+                    ? new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" }).format(new Date(t.due_date))
+                    : "—"}
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => onRemove(t.id)}
+                    aria-label="Eliminar"
+                    style={{ color: "#555", padding: 4 }}
+                    className="hover:text-red-400"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "10px 14px", fontWeight: 500 };
+const tdStyle: React.CSSProperties = { padding: "10px 14px", verticalAlign: "middle" };
+const inlineSelect: React.CSSProperties = {
+  fontSize: 12,
+  background: "transparent",
+  border: "1px solid #1e1e1e",
+  color: "#ccc",
+  borderRadius: 6,
+  padding: "3px 8px",
+  colorScheme: "dark",
+};
