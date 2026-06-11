@@ -755,7 +755,8 @@ function SettingsPage() {
 }
 
 function DashboardBlocksSection() {
-  const { blocks, order, toggle, reorder, loading } = useDashboardBlocks();
+  const { blocks, order, toggle, reorder, isReady } = useDashboardBlocks();
+  const loading = !isReady;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),

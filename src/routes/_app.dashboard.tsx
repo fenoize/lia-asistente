@@ -80,7 +80,7 @@ function Dashboard() {
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
   const prefetch = usePrefetchStore();
-  const { blocks, order } = useDashboardBlocks();
+  const { blocks, order, isReady } = useDashboardBlocks();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -371,8 +371,20 @@ function Dashboard() {
         </p>
       </header>
 
+      {!isReady && (
+        <div className="flex flex-col gap-4" style={{ marginTop: 24 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-muted/20 animate-pulse"
+              style={{ height: 120 }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* 1. Resumen de LIA */}
-      {blocks.brief && (
+      {isReady && blocks.brief && (
       <section
         style={{
           background: "#111111",
@@ -440,6 +452,8 @@ function Dashboard() {
       </section>
       )}
 
+      {isReady && (
+      <>
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
@@ -623,8 +637,8 @@ function Dashboard() {
           </div>
         </Block>
       )}
-
-
+      </>
+      )}
 
       {editingMeeting && (
         <EditMeetingModal

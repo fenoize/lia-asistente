@@ -32,11 +32,42 @@ export const DEFAULT_BLOCKS: Record<DashboardBlockKey, boolean> = {
   tasks: true, projects: true, weekly: true, finance: true,
 };
 
+const CACHE_KEY = "dashboard:blocks:cache";
+const ORDER_CACHE_KEY = "dashboard:blocks:order";
+
+function getCachedBlocks(): Record<string, boolean> | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCachedOrder(): string[] | null {
+  try {
+    const raw = localStorage.getItem(ORDER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useDashboardBlocks() {
   const { user } = useAuth();
-  const [blocks, setBlocks] = useState<Record<DashboardBlockKey, boolean>>(DEFAULT_BLOCKS);
-  const [order, setOrder] = useState<DashboardBlockKey[]>(DEFAULT_ORDER);
-  const [loading, setLoading] = useState(true);
+  const cached = getCachedBlocks();
+  const cachedOrder = getCachedOrder();
+  const [blocks, setBlocks] = useState<Record<DashboardBlockKey, boolean>>(
+    cached ?? {} as Record<DashboardBlockKey, boolean>
+  );
+  const [order, setOrder] = useState<DashboardBlockKey[]>(
+    (cachedOrder?.filter((k): k is DashboardBlockKey =>
+      DEFAULT_ORDER.includes(k as DashboardBlockKey),
+    ) ?? []).concat(
+      DEFAULT_ORDER.filter((k) => !cachedOrder?.includes(k)),
+    ) as DashboardBlockKey[]
+  );
+  const [isReady, setIsReady] = useState(cached !== null);
 
   useEffect(() => {
     if (!user) return;
@@ -50,15 +81,18 @@ export function useDashboardBlocks() {
         dashboard_blocks?: Partial<Record<DashboardBlockKey, boolean>>;
         dashboard_block_order?: string[];
       } | null;
-      if (row?.dashboard_blocks) setBlocks({ ...DEFAULT_BLOCKS, ...row.dashboard_blocks });
-      if (row?.dashboard_block_order?.length) {
-        const stored = row.dashboard_block_order.filter((k): k is DashboardBlockKey =>
-          DEFAULT_ORDER.includes(k as DashboardBlockKey),
-        );
-        const merged = [...stored, ...DEFAULT_ORDER.filter((k) => !stored.includes(k))];
-        setOrder(merged);
-      }
-      setLoading(false);
+      const newBlocks = row?.dashboard_blocks
+        ? { ...DEFAULT_BLOCKS, ...row.dashboard_blocks }
+        : DEFAULT_BLOCKS;
+      const stored = row?.dashboard_block_order?.filter((k): k is DashboardBlockKey =>
+        DEFAULT_ORDER.includes(k as DashboardBlockKey),
+      ) ?? [];
+      const newOrder = [...stored, ...DEFAULT_ORDER.filter((k) => !stored.includes(k))];
+      setBlocks(newBlocks);
+      setOrder(newOrder);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(newBlocks));
+      localStorage.setItem(ORDER_CACHE_KEY, JSON.stringify(newOrder));
+      setIsReady(true);
     })();
   }, [user]);
 
@@ -66,14 +100,16 @@ export function useDashboardBlocks() {
     if (!user) return;
     const next = { ...blocks, [key]: !blocks[key] };
     setBlocks(next);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(next));
     await supabase.from("profiles").update({ dashboard_blocks: next } as never).eq("id", user.id);
   }, [user, blocks]);
 
   const reorder = useCallback(async (next: DashboardBlockKey[]) => {
     if (!user) return;
     setOrder(next);
+    localStorage.setItem(ORDER_CACHE_KEY, JSON.stringify(next));
     await supabase.from("profiles").update({ dashboard_block_order: next } as never).eq("id", user.id);
   }, [user]);
 
-  return { blocks, order, toggle, reorder, loading };
+  return { blocks, order, toggle, reorder, isReady };
 }
