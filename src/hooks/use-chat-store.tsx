@@ -9,6 +9,7 @@ export type ChatAction = {
   priority?: "low" | "medium" | "high" | null;
   status?: "borrador" | "en_curso" | "listo" | null;
   duration_minutes?: number | null;
+  meeting_type?: "video" | "in_person" | "phone" | null;
   project_id?: string | null;
   project_name?: string | null;
   task_id?: string | null;
