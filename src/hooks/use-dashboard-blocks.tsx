@@ -32,6 +32,27 @@ export const DEFAULT_BLOCKS: Record<DashboardBlockKey, boolean> = {
   tasks: true, projects: true, weekly: true, finance: true,
 };
 
+const CACHE_KEY = "dashboard:blocks:cache";
+const ORDER_CACHE_KEY = "dashboard:blocks:order";
+
+function getCachedBlocks(): Record<string, boolean> | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCachedOrder(): string[] | null {
+  try {
+    const raw = localStorage.getItem(ORDER_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useDashboardBlocks() {
   const { user } = useAuth();
   const [blocks, setBlocks] = useState<Record<DashboardBlockKey, boolean>>(DEFAULT_BLOCKS);
