@@ -99,12 +99,12 @@ export function FinanceModal({
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
       const promises: Promise<unknown>[] = [
-        supabase.from("finance_accounts").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200),
+        Promise.resolve(supabase.from("finance_accounts").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200)),
       ];
       if (kind === "gasto") {
         promises.push(
-          supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200),
-          supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200),
+          Promise.resolve(supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200)),
+          Promise.resolve(supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200)),
         );
       }
       const res = await Promise.all(promises);
