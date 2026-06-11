@@ -109,7 +109,12 @@ export function PostLoginLoader({ userId, onDone }: { userId: string; onDone: ()
   }, [userId]);
 
   return (
-    <div
+    <>
+      <style>{`
+        @keyframes pll-bar-breathe { 0%,100%{opacity:.25;} 50%{opacity:.7;} }
+        @keyframes pll-bar-shimmer { 0%{transform:translateX(-80px);} 100%{transform:translateX(100vw);} }
+      `}</style>
+      <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
       style={{
         background: "#08081a",
