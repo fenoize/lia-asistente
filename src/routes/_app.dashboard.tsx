@@ -371,8 +371,20 @@ function Dashboard() {
         </p>
       </header>
 
+      {!isReady && (
+        <div className="flex flex-col gap-4" style={{ marginTop: 24 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-2xl bg-muted/20 animate-pulse"
+              style={{ height: 120 }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* 1. Resumen de LIA */}
-      {blocks.brief && (
+      {isReady && blocks.brief && (
       <section
         style={{
           background: "#111111",
