@@ -153,6 +153,12 @@ function TasksPage() {
   };
   const removeTask = (id: string) => setTasks((prev) => prev.filter((x) => x.id !== id));
 
+  const patchInline = async (id: string, patch: Partial<Task>) => {
+    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    const { error } = await supabase.from("tasks").update(patch).eq("id", id);
+    if (error) toast.error(error.message);
+  };
+
 
   const counts = useMemo(() => tasks.filter((t) => t.status !== "listo").length, [tasks]);
 
