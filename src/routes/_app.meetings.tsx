@@ -59,8 +59,10 @@ function MeetingsPage() {
   const userTimeZone = detectUserTimeZone();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [contacts, setContacts] = useState<ContactOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Meeting | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Date>(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
@@ -78,25 +80,29 @@ function MeetingsPage() {
     const startDayOffset = Math.round((weekStart.getTime() - startOfWeek(new Date()).getTime()) / 86_400_000);
     const startRange = getDayRangeUTC(userTimeZone, startDayOffset);
     const endRange = getDayRangeUTC(userTimeZone, startDayOffset + 7);
-    const [m, p] = await Promise.all([
+    const [m, p, c] = await Promise.all([
       supabase
         .from("meetings")
         .select("*")
         .gte("datetime", startRange.startIso)
         .lt("datetime", endRange.startIso)
         .order("datetime", { ascending: true }),
-      supabase.from("projects").select("id,name").order("name"),
+      supabase.from("projects").select("id,name,client_id").order("name"),
+      supabase.from("contacts").select("id,name,email").order("name"),
     ]);
     setMeetings((m.data as Meeting[]) ?? []);
     setProjects((p.data as ProjectOption[]) ?? []);
+    setContacts((c.data as ContactOption[]) ?? []);
     setLoading(false);
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, weekStart, userTimeZone]);
 
   const dayMeetings = useMemo(
-    () => meetings.filter((m) => sameDay(new Date(m.datetime), selected)),
-    [meetings, selected],
+    () => meetings
+      .filter((m) => sameDay(new Date(m.datetime), selected))
+      .filter((m) => statusFilter === "all" || (m.status ?? "scheduled") === statusFilter),
+    [meetings, selected, statusFilter],
   );
 
   return (
@@ -107,6 +113,7 @@ function MeetingsPage() {
           <IconPlus size={14} /> Nueva reunión
         </button>
       </header>
+
 
       <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
         {days.map((d, i) => {
