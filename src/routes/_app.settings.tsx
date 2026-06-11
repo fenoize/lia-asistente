@@ -93,7 +93,7 @@ function SettingsPage() {
         .maybeSingle();
       if (data) {
         const d = data as Record<string, unknown>;
-        setUserName(((d.name as string | null) ?? "").split(" ")[0] || "");
+        setUserName(((d.name as string | null) ?? "") || "");
         setName((d.assistant_name as string | null) || "Lia");
         setGender(d.assistant_gender === "masculine" ? "masculine" : "feminine");
         setGoals((d.goals as string | null) ?? "");
