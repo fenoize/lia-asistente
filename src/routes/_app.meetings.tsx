@@ -25,6 +25,7 @@ type Meeting = {
   attendees: Attendee[] | null;
   summary: string | null;
   action_items: ActionItem[] | null;
+  google_event_id: string | null;
 };
 
 type ProjectOption = { id: string; name: string; client_id: string | null };
@@ -240,6 +241,13 @@ function MeetingCard({ meeting: m, onClick }: { meeting: Meeting; onClick: () =>
           textDecoration: isCancelled ? "line-through" : "none" }}>
           {m.title}
         </span>
+        {m.google_event_id && (
+          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100,
+            background: "rgba(66,133,244,0.12)", border: "1px solid rgba(66,133,244,0.3)",
+            color: "#8ab4f8", letterSpacing: "0.04em" }}>
+            Google
+          </span>
+        )}
         {m.duration_minutes && (
           <span style={{ fontSize: 11, padding: "2px 10px", borderRadius: 100,
             background: "#1a1a1a", border: "1px solid #222", color: "#666" }}>

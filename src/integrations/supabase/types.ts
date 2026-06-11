@@ -449,7 +449,10 @@ export type Database = {
           created_at: string | null
           datetime: string
           duration_minutes: number | null
+          google_etag: string | null
+          google_event_id: string | null
           id: string
+          last_synced_at: string | null
           link: string | null
           location: string | null
           meeting_type: string | null
@@ -458,6 +461,7 @@ export type Database = {
           project_id: string | null
           status: string
           summary: string | null
+          sync_source: string | null
           title: string
           transcript: string | null
           updated_at: string
@@ -470,7 +474,10 @@ export type Database = {
           created_at?: string | null
           datetime: string
           duration_minutes?: number | null
+          google_etag?: string | null
+          google_event_id?: string | null
           id?: string
+          last_synced_at?: string | null
           link?: string | null
           location?: string | null
           meeting_type?: string | null
@@ -479,6 +486,7 @@ export type Database = {
           project_id?: string | null
           status?: string
           summary?: string | null
+          sync_source?: string | null
           title: string
           transcript?: string | null
           updated_at?: string
@@ -491,7 +499,10 @@ export type Database = {
           created_at?: string | null
           datetime?: string
           duration_minutes?: number | null
+          google_etag?: string | null
+          google_event_id?: string | null
           id?: string
+          last_synced_at?: string | null
           link?: string | null
           location?: string | null
           meeting_type?: string | null
@@ -500,6 +511,7 @@ export type Database = {
           project_id?: string | null
           status?: string
           summary?: string | null
+          sync_source?: string | null
           title?: string
           transcript?: string | null
           updated_at?: string
@@ -823,6 +835,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_integrations: {
+        Row: {
+          access_token: string | null
+          connected_at: string
+          expires_at: string | null
+          google_calendar_id: string | null
+          id: string
+          provider: string
+          refresh_token: string | null
+          scopes: string | null
+          sync_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string
+          expires_at?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          provider: string
+          refresh_token?: string | null
+          scopes?: string | null
+          sync_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string
+          expires_at?: string | null
+          google_calendar_id?: string | null
+          id?: string
+          provider?: string
+          refresh_token?: string | null
+          scopes?: string | null
+          sync_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

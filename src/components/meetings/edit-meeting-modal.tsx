@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { IconX, IconTrash, IconPlus, IconPaperclip, IconDownload, IconUser } from "@tabler/icons-react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { detectUserTimeZone, formatDateTimeInTimeZone, localDateTimeToUTCISOString, toDateTimeLocalInput } from "@/lib/timezone";
+import { pushMeetingToGoogle, deleteMeetingFromGoogle } from "@/lib/google-sync.functions";
 
 export type Attendee = {
   contact_id?: string | null;
@@ -30,6 +32,7 @@ export type EditableMeeting = {
   summary?: string | null;
   transcript?: string | null;
   action_items?: ActionItem[] | null;
+  google_event_id?: string | null;
 };
 
 export type ProjectOption = { id: string; name: string; client_id?: string | null };
@@ -110,6 +113,9 @@ export function EditMeetingModal({
     return () => { cancelled = true; };
   }, [meeting.id]);
 
+  const pushToGoogle = useServerFn(pushMeetingToGoogle);
+  const deleteFromGoogle = useServerFn(deleteMeetingFromGoogle);
+
   const save = async () => {
     if (!title.trim() || !datetime) return;
     setSaving(true);
@@ -131,6 +137,8 @@ export function EditMeetingModal({
         action_items: actionItems as any,
       } as any)
       .eq("id", meeting.id);
+    // Fire-and-forget Google sync; failure should not block UX
+    pushToGoogle({ data: { meetingId: meeting.id } }).catch(() => {});
     setSaving(false);
     onSaved();
   };
@@ -138,6 +146,9 @@ export function EditMeetingModal({
   const remove = async () => {
     if (!confirm("¿Eliminar esta reunión?")) return;
     setSaving(true);
+    if (meeting.google_event_id) {
+      await deleteFromGoogle({ data: { googleEventId: meeting.google_event_id } }).catch(() => {});
+    }
     await supabase.from("meetings").delete().eq("id", meeting.id);
     setSaving(false);
     onSaved();

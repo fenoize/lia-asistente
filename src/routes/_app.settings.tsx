@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar } from "@tabler/icons-react";
+import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
+import { startGoogleOAuth, getGoogleStatus, disconnectGoogle } from "@/lib/google-oauth.functions";
+import { pullGoogleEvents } from "@/lib/google-sync.functions";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -503,6 +506,10 @@ function SettingsPage() {
 
       <PushNotificationsSettings />
 
+      <GoogleCalendarSection />
+
+
+
 
       <section
         style={{
@@ -685,8 +692,163 @@ function SettingsPage() {
   );
 }
 
+function GoogleCalendarSection() {
+  const startOAuth = useServerFn(startGoogleOAuth);
+  const fetchStatus = useServerFn(getGoogleStatus);
+  const disconnect = useServerFn(disconnectGoogle);
+  const pull = useServerFn(pullGoogleEvents);
+
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [connectedAt, setConnectedAt] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  useEffect(() => {
+    fetchStatus().then((r) => {
+      setConnected(r.connected);
+      setConnectedAt(r.info?.connected_at ?? null);
+    }).catch(() => setConnected(false));
+  }, [fetchStatus]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const g = params.get("google");
+    if (g === "connected") {
+      toast.success("Google Calendar conectado ✓");
+      window.history.replaceState({}, "", window.location.pathname);
+      fetchStatus().then((r) => {
+        setConnected(r.connected);
+        setConnectedAt(r.info?.connected_at ?? null);
+      });
+    } else if (g === "error") {
+      toast.error("No pudimos conectar con Google. Vuelve a intentarlo.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [fetchStatus]);
+
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const { url } = await startOAuth({ data: { origin: window.location.origin } });
+      window.location.href = url;
+    } catch (err: any) {
+      toast.error(err?.message ?? "No pudimos iniciar la conexión");
+      setBusy(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm("¿Desconectar Google Calendar? Las reuniones existentes se mantienen.")) return;
+    setBusy(true);
+    await disconnect();
+    setConnected(false);
+    setConnectedAt(null);
+    setBusy(false);
+    toast.success("Desconectado");
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const r = await pull();
+      if (r.ok) toast.success(`Sincronización: ${r.count} eventos`);
+      else toast.error("No se pudo sincronizar");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Error sincronizando");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <section
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+        padding: 24,
+        marginTop: 24,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <IconCalendar size={14} color="var(--text-tertiary)" stroke={1.75} />
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+          Integraciones
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <div
+          style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: connected ? "rgba(34,197,94,0.12)" : "var(--bg-base)",
+            border: "1px solid var(--border-subtle)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <IconCalendar size={20} color={connected ? "#22c55e" : "var(--text-tertiary)"} stroke={1.5} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+            Google Calendar
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+            {connected === null
+              ? "Comprobando estado…"
+              : connected
+              ? `Conectado${connectedAt ? ` · ${new Date(connectedAt).toLocaleDateString()}` : ""}`
+              : "Sincroniza reuniones en ambos sentidos."}
+          </div>
+        </div>
+      </div>
+
+      {connected ? (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={handleSync}
+            disabled={syncing || busy}
+            style={{
+              background: "var(--accent-color)", color: "white",
+              borderRadius: "var(--radius-pill)", padding: "9px 22px",
+              fontSize: 13, fontWeight: 500, opacity: syncing || busy ? 0.5 : 1,
+            }}
+          >
+            {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+          </button>
+          <button
+            onClick={handleDisconnect}
+            disabled={busy}
+            style={{
+              background: "transparent", color: "var(--text-primary)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-pill)", padding: "9px 22px",
+              fontSize: 13, opacity: busy ? 0.5 : 1,
+            }}
+          >
+            Desconectar
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={connect}
+          disabled={busy || connected === null}
+          style={{
+            background: "var(--accent-color)", color: "white",
+            borderRadius: "var(--radius-pill)", padding: "9px 22px",
+            fontSize: 13, fontWeight: 500, opacity: busy ? 0.5 : 1,
+          }}
+        >
+          {busy ? "Conectando…" : "Conectar Google Calendar"}
+        </button>
+      )}
+    </section>
+  );
+}
+
+
 const CHANGELOG: Array<{ version: string; date: string; items: string[] }> = [
   {
+
     version: "v0.4.0",
     date: "Mayo 2026",
     items: [
