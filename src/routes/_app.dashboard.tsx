@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { usePrefetchStore } from "@/hooks/use-prefetch-store";
 import { supabase } from "@/integrations/supabase/client";
 import {
   IconRefresh,
@@ -71,18 +72,19 @@ function Dashboard() {
   const { user } = useAuth();
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
+  const prefetch = usePrefetchStore();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => (prefetch.data?.tasks as Task[]) ?? []);
+  const [meetings, setMeetings] = useState<Meeting[]>(() => (prefetch.data?.meetings as Meeting[]) ?? []);
+  const [reminders, setReminders] = useState<Reminder[]>(() => (prefetch.data?.reminders as Reminder[]) ?? []);
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>(() => prefetch.data?.projects ?? []);
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
   const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
@@ -325,6 +327,18 @@ function Dashboard() {
     }
   };
 
+  const toggleReminder = async (r: Reminder) => {
+    const next = !r.done;
+    setReminders((prev) =>
+      next ? prev.filter((x) => x.id !== r.id) : prev.map((x) => (x.id === r.id ? { ...x, done: false } : x)),
+    );
+    const { error } = await supabase.from("reminders").update({ done: next }).eq("id", r.id);
+    if (error) {
+      toast.error("No pude actualizar.");
+      setReminders((prev) => (next ? [...prev, r] : prev));
+    }
+  };
+
   const dateLabel = today
     .toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })
     .replace(/^\w/, (c) => c.toUpperCase());
@@ -494,7 +508,7 @@ function Dashboard() {
           <div className="space-y-2">
             {timeline.map((item) =>
               item.kind === "reminder" ? (
-                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} />
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
               ) : (
                 <MeetingRow
                   key={`m-${item.id}`}
@@ -832,6 +846,9 @@ function TaskRow({
           Completada
         </span>
       )}
+      {!done && (
+        <StatusBadge status={task.status} />
+      )}
       {high && !done && (
         <span
           style={{
@@ -864,60 +881,103 @@ function TaskRow({
   );
 }
 
-function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () => void }) {
+function StatusBadge({ status }: { status: string }) {
+  const cfg =
+    status === "listo"
+      ? { label: "Listo", bg: "rgba(74,222,128,0.12)", color: "#4ade80" }
+      : status === "en_curso"
+        ? { label: "En Curso", bg: "rgba(99,102,241,0.15)", color: "#818cf8" }
+        : { label: "Borrador", bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        background: cfg.bg,
+        color: cfg.color,
+        borderRadius: 100,
+        padding: "2px 10px",
+        marginTop: 2,
+      }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+function ReminderPill({ reminder, onClick, onComplete }: { reminder: Reminder; onClick?: () => void; onComplete?: () => void }) {
   const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
   const overdue = new Date(reminder.datetime).getTime() < Date.now();
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 w-full text-left"
+    <div
+      className="flex items-center gap-2 w-full"
       style={{
         background: "var(--bg-elevated)",
         border: `1px solid ${overdue ? "rgba(248,113,113,0.35)" : "var(--border)"}`,
         borderRadius: "var(--radius-pill)",
         padding: "6px 14px",
         fontSize: 12,
-        cursor: onClick ? "pointer" : "default",
       }}
     >
-      <IconBell
-        size={12}
-        stroke={1.75}
-        style={{ color: overdue ? "#f87171" : "var(--accent-color)", flexShrink: 0 }}
-      />
-      <span
-        className="flex-1 truncate"
-        style={{ color: overdue ? "#f87171" : "var(--text-primary)" }}
+      {onComplete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onComplete(); }}
+          aria-label="Completar recordatorio"
+          style={{
+            width: 18, height: 18, borderRadius: "50%",
+            border: `1.5px solid ${overdue ? "#f87171" : "var(--accent-color)"}`,
+            background: "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, padding: 0, cursor: "pointer",
+          }}
+          className="hover:scale-110 transition-transform"
+        />
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-2 flex-1 min-w-0 text-left bg-transparent border-0 p-0"
+        style={{ cursor: onClick ? "pointer" : "default" }}
       >
-        {reminder.title}
-      </span>
-      {overdue && (
+        <IconBell
+          size={12}
+          stroke={1.75}
+          style={{ color: overdue ? "#f87171" : "var(--accent-color)", flexShrink: 0 }}
+        />
+        <span
+          className="flex-1 truncate"
+          style={{ color: overdue ? "#f87171" : "var(--text-primary)", fontSize: 12 }}
+        >
+          {reminder.title}
+        </span>
+        {overdue && (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#f87171",
+              background: "rgba(248,113,113,0.12)",
+              border: "1px solid rgba(248,113,113,0.25)",
+              borderRadius: 999,
+              padding: "1px 8px",
+            }}
+          >
+            Vencido
+          </span>
+        )}
         <span
           style={{
-            fontSize: 10,
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            color: "#f87171",
-            background: "rgba(248,113,113,0.12)",
-            border: "1px solid rgba(248,113,113,0.25)",
-            borderRadius: 999,
-            padding: "1px 8px",
+            color: overdue ? "#f87171" : "var(--text-tertiary)",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 12,
           }}
         >
-          Vencido
+          {time}
         </span>
-      )}
-      <span
-        style={{
-          color: overdue ? "#f87171" : "var(--text-tertiary)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {time}
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
