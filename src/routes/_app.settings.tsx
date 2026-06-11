@@ -72,13 +72,21 @@ function SettingsPage() {
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("name, assistant_name, assistant_gender")
+        .select("name, assistant_name, assistant_gender, goals, lia_tone, timezone, work_days, work_start, work_end")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
-        setUserName(((data as any).name ?? "").split(" ")[0] || "");
-        setName((data as any).assistant_name || "Lia");
-        setGender(((data as any).assistant_gender === "masculine" ? "masculine" : "feminine"));
+        const d = data as Record<string, unknown>;
+        setUserName(((d.name as string | null) ?? "").split(" ")[0] || "");
+        setName((d.assistant_name as string | null) || "Lia");
+        setGender(d.assistant_gender === "masculine" ? "masculine" : "feminine");
+        setGoals((d.goals as string | null) ?? "");
+        setTone(((d.lia_tone as string | null) === "formal" || d.lia_tone === "direct") ? (d.lia_tone as Tone) : "casual");
+        setTimezone((d.timezone as string | null) || "America/Santiago");
+        const days = d.work_days as string[] | null;
+        if (days && days.length) setWorkDays(days);
+        setWorkStart(((d.work_start as string | null) ?? "09:00:00").slice(0, 5));
+        setWorkEnd(((d.work_end as string | null) ?? "18:00:00").slice(0, 5));
       }
       setLoading(false);
     })();
@@ -95,6 +103,43 @@ function SettingsPage() {
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Guardado ✓");
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ goals: goals.trim() || null, lia_tone: tone, timezone })
+      .eq("id", user.id);
+    setSavingProfile(false);
+    if (error) toast.error(error.message);
+    else toast.success("Perfil guardado ✓");
+  };
+
+  const toggleDay = (day: string) =>
+    setWorkDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(
+      (a, b) => WEEKDAYS.findIndex((w) => w.id === a) - WEEKDAYS.findIndex((w) => w.id === b),
+    )));
+
+  const saveSchedule = async () => {
+    if (!user) return;
+    if (workDays.length === 0) {
+      toast.error("Selecciona al menos un día");
+      return;
+    }
+    if (workStart >= workEnd) {
+      toast.error("La hora de inicio debe ser menor que la de fin");
+      return;
+    }
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ work_days: workDays, work_start: workStart, work_end: workEnd })
+      .eq("id", user.id);
+    setSavingSchedule(false);
+    if (error) toast.error(error.message);
+    else toast.success("Horario guardado ✓");
   };
 
   const greetingPreview =
