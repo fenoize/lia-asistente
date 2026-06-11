@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +13,36 @@ export const Route = createFileRoute("/_app/settings")({
 });
 
 type Gender = "feminine" | "masculine";
+type Tone = "casual" | "formal" | "direct";
+
+const TONE_OPTIONS: { id: Tone; label: string; caption: string }[] = [
+  { id: "casual", label: "Casual", caption: "Cercana, conversacional" },
+  { id: "formal", label: "Formal", caption: "Profesional, cuidada" },
+  { id: "direct", label: "Directo", caption: "Breve, al grano" },
+];
+
+const WEEKDAYS: { id: string; label: string }[] = [
+  { id: "mon", label: "L" },
+  { id: "tue", label: "M" },
+  { id: "wed", label: "X" },
+  { id: "thu", label: "J" },
+  { id: "fri", label: "V" },
+  { id: "sat", label: "S" },
+  { id: "sun", label: "D" },
+];
+
+const TIMEZONES = [
+  "America/Santiago",
+  "America/Argentina/Buenos_Aires",
+  "America/Mexico_City",
+  "America/Bogota",
+  "America/Lima",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Europe/Madrid",
+  "Europe/London",
+  "UTC",
+];
 
 function SettingsPage() {
   const { user } = useAuth();
@@ -24,6 +54,18 @@ function SettingsPage() {
   const [userName, setUserName] = useState("");
   const [name, setName] = useState("Lia");
   const [gender, setGender] = useState<Gender>("feminine");
+
+  // Perfil
+  const [goals, setGoals] = useState("");
+  const [tone, setTone] = useState<Tone>("casual");
+  const [timezone, setTimezone] = useState<string>("America/Santiago");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Horario
+  const [workDays, setWorkDays] = useState<string[]>(["mon", "tue", "wed", "thu", "fri"]);
+  const [workStart, setWorkStart] = useState<string>("09:00");
+  const [workEnd, setWorkEnd] = useState<string>("18:00");
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   useEffect(() => {
     if (!user) return;
