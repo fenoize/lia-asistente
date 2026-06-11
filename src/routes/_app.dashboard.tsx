@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, LayoutGroup } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { usePrefetchStore } from "@/hooks/use-prefetch-store";
 import { supabase } from "@/integrations/supabase/client";
 import {
   IconRefresh,
@@ -71,18 +72,19 @@ function Dashboard() {
   const { user } = useAuth();
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
+  const prefetch = usePrefetchStore();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => (prefetch.data?.tasks as Task[]) ?? []);
+  const [meetings, setMeetings] = useState<Meeting[]>(() => (prefetch.data?.meetings as Meeting[]) ?? []);
+  const [reminders, setReminders] = useState<Reminder[]>(() => (prefetch.data?.reminders as Reminder[]) ?? []);
   const [birthdays, setBirthdays] = useState<BirthdayContact[]>([]);
   const [showAllTasks, setShowAllTasks] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
-  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>(() => prefetch.data?.projects ?? []);
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
   const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
