@@ -846,6 +846,9 @@ function TaskRow({
           Completada
         </span>
       )}
+      {!done && (
+        <StatusBadge status={task.status} />
+      )}
       {high && !done && (
         <span
           style={{
@@ -875,6 +878,29 @@ function TaskRow({
         </span>
       )}
     </motion.div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg =
+    status === "listo"
+      ? { label: "Listo", bg: "rgba(74,222,128,0.12)", color: "#4ade80" }
+      : status === "en_curso"
+        ? { label: "En Curso", bg: "rgba(99,102,241,0.15)", color: "#818cf8" }
+        : { label: "Borrador", bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        background: cfg.bg,
+        color: cfg.color,
+        borderRadius: 100,
+        padding: "2px 10px",
+        marginTop: 2,
+      }}
+    >
+      {cfg.label}
+    </span>
   );
 }
 
