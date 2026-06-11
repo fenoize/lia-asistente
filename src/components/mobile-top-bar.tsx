@@ -195,6 +195,22 @@ export function MobileTopBar() {
           }}
         >
           <IconBell size={18} stroke={1.75} />
+          {unreadCount > 0 && (
+            <span
+              aria-label={`${unreadCount} sin leer`}
+              style={{
+                position: "absolute", top: 6, right: 6,
+                minWidth: 16, height: 16, padding: "0 4px",
+                borderRadius: 100, background: "#ef4444", color: "white",
+                fontSize: 10, fontWeight: 700,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "2px solid #0a0a0a",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => navigate({ to: "/settings" })}
