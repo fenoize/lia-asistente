@@ -317,27 +317,74 @@ function SettingsPage() {
         </div>
 
         <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-          Tus objetivos
+          ¿Cómo quieres que te llame?
         </label>
-        <textarea
-          value={goals}
-          onChange={(e) => setGoals(e.target.value)}
+        <input
+          value={userName}
+          maxLength={40}
+          onChange={(e) => setUserName(e.target.value)}
           disabled={loading}
-          placeholder="¿Qué quieres lograr este trimestre? LIA usará esto para priorizar."
-          rows={3}
+          placeholder="Tu nombre"
           style={{
             width: "100%",
             background: "transparent",
             border: "1px solid var(--border)",
             borderRadius: "var(--radius-md)",
             padding: "10px 14px",
-            fontSize: 13,
+            fontSize: 14,
             color: "var(--text-primary)",
             marginBottom: 20,
-            resize: "vertical",
             outline: "none",
           }}
         />
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Tu objetivo principal
+        </label>
+        <div className="grid grid-cols-1 gap-2 mb-5">
+          {GOAL_OPTIONS.map((g) => {
+            const active = goals === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setGoals(g.id)}
+                style={{
+                  textAlign: "left",
+                  background: active ? "var(--accent-subtle)" : "transparent",
+                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                  borderRadius: "var(--radius-md)",
+                  padding: "12px 14px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    marginTop: 3,
+                    width: 16, height: 16, borderRadius: "50%",
+                    border: `2px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                    background: active ? "var(--accent-color)" : "transparent",
+                    flexShrink: 0,
+                    boxShadow: active ? "inset 0 0 0 3px var(--accent-subtle)" : "none",
+                  }}
+                />
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: active ? "var(--accent-color)" : "var(--text-primary)" }}>
+                    {g.title}
+                  </span>
+                  <span style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+                    {g.subtitle}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
 
         <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
           Tono de LIA
