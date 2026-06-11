@@ -80,7 +80,7 @@ function Dashboard() {
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
   const prefetch = usePrefetchStore();
-  const { blocks, order } = useDashboardBlocks();
+  const { blocks, order, isReady } = useDashboardBlocks();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
