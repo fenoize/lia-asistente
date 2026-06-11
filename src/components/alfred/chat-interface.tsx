@@ -366,13 +366,32 @@ export function ChatInterface() {
         && dayKeyInTz(x.datetime, userTimeZone) === mKey,
       );
       if (dupM) return "duplicate";
-      await supabase.from("meetings").insert({
-        user_id: user.id,
-        title: action.title,
-        datetime: mDt,
-        duration_minutes: action.duration_minutes ?? 60,
-        notes: action.description ?? null,
-      });
+      const mType = action.meeting_type ?? null;
+      const { data: insertedMeeting } = await supabase
+        .from("meetings")
+        .insert({
+          user_id: user.id,
+          title: action.title,
+          datetime: mDt,
+          duration_minutes: action.duration_minutes ?? 60,
+          notes: action.description ?? null,
+          meeting_type: mType,
+        } as any)
+        .select("id")
+        .maybeSingle();
+      // If it's a video meeting, request a Google Meet link via the sync server fn.
+      if (mType === "video" && insertedMeeting?.id) {
+        try {
+          const { pushMeetingToGoogle } = await import("@/lib/google-sync.functions");
+          pushMeetingToGoogle({ data: { meetingId: insertedMeeting.id } })
+            .then((res: any) => {
+              if (res?.ok === false && res?.reason === "not_connected") {
+                toast.message("Conecta Google Calendar para generar el link de Meet automáticamente.");
+              }
+            })
+            .catch(() => {});
+        } catch {}
+      }
     } else if (action.type === "reminder") {
       const rDt = dt ?? new Date().toISOString();
       // Dedupe: same title (case-insensitive) and same day/hour in user TZ

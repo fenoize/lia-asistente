@@ -300,10 +300,19 @@ export function MobileTopBar() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {list.map((n) => {
                             const unread = !n.read_at;
+                            const route = n.entity_type === "task" ? "/tasks" : n.entity_type === "reminder" ? "/reminders" : "/meetings";
                             return (
-                            <div
+                            <button
                               key={n.id}
+                              type="button"
+                              onClick={() => {
+                                setOpen(false);
+                                navigate({ to: route, search: { open: n.entity_id } as any });
+                              }}
                               style={{
+                                textAlign: "left",
+                                width: "100%",
+                                cursor: "pointer",
                                 background: unread ? "#1d1d27" : "#181818",
                                 border: `1px solid ${unread ? "rgba(99,102,241,0.35)" : "#1e1e1e"}`,
                                 borderRadius: 12,
@@ -341,7 +350,7 @@ export function MobileTopBar() {
                                   {formatWhen(n.sent_at)}
                                 </div>
                               </div>
-                            </div>
+                            </button>
                             );
                           })}
                         </div>

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -27,6 +27,9 @@ import { es } from "date-fns/locale";
 type ViewMode = "cards" | "table" | "gantt";
 
 export const Route = createFileRoute("/_app/tasks")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: TasksPage,
 });
 
@@ -97,6 +100,18 @@ function TasksPage() {
       setLoading(false);
     })();
   }, [user]);
+
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("tasks").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Task);
+      navigate({ to: "/tasks", search: {} as any, replace: true });
+    })();
+  }, [openId, user, navigate]);
+
 
   const projectMap = useMemo(() => {
     const m = new Map<string, string>();

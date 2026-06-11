@@ -77,10 +77,11 @@ export type PriorityInput = {
 
 type RankedAction = {
   key: string;
+  id: string;
   kind: "task" | "reminder" | "meeting";
   title: string;
   reason: string;
-  to: string;
+  to: "/tasks" | "/reminders" | "/meetings";
   tone: "danger" | "warning" | "info" | "neutral";
   score: number;
 };
@@ -107,6 +108,7 @@ function rankActions({ tasks, reminders, meetings, projectMap }: PriorityInput):
     const projectName = t.project_id ? projectMap[t.project_id] : undefined;
     items.push({
       key: `t-${t.id}`,
+      id: t.id,
       kind: "task",
       title: t.title,
       reason: projectName ? `${reason} · ${projectName}` : reason,
@@ -127,7 +129,7 @@ function rankActions({ tasks, reminders, meetings, projectMap }: PriorityInput):
     else if (mins <= 60) { score = 70; reason = `En ${mins}m`; tone = "warning"; }
     else if (mins <= 240) { score = 45; reason = `En ${Math.round(mins / 60)}h`; tone = "info"; }
     if (score === 0) continue;
-    items.push({ key: `r-${r.id}`, kind: "reminder", title: r.title, reason, to: "/reminders", tone, score });
+    items.push({ key: `r-${r.id}`, id: r.id, kind: "reminder", title: r.title, reason, to: "/reminders", tone, score });
   }
 
   for (const m of meetings) {
@@ -141,7 +143,7 @@ function rankActions({ tasks, reminders, meetings, projectMap }: PriorityInput):
     else if (mins <= 120) { score = 50; reason = `En ${Math.round(mins / 60)}h`; tone = "info"; }
     else if (mins <= 480 && m.preparation_needed) { score = 35; reason = "Requiere preparación"; tone = "info"; }
     if (score === 0) continue;
-    items.push({ key: `m-${m.id}`, kind: "meeting", title: m.title, reason, to: "/meetings", tone, score });
+    items.push({ key: `m-${m.id}`, id: m.id, kind: "meeting", title: m.title, reason, to: "/meetings", tone, score });
   }
 
   return items.sort((a, b) => b.score - a.score).slice(0, 5);
@@ -177,6 +179,7 @@ export function PriorityActionsWidget(props: PriorityInput) {
               <li key={a.key}>
                 <Link
                   to={a.to}
+                  search={{ open: a.id } as any}
                   className="flex items-center gap-3 group"
                   style={{ padding: "8px 8px", borderRadius: 8, transition: "background 0.15s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "#161616"; }}

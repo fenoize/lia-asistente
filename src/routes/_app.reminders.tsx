@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -19,6 +19,9 @@ import {
 import { detectUserTimeZone, formatDateTimeInTimeZone } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/reminders")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: RemindersPage,
 });
 
@@ -55,6 +58,18 @@ function RemindersPage() {
       setLoading(false);
     })();
   }, [user, userTimeZone]);
+
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("reminders").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Reminder);
+      navigate({ to: "/reminders", search: {} as any, replace: true });
+    })();
+  }, [openId, user, navigate]);
+
 
   const toggle = async (r: Reminder) => {
     const next = !r.done;
