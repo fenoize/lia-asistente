@@ -514,7 +514,7 @@ export function ChatInterface() {
             {messages.map((m, idx) => {
               const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
-                <div key={m.id}>
+                <div key={m.id} className="animate-fade-in">
                   {m.role === "user" ? (
                     <UserBubble text={m.content} time={time} />
                   ) : (
@@ -533,7 +533,9 @@ export function ChatInterface() {
               );
             })}
             {streaming && messages[messages.length - 1]?.role === "user" && (
-              <AlfredBubble text="" streaming action={null} assistantInitial={assistant.name.charAt(0).toUpperCase()} />
+              <div className="animate-fade-in">
+                <AlfredBubble text="" streaming action={null} assistantInitial={assistant.name.charAt(0).toUpperCase()} />
+              </div>
             )}
           </div>
         </div>
