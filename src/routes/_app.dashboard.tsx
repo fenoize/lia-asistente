@@ -836,80 +836,80 @@ function TaskRow({
         >
           {task.title}
         </button>
-        {(projectName || assigneeName) && (
-          <div
-            className="flex items-center gap-3 mt-0.5"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpen?.();
-            }}
-            style={{ cursor: onOpen ? "pointer" : "default" }}
-          >
-            {projectName && (
-              <span
-                className="inline-flex items-center gap-1"
-                style={{ fontSize: 11, color: "var(--text-tertiary)" }}
-              >
-                <IconFolder size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
-                <span className="truncate">{projectName}</span>
-              </span>
-            )}
-            {assigneeName && (
-              <span
-                className="inline-flex items-center gap-1"
-                style={{ fontSize: 11, color: "var(--text-tertiary)" }}
-              >
-                <IconUser size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
-                <span className="truncate">{assigneeName}</span>
-              </span>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-2 mt-1">
+          {done && (
+            <span
+              style={{
+                fontSize: 10,
+                color: "var(--text-tertiary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              Completada
+            </span>
+          )}
+          {!done && (
+            <StatusBadge status={task.status} />
+          )}
+          {high && !done && (
+            <span
+              style={{
+                fontSize: 11,
+                background: "rgba(220,38,38,0.12)",
+                color: "#f87171",
+                borderRadius: 100,
+                padding: "2px 10px",
+              }}
+            >
+              Alta
+            </span>
+          )}
+          {overdue && !done && !high && (
+            <span
+              style={{
+                fontSize: 11,
+                background: "rgba(220,38,38,0.12)",
+                color: "#f87171",
+                borderRadius: 100,
+                padding: "2px 10px",
+              }}
+            >
+              Atrasada
+            </span>
+          )}
+
+          {(projectName || assigneeName) && (
+            <div
+              className="ml-auto flex items-center gap-3"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen?.();
+              }}
+              style={{ cursor: onOpen ? "pointer" : "default" }}
+            >
+              {projectName && (
+                <span
+                  className="inline-flex items-center gap-1"
+                  style={{ fontSize: 11, color: "var(--text-tertiary)" }}
+                >
+                  <IconFolder size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
+                  <span className="truncate">{projectName}</span>
+                </span>
+              )}
+              {assigneeName && (
+                <span
+                  className="inline-flex items-center gap-1"
+                  style={{ fontSize: 11, color: "var(--text-tertiary)" }}
+                >
+                  <IconUser size={11} stroke={1.5} style={{ color: "var(--text-tertiary)" }} />
+                  <span className="truncate">{assigneeName}</span>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      {done && (
-        <span
-          style={{
-            fontSize: 10,
-            color: "var(--text-tertiary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            marginTop: 2,
-          }}
-        >
-          Completada
-        </span>
-      )}
-      {!done && (
-        <StatusBadge status={task.status} />
-      )}
-      {high && !done && (
-        <span
-          style={{
-            fontSize: 11,
-            background: "rgba(220,38,38,0.12)",
-            color: "#f87171",
-            borderRadius: 100,
-            padding: "2px 10px",
-            marginTop: 2,
-          }}
-        >
-          Alta
-        </span>
-      )}
-      {overdue && !done && !high && (
-        <span
-          style={{
-            fontSize: 11,
-            background: "rgba(220,38,38,0.12)",
-            color: "#f87171",
-            borderRadius: 100,
-            padding: "2px 10px",
-            marginTop: 2,
-          }}
-        >
-          Atrasada
-        </span>
-      )}
     </motion.div>
   );
 }
