@@ -179,6 +179,7 @@ export function PriorityActionsWidget(props: PriorityInput) {
               <li key={a.key}>
                 <Link
                   to={a.to}
+                  search={{ open: a.id } as any}
                   className="flex items-center gap-3 group"
                   style={{ padding: "8px 8px", borderRadius: 8, transition: "background 0.15s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "#161616"; }}
