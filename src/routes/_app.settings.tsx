@@ -846,7 +846,9 @@ function GoogleCalendarSection() {
 }
 
 
+const CHANGELOG: Array<{ version: string; date: string; items: string[] }> = [
   {
+
     version: "v0.4.0",
     date: "Mayo 2026",
     items: [
