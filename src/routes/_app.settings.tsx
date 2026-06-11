@@ -126,7 +126,7 @@ function SettingsPage() {
     setSavingProfile(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ goals: goals.trim() || null, lia_tone: tone, timezone })
+      .update({ name: userName.trim() || null, goals: goals.trim() || null, lia_tone: tone, timezone })
       .eq("id", user.id);
     setSavingProfile(false);
     if (error) toast.error(error.message);
