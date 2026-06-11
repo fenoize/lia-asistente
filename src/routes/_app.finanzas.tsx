@@ -313,11 +313,15 @@ function ListOrEmpty({
   onClick,
   empty,
   render,
+  icon,
+  accent,
 }: {
   rows: FinanceRecord[];
   onClick: (r: FinanceRecord) => void;
   empty: { icon: React.ReactNode; title: string; subtitle: string };
-  render: (r: FinanceRecord) => { primary: string; secondary: string; amount: string };
+  render: (r: FinanceRecord) => { primary: string; secondary: string; amount: string; amountColor?: string };
+  icon?: React.ReactNode;
+  accent?: string;
 }) {
   if (rows.length === 0) {
     return (
@@ -328,6 +332,7 @@ function ListOrEmpty({
       </div>
     );
   }
+  const accentColor = accent ?? "#818cf8";
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {rows.map((r) => {
@@ -347,17 +352,34 @@ function ListOrEmpty({
               justifyContent: "space-between",
               gap: 12,
               cursor: "pointer",
+              transition: "border-color 0.15s, background 0.15s",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${accentColor}40`; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#1e1e1e"; }}
           >
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 14, color: "#f2f2f2", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {v.primary}
-              </div>
-              {v.secondary && (
-                <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{v.secondary}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+              {icon && (
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: `${accentColor}15`,
+                  border: `1px solid ${accentColor}30`,
+                  color: accentColor,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  {icon}
+                </div>
               )}
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 14, color: "#f2f2f2", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {v.primary}
+                </div>
+                {v.secondary && (
+                  <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{v.secondary}</div>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: 600, whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 14, color: v.amountColor ?? "#e0e0e0", fontWeight: 600, whiteSpace: "nowrap" }}>
               {v.amount}
             </div>
           </button>
