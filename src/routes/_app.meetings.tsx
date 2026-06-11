@@ -102,6 +102,17 @@ function MeetingsPage() {
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, weekStart, userTimeZone]);
 
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("meetings").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Meeting);
+      navigate({ to: "/meetings", search: {}, replace: true });
+    })();
+  }, [openId, user, navigate]);
+
   const dayMeetings = useMemo(
     () => meetings
       .filter((m) => sameDay(new Date(m.datetime), selected))
