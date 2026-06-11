@@ -300,6 +300,14 @@ export function FinanceModal({
                   </select>
                 </Field>
               </div>
+              <Field label="Cuenta (opcional)">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
+                  <option value="">— Ninguna —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </Field>
             </>
           )}
 
@@ -317,6 +325,19 @@ export function FinanceModal({
                   </select>
                 </Field>
               </div>
+              <Field label="Cuenta *">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle} required>
+                  <option value="">— Selecciona una cuenta —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                {accounts.length === 0 && (
+                  <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+                    Crea una cuenta primero en la pestaña Cuentas.
+                  </div>
+                )}
+              </Field>
               <Field label="Categoría">
                 <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Comida, transporte..." style={inputStyle} />
               </Field>
@@ -360,6 +381,14 @@ export function FinanceModal({
                 <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
                 Activa
               </label>
+              <Field label="Cuenta (opcional)">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
+                  <option value="">— Ninguna —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </Field>
             </>
           )}
 
