@@ -623,6 +623,7 @@ export type Database = {
           assistant_gender: string | null
           assistant_name: string | null
           created_at: string | null
+          dashboard_block_order: string[]
           dashboard_blocks: Json
           email: string | null
           goals: string | null
@@ -643,6 +644,7 @@ export type Database = {
           assistant_gender?: string | null
           assistant_name?: string | null
           created_at?: string | null
+          dashboard_block_order?: string[]
           dashboard_blocks?: Json
           email?: string | null
           goals?: string | null
@@ -663,6 +665,7 @@ export type Database = {
           assistant_gender?: string | null
           assistant_name?: string | null
           created_at?: string | null
+          dashboard_block_order?: string[]
           dashboard_blocks?: Json
           email?: string | null
           goals?: string | null

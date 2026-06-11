@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS dashboard_block_order text[] NOT NULL DEFAULT ARRAY['priority','attention','timeline','tasks','projects','weekly','finance'];

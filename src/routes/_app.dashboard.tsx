@@ -80,7 +80,7 @@ function Dashboard() {
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
   const prefetch = usePrefetchStore();
-  const { blocks } = useDashboardBlocks();
+  const { blocks, order } = useDashboardBlocks();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -440,16 +440,6 @@ function Dashboard() {
       </section>
       )}
 
-      {/* Priority actions (smart ranking) */}
-      {blocks.priority && (
-      <PriorityActionsWidget
-        tasks={tasks}
-        reminders={reminders}
-        meetings={meetings}
-        projectMap={projectMap}
-      />
-      )}
-
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
@@ -479,71 +469,146 @@ function Dashboard() {
         );
       })}
 
-      {/* 2. Requiere atención */}
-      {blocks.attention && (
-      <Block label="REQUIERE ATENCIÓN">
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <AttentionMiniCard
-            to="/tasks"
-            icon={<IconAlertCircle size={16} stroke={1.75} color="#f87171" />}
-            label="Vencidas"
-            valueNode={
-              <span style={{ color: "#f87171" }}>{overdueCount}</span>
-            }
-            hint="tareas"
-          />
-          <AttentionMiniCard
-            to="/meetings"
-            icon={<IconCalendar size={16} stroke={1.75} color="#818cf8" />}
-            label="Reunión"
-            valueNode={
-              nextMeeting ? (
-                <span style={{ color: "#f2f2f2" }}>
-                  {formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
-                </span>
-              ) : (
-                <span style={{ color: "#444" }}>—</span>
-              )
-            }
-            hint={nextMeeting ? timeUntil(nextMeeting.datetime) : "sin próximas"}
-          />
-          <AttentionMiniCard
-            to="/tasks"
-            icon={<IconCheck size={16} stroke={2.5} color="#4ade80" />}
-            label="Progreso"
-            valueNode={
-              <>
-                <span style={{ color: "#f2f2f2" }}>{monthProgress.done}</span>
-                <span style={{ color: "#444" }}>/{monthProgress.total}</span>
-              </>
-            }
-            hint="este mes"
-          />
-        </div>
-      </Block>
-      )}
-
-
-      {/* 3. Recordatorios y eventos (combinado) */}
-      {blocks.timeline && timeline.length > 0 && (
-        <Block label="RECORDATORIOS Y EVENTOS">
-          <div className="space-y-2">
-            {timeline.map((item) =>
-              item.kind === "reminder" ? (
-                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
-              ) : (
-                <MeetingRow
-                  key={`m-${item.id}`}
-                  meeting={item.data}
-                  onClick={() => setEditingMeeting(item.data)}
+      {/* Ordered, toggleable blocks (excluding brief which is always at top) */}
+      {order.map((key) => {
+        if (!blocks[key]) return null;
+        if (key === "priority") {
+          return (
+            <PriorityActionsWidget
+              key="priority"
+              tasks={tasks}
+              reminders={reminders}
+              meetings={meetings}
+              projectMap={projectMap}
+            />
+          );
+        }
+        if (key === "attention") {
+          return (
+            <Block key="attention" label="REQUIERE ATENCIÓN">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <AttentionMiniCard
+                  to="/tasks"
+                  icon={<IconAlertCircle size={16} stroke={1.75} color="#f87171" />}
+                  label="Vencidas"
+                  valueNode={<span style={{ color: "#f87171" }}>{overdueCount}</span>}
+                  hint="tareas"
                 />
-              ),
-            )}
-          </div>
-        </Block>
-      )}
+                <AttentionMiniCard
+                  to="/meetings"
+                  icon={<IconCalendar size={16} stroke={1.75} color="#818cf8" />}
+                  label="Reunión"
+                  valueNode={
+                    nextMeeting ? (
+                      <span style={{ color: "#f2f2f2" }}>
+                        {formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
+                      </span>
+                    ) : (
+                      <span style={{ color: "#444" }}>—</span>
+                    )
+                  }
+                  hint={nextMeeting ? timeUntil(nextMeeting.datetime) : "sin próximas"}
+                />
+                <AttentionMiniCard
+                  to="/tasks"
+                  icon={<IconCheck size={16} stroke={2.5} color="#4ade80" />}
+                  label="Progreso"
+                  valueNode={
+                    <>
+                      <span style={{ color: "#f2f2f2" }}>{monthProgress.done}</span>
+                      <span style={{ color: "#444" }}>/{monthProgress.total}</span>
+                    </>
+                  }
+                  hint="este mes"
+                />
+              </div>
+            </Block>
+          );
+        }
+        if (key === "timeline") {
+          if (timeline.length === 0) return null;
+          return (
+            <Block key="timeline" label="RECORDATORIOS Y EVENTOS">
+              <div className="space-y-2">
+                {timeline.map((item) =>
+                  item.kind === "reminder" ? (
+                    <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
+                  ) : (
+                    <MeetingRow
+                      key={`m-${item.id}`}
+                      meeting={item.data}
+                      onClick={() => setEditingMeeting(item.data)}
+                    />
+                  ),
+                )}
+              </div>
+            </Block>
+          );
+        }
+        if (key === "tasks") {
+          if (pendingTodayTasks.length === 0 && doneTodayTasks.length === 0) return null;
+          return (
+            <Block key="tasks" label="TAREAS DEL DÍA">
+              <div
+                style={{
+                  background: "#111111",
+                  border: "1px solid #1e1e1e",
+                  borderRadius: 12,
+                  padding: 8,
+                }}
+              >
+                <LayoutGroup>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {visiblePending.map((t) => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        overdue={isOverdue(t.due_date)}
+                        projectName={t.project_id ? projectMap[t.project_id] : undefined}
+                        assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
+                        onToggle={() => toggleTask(t)}
+                        onOpen={() => setEditingTask(t)}
+                      />
+                    ))}
+                    {pendingTodayTasks.length > 4 && !showAllTasks && (
+                      <button
+                        onClick={() => setShowAllTasks(true)}
+                        style={{
+                          fontSize: 12,
+                          color: "var(--text-tertiary)",
+                          marginTop: 4,
+                          paddingLeft: 10,
+                          textAlign: "left",
+                        }}
+                        className="hover:text-foreground transition-colors"
+                      >
+                        + {pendingTodayTasks.length - 4} más
+                      </button>
+                    )}
+                    {doneTodayTasks.map((t) => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        overdue={false}
+                        projectName={t.project_id ? projectMap[t.project_id] : undefined}
+                        assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
+                        onToggle={() => toggleTask(t)}
+                        onOpen={() => setEditingTask(t)}
+                      />
+                    ))}
+                  </div>
+                </LayoutGroup>
+              </div>
+            </Block>
+          );
+        }
+        if (key === "projects" && user) return <ActiveProjectsWidget key="projects" userId={user.id} />;
+        if (key === "weekly" && user) return <WeeklyInsightsWidget key="weekly" userId={user.id} />;
+        if (key === "finance" && user) return <FinanceSnapshotWidget key="finance" userId={user.id} />;
+        return null;
+      })}
 
-      {/* Pendiente de resumen (kept) */}
+      {/* Pendiente de resumen (kept, always shown when relevant) */}
       {pastMeetingsWithoutNotes.length > 0 && (
         <Block label="PENDIENTE DE RESUMEN">
           <div className="space-y-2">
@@ -557,71 +622,6 @@ function Dashboard() {
             ))}
           </div>
         </Block>
-      )}
-
-      {/* 4. Tareas del día */}
-      {blocks.tasks && (pendingTodayTasks.length > 0 || doneTodayTasks.length > 0) && (
-        <Block label="TAREAS DEL DÍA">
-          <div
-            style={{
-              background: "#111111",
-              border: "1px solid #1e1e1e",
-              borderRadius: 12,
-              padding: 8,
-            }}
-          >
-            <LayoutGroup>
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {visiblePending.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    overdue={isOverdue(t.due_date)}
-                    projectName={t.project_id ? projectMap[t.project_id] : undefined}
-                    assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
-                    onToggle={() => toggleTask(t)}
-                    onOpen={() => setEditingTask(t)}
-                  />
-                ))}
-                {pendingTodayTasks.length > 4 && !showAllTasks && (
-                  <button
-                    onClick={() => setShowAllTasks(true)}
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-tertiary)",
-                      marginTop: 4,
-                      paddingLeft: 10,
-                      textAlign: "left",
-                    }}
-                    className="hover:text-foreground transition-colors"
-                  >
-                    + {pendingTodayTasks.length - 4} más
-                  </button>
-                )}
-                {doneTodayTasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    overdue={false}
-                    projectName={t.project_id ? projectMap[t.project_id] : undefined}
-                    assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
-                    onToggle={() => toggleTask(t)}
-                    onOpen={() => setEditingTask(t)}
-                  />
-                ))}
-              </div>
-            </LayoutGroup>
-          </div>
-        </Block>
-      )}
-
-      {/* Intelligent widgets */}
-      {user && (
-        <>
-          {blocks.projects && <ActiveProjectsWidget userId={user.id} />}
-          {blocks.weekly && <WeeklyInsightsWidget userId={user.id} />}
-          {blocks.finance && <FinanceSnapshotWidget userId={user.id} />}
-        </>
       )}
 
 

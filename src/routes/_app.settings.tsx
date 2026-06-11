@@ -1,5 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { IconGripVertical } from "@tabler/icons-react";
 import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar, IconLayoutDashboard } from "@tabler/icons-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +12,7 @@ import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
-import { useDashboardBlocks, DASHBOARD_BLOCKS } from "@/hooks/use-dashboard-blocks";
+import { useDashboardBlocks, DASHBOARD_BLOCKS, type DashboardBlockKey } from "@/hooks/use-dashboard-blocks";
 import { startGoogleOAuth, getGoogleStatus, disconnectGoogle } from "@/lib/google-oauth.functions";
 import { pullGoogleEvents } from "@/lib/google-sync.functions";
 
@@ -696,7 +700,23 @@ function SettingsPage() {
 }
 
 function DashboardBlocksSection() {
-  const { blocks, toggle, loading } = useDashboardBlocks();
+  const { blocks, order, toggle, reorder, loading } = useDashboardBlocks();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIdx = order.indexOf(active.id as DashboardBlockKey);
+    const newIdx = order.indexOf(over.id as DashboardBlockKey);
+    if (oldIdx < 0 || newIdx < 0) return;
+    reorder(arrayMove(order, oldIdx, newIdx));
+  };
+
+  const brief = DASHBOARD_BLOCKS.brief;
+
   return (
     <section
       style={{
@@ -714,67 +734,154 @@ function DashboardBlocksSection() {
         </div>
       </div>
       <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
-        Elige qué bloques mostrar en tu dashboard.
+        Activa, desactiva y arrastra los bloques para reordenar tu dashboard. El Resumen Diario siempre va arriba.
       </p>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {DASHBOARD_BLOCKS.map((b, idx) => {
-          const on = blocks[b.key];
-          return (
-            <div
-              key={b.key}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "12px 0",
-                borderTop: idx === 0 ? "none" : "1px solid var(--border-subtle)",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
-                  {b.label}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-                  {b.description}
-                </div>
-              </div>
-              <button
-                onClick={() => toggle(b.key)}
-                disabled={loading}
-                aria-pressed={on}
-                aria-label={`Mostrar ${b.label}`}
-                style={{
-                  width: 44,
-                  height: 26,
-                  borderRadius: 100,
-                  background: on ? "var(--accent-color)" : "var(--border)",
-                  position: "relative",
-                  transition: "background 0.2s",
-                  flexShrink: 0,
-                  opacity: loading ? 0.5 : 1,
-                  cursor: loading ? "not-allowed" : "pointer",
-                }}
-              >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 3,
-                    left: on ? 21 : 3,
-                    width: 20,
-                    height: 20,
-                    borderRadius: "50%",
-                    background: "white",
-                    transition: "left 0.2s",
-                  }}
-                />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+
+      {/* Brief — pinned, no drag */}
+      <BlockRow
+        keyId="brief"
+        label={brief.label}
+        description={brief.description}
+        on={blocks.brief}
+        loading={loading}
+        onToggle={() => toggle("brief")}
+        pinned
+        first
+      />
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={order} strategy={verticalListSortingStrategy}>
+          {order.map((key) => {
+            const meta = DASHBOARD_BLOCKS[key];
+            return (
+              <SortableBlockRow
+                key={key}
+                keyId={key}
+                label={meta.label}
+                description={meta.description}
+                on={blocks[key]}
+                loading={loading}
+                onToggle={() => toggle(key)}
+              />
+            );
+          })}
+        </SortableContext>
+      </DndContext>
     </section>
   );
 }
+
+function BlockRow({
+  keyId, label, description, on, loading, onToggle, pinned, first, dragHandleProps, dragRef, style,
+}: {
+  keyId: string;
+  label: string;
+  description: string;
+  on: boolean;
+  loading: boolean;
+  onToggle: () => void;
+  pinned?: boolean;
+  first?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  dragRef?: (node: HTMLElement | null) => void;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      ref={dragRef}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "12px 0",
+        borderTop: first ? "none" : "1px solid var(--border-subtle)",
+        ...style,
+      }}
+    >
+      {pinned ? (
+        <span
+          aria-label="Fijo arriba"
+          title="Siempre arriba"
+          style={{
+            width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--text-tertiary)", opacity: 0.5, fontSize: 11,
+          }}
+        >
+          📌
+        </span>
+      ) : (
+        <button
+          type="button"
+          aria-label={`Arrastrar ${label}`}
+          {...dragHandleProps}
+          style={{
+            width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center",
+            background: "transparent", border: "none", color: "var(--text-tertiary)",
+            cursor: "grab", touchAction: "none",
+            ...(dragHandleProps?.style ?? {}),
+          }}
+        >
+          <IconGripVertical size={16} stroke={1.75} />
+        </button>
+      )}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>{description}</div>
+      </div>
+      <button
+        onClick={onToggle}
+        disabled={loading}
+        aria-pressed={on}
+        aria-label={`Mostrar ${label}`}
+        data-key={keyId}
+        style={{
+          width: 44, height: 26, borderRadius: 100,
+          background: on ? "var(--accent-color)" : "var(--border)",
+          position: "relative", transition: "background 0.2s",
+          flexShrink: 0,
+          opacity: loading ? 0.5 : 1,
+          cursor: loading ? "not-allowed" : "pointer",
+        }}
+      >
+        <span
+          style={{
+            position: "absolute", top: 3, left: on ? 21 : 3,
+            width: 20, height: 20, borderRadius: "50%",
+            background: "white", transition: "left 0.2s",
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
+function SortableBlockRow(props: {
+  keyId: DashboardBlockKey;
+  label: string;
+  description: string;
+  on: boolean;
+  loading: boolean;
+  onToggle: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.keyId });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    background: isDragging ? "var(--bg-base)" : undefined,
+    borderRadius: isDragging ? 8 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+  };
+  return (
+    <BlockRow
+      {...props}
+      dragRef={setNodeRef}
+      dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
+      style={style}
+    />
+  );
+}
+
 
 function GoogleCalendarSection() {
   const startOAuth = useServerFn(startGoogleOAuth);
