@@ -569,30 +569,39 @@ export type Database = {
       }
       notification_log: {
         Row: {
+          body: string | null
           entity_id: string
           entity_type: string
           id: string
           onesignal_notification_id: string | null
+          read_at: string | null
           scheduled_for: string | null
           sent_at: string
+          title: string | null
           user_id: string
         }
         Insert: {
+          body?: string | null
           entity_id: string
           entity_type: string
           id?: string
           onesignal_notification_id?: string | null
+          read_at?: string | null
           scheduled_for?: string | null
           sent_at?: string
+          title?: string | null
           user_id: string
         }
         Update: {
+          body?: string | null
           entity_id?: string
           entity_type?: string
           id?: string
           onesignal_notification_id?: string | null
+          read_at?: string | null
           scheduled_for?: string | null
           sent_at?: string
+          title?: string | null
           user_id?: string
         }
         Relationships: []
