@@ -60,6 +60,32 @@ const TIMEZONES = [
   "UTC",
 ];
 
+const GOAL_LABELS: Record<string, string> = Object.fromEntries(
+  GOAL_OPTIONS.map((g) => [g.id, g.title]),
+);
+
+function formatWorkDays(days: string[]): string {
+  const all = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const labels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  return days
+    .slice()
+    .sort((a, b) => all.indexOf(a) - all.indexOf(b))
+    .map((d) => labels[all.indexOf(d)])
+    .filter(Boolean)
+    .join("·");
+}
+
+type SheetKey =
+  | "nombre"
+  | "personalidad"
+  | "tono"
+  | "llamame"
+  | "objetivo"
+  | "timezone"
+  | "horario"
+  | "bloques"
+  | null;
+
 function SettingsPage() {
   const { user } = useAuth();
   const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
@@ -71,17 +97,18 @@ function SettingsPage() {
   const [name, setName] = useState("Lia");
   const [gender, setGender] = useState<Gender>("feminine");
 
-  // Perfil
   const [goals, setGoals] = useState("");
   const [tone, setTone] = useState<Tone>("casual");
   const [timezone, setTimezone] = useState<string>("America/Santiago");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  // Horario
   const [workDays, setWorkDays] = useState<string[]>(["mon", "tue", "wed", "thu", "fri"]);
   const [workStart, setWorkStart] = useState<string>("09:00");
   const [workEnd, setWorkEnd] = useState<string>("18:00");
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  const [openSheet, setOpenSheet] = useState<SheetKey>(null);
+  const closeSheet = () => setOpenSheet(null);
 
   useEffect(() => {
     if (!user) return;
@@ -164,529 +191,113 @@ function SettingsPage() {
       : `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy listo para ayudarte a organizar tu semana.`;
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 640, padding: "40px 24px" }}>
-      <h1
-        style={{
-          fontSize: 22,
-          fontWeight: 500,
-          letterSpacing: "-0.02em",
-          color: "var(--text-primary)",
-          marginBottom: 4,
-        }}
-      >
+    <div className="mx-auto" style={{ maxWidth: 480, padding: "40px 20px 80px" }}>
+      <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)", marginBottom: 4 }}>
         Ajustes
       </h1>
-      <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 32 }}>
+      <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 24 }}>
         Personaliza tu experiencia.
       </p>
 
-      <section
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: "24px",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--text-tertiary)",
-            fontWeight: 600,
-            marginBottom: 16,
-          }}
-        >
-          Tu asistente
-        </div>
-
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            color: "var(--text-secondary)",
-            marginBottom: 6,
-          }}
-        >
-          Nombre
-        </label>
-        <input
-          value={name}
-          maxLength={20}
-          onChange={(e) => setName(e.target.value)}
-          disabled={loading}
-          placeholder="Ej: Lia, Max, Nova, Alex..."
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            padding: "10px 14px",
-            fontSize: 14,
-            color: "var(--text-primary)",
-            marginBottom: 24,
-          }}
+      <SectionHeader label="Tu asistente" />
+      <SettingsGroup>
+        <SettingsRow
+          icon={<IconSparkles size={18} stroke={1.75} color="rgb(129,140,248)" />}
+          iconBg="rgba(99,102,241,0.12)"
+          label="Nombre"
+          value={name || "Lia"}
+          onClick={() => setOpenSheet("nombre")}
         />
-
-        <label
-          style={{
-            display: "block",
-            fontSize: 12,
-            color: "var(--text-secondary)",
-            marginBottom: 8,
-          }}
-        >
-          Personalidad
-        </label>
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <PersonaCard
-            active={gender === "feminine"}
-            onClick={() => setGender("feminine")}
-            Icon={IconVenus}
-            label="Femenina"
-            caption="Cercana, cálida, estratégica"
-          />
-          <PersonaCard
-            active={gender === "masculine"}
-            onClick={() => setGender("masculine")}
-            Icon={IconMars}
-            label="Masculina"
-            caption="Directo, sólido, estratégico"
-          />
-        </div>
-
-        <div
-          style={{
-            background: "var(--bg-base)",
-            border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)",
-            padding: "14px 16px",
-            marginBottom: 20,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 10,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "var(--text-tertiary)",
-              marginBottom: 6,
-              fontWeight: 600,
-            }}
-          >
-            Vista previa
-          </div>
-          <p style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>
-            {greetingPreview}
-          </p>
-        </div>
-
-        <button
-          onClick={save}
-          disabled={saving || loading}
-          style={{
-            background: "var(--accent-color)",
-            color: "white",
-            borderRadius: "var(--radius-pill)",
-            padding: "9px 22px",
-            fontSize: 13,
-            fontWeight: 500,
-            opacity: saving || loading ? 0.5 : 1,
-          }}
-        >
-          {saving ? "Guardando…" : "Guardar"}
-        </button>
-      </section>
-
-      {/* Perfil */}
-      <section
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 24,
-          marginTop: 24,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-          <IconUser size={14} color="var(--text-tertiary)" stroke={1.75} />
-          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
-            Perfil
-          </div>
-        </div>
-
-        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-          ¿Cómo quieres que te llame?
-        </label>
-        <input
-          value={userName}
-          maxLength={40}
-          onChange={(e) => setUserName(e.target.value)}
-          disabled={loading}
-          placeholder="Tu nombre"
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            padding: "10px 14px",
-            fontSize: 14,
-            color: "var(--text-primary)",
-            marginBottom: 20,
-            outline: "none",
-          }}
+        <SettingsRow
+          icon={<IconUserCircle size={18} stroke={1.75} color="rgb(192,132,252)" />}
+          iconBg="rgba(168,85,247,0.12)"
+          label="Personalidad"
+          value={gender === "feminine" ? "Femenina" : "Masculino"}
+          onClick={() => setOpenSheet("personalidad")}
         />
+        <SettingsRow
+          icon={<IconMessageCircle size={18} stroke={1.75} color="rgb(45,212,191)" />}
+          iconBg="rgba(20,184,166,0.12)"
+          label="Tono"
+          value={TONE_OPTIONS.find((t) => t.id === tone)?.label}
+          onClick={() => setOpenSheet("tono")}
+        />
+      </SettingsGroup>
 
-        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
-          Tu objetivo principal
-        </label>
-        <div className="grid grid-cols-1 gap-2 mb-5">
-          {GOAL_OPTIONS.map((g) => {
-            const active = goals === g.id;
-            return (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => setGoals(g.id)}
-                style={{
-                  textAlign: "left",
-                  background: active ? "var(--accent-subtle)" : "transparent",
-                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
-                  borderRadius: "var(--radius-md)",
-                  padding: "12px 14px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 12,
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{
-                    marginTop: 3,
-                    width: 16, height: 16, borderRadius: "50%",
-                    border: `2px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
-                    background: active ? "var(--accent-color)" : "transparent",
-                    flexShrink: 0,
-                    boxShadow: active ? "inset 0 0 0 3px var(--accent-subtle)" : "none",
-                  }}
-                />
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: active ? "var(--accent-color)" : "var(--text-primary)" }}>
-                    {g.title}
-                  </span>
-                  <span style={{ display: "block", fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-                    {g.subtitle}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-
-        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
-          Tono de LIA
-        </label>
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          {TONE_OPTIONS.map((t) => {
-            const active = tone === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTone(t.id)}
-                style={{
-                  background: active ? "var(--accent-subtle)" : "transparent",
-                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
-                  color: active ? "var(--accent-color)" : "var(--text-primary)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "10px 8px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{t.label}</div>
-                <div style={{ fontSize: 10, color: active ? "var(--accent-color)" : "var(--text-tertiary)", marginTop: 2 }}>
-                  {t.caption}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-          Zona horaria
-        </label>
-        <select
+      <SectionHeader label="Tu perfil" />
+      <SettingsGroup>
+        <SettingsRow
+          icon={<IconIdBadge size={18} stroke={1.75} color="rgb(251,191,36)" />}
+          iconBg="rgba(245,158,11,0.12)"
+          label="¿Cómo quieres que te llame?"
+          value={userName || "—"}
+          onClick={() => setOpenSheet("llamame")}
+        />
+        <SettingsRow
+          icon={<IconTarget size={18} stroke={1.75} color="rgb(52,211,153)" />}
+          iconBg="rgba(16,185,129,0.12)"
+          label="Objetivo principal"
+          value={GOAL_LABELS[goals] ?? (goals ? "Personalizado" : "Sin definir")}
+          onClick={() => setOpenSheet("objetivo")}
+        />
+        <SettingsRow
+          icon={<IconClock size={18} stroke={1.75} color="rgb(129,140,248)" />}
+          iconBg="rgba(99,102,241,0.12)"
+          label="Zona horaria"
           value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          disabled={loading}
-          style={{
-            width: "100%",
-            background: "transparent",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            padding: "10px 14px",
-            fontSize: 13,
-            color: "var(--text-primary)",
-            marginBottom: 20,
-            outline: "none",
-          }}
-        >
-          {TIMEZONES.map((tz) => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </select>
+          onClick={() => setOpenSheet("timezone")}
+        />
+        <SettingsRow
+          icon={<IconBriefcase size={18} stroke={1.75} color="rgb(244,114,182)" />}
+          iconBg="rgba(236,72,153,0.12)"
+          label="Horario laboral"
+          hint={workDays.length ? `${formatWorkDays(workDays)} · ${workStart}–${workEnd}` : "Sin configurar"}
+          onClick={() => setOpenSheet("horario")}
+        />
+      </SettingsGroup>
 
-        <button
-          onClick={saveProfile}
-          disabled={savingProfile || loading}
-          style={{
-            background: "var(--accent-color)",
-            color: "white",
-            borderRadius: "var(--radius-pill)",
-            padding: "9px 22px",
-            fontSize: 13,
-            fontWeight: 500,
-            opacity: savingProfile || loading ? 0.5 : 1,
-          }}
-        >
-          {savingProfile ? "Guardando…" : "Guardar"}
-        </button>
-      </section>
+      <SectionHeader label="Inicio" />
+      <SettingsGroup>
+        <SettingsRow
+          icon={<IconLayoutDashboard size={18} stroke={1.75} color="rgb(129,140,248)" />}
+          iconBg="rgba(99,102,241,0.12)"
+          label="Bloques visibles"
+          hint="Activa y reordena los bloques del dashboard"
+          onClick={() => setOpenSheet("bloques")}
+        />
+      </SettingsGroup>
 
-      {/* Horario laboral */}
-      <section
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 24,
-          marginTop: 24,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <IconClock size={14} color="var(--text-tertiary)" stroke={1.75} />
-          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
-            Horario laboral
+      <SectionHeader label="Privacidad" />
+      <SettingsGroup>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px" }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(148,163,184,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <IconEyeOff size={18} stroke={1.75} color="var(--text-tertiary)" />
           </div>
-        </div>
-        <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
-          LIA usa tu horario para planificar tareas y reuniones.
-        </p>
-
-        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
-          Días laborales
-        </label>
-        <div className="flex gap-1.5 mb-5">
-          {WEEKDAYS.map((d) => {
-            const active = workDays.includes(d.id);
-            return (
-              <button
-                key={d.id}
-                onClick={() => toggleDay(d.id)}
-                style={{
-                  width: 36, height: 36,
-                  borderRadius: "50%",
-                  background: active ? "var(--accent-color)" : "transparent",
-                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
-                  color: active ? "white" : "var(--text-secondary)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-              >
-                {d.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <div>
-            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-              Hora de inicio
-            </label>
-            <input
-              type="time"
-              value={workStart}
-              onChange={(e) => setWorkStart(e.target.value)}
-              style={{
-                width: "100%",
-                background: "transparent",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                padding: "10px 14px",
-                fontSize: 13,
-                color: "var(--text-primary)",
-                outline: "none",
-              }}
-            />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>Ocultar montos</div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>Reemplaza montos en Finanzas por puntos</div>
           </div>
-          <div>
-            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-              Hora de fin
-            </label>
-            <input
-              type="time"
-              value={workEnd}
-              onChange={(e) => setWorkEnd(e.target.value)}
-              style={{
-                width: "100%",
-                background: "transparent",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                padding: "10px 14px",
-                fontSize: 13,
-                color: "var(--text-primary)",
-                outline: "none",
-              }}
-            />
-          </div>
+          <button
+            onClick={() => setHideAmounts(!hideAmounts)}
+            aria-pressed={hideAmounts}
+            style={{ width: 44, height: 26, borderRadius: 100, background: hideAmounts ? "var(--accent-color)" : "var(--border)", position: "relative", transition: "background 0.2s", flexShrink: 0, border: "none", cursor: "pointer" }}
+          >
+            <span style={{ position: "absolute", top: 3, left: hideAmounts ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s" }} />
+          </button>
         </div>
-
-        <button
-          onClick={saveSchedule}
-          disabled={savingSchedule || loading}
-          style={{
-            background: "var(--accent-color)",
-            color: "white",
-            borderRadius: "var(--radius-pill)",
-            padding: "9px 22px",
-            fontSize: 13,
-            fontWeight: 500,
-            opacity: savingSchedule || loading ? 0.5 : 1,
-          }}
-        >
-          {savingSchedule ? "Guardando…" : "Guardar"}
-        </button>
-      </section>
-      <DashboardBlocksSection />
+      </SettingsGroup>
 
       <PushNotificationsSettings />
 
       <GoogleCalendarSection />
 
-
-
-
-
-      <section
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 24,
-          marginTop: 24,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--text-tertiary)",
-            fontWeight: 600,
-            marginBottom: 16,
-          }}
-        >
-          Privacidad
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "var(--bg-base)",
-              border: "1px solid var(--border-subtle)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconEyeOff size={20} color="var(--text-tertiary)" stroke={1.5} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
-              Ocultar montos
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-              Reemplaza los montos en Finanzas por puntos.
-            </div>
-          </div>
-          <button
-            onClick={() => setHideAmounts(!hideAmounts)}
-            aria-pressed={hideAmounts}
-            style={{
-              width: 44,
-              height: 26,
-              borderRadius: 100,
-              background: hideAmounts ? "var(--accent-color)" : "var(--border)",
-              position: "relative",
-              transition: "background 0.2s",
-              flexShrink: 0,
-            }}
-          >
-            <span
-              style={{
-                position: "absolute",
-                top: 3,
-                left: hideAmounts ? 21 : 3,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: "white",
-                transition: "left 0.2s",
-              }}
-            />
-          </button>
-        </div>
-      </section>
-
-
-      <section
-        style={{
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-lg)",
-          padding: 24,
-          marginTop: 24,
-        }}
-      >
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--text-tertiary)",
-            fontWeight: 600,
-            marginBottom: 16,
-          }}
-        >
+      <section style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, marginTop: 24 }}>
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600, marginBottom: 16 }}>
           Aplicación
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: hasUpdate
-                ? "var(--accent-subtle)"
-                : checkedOnce && !checking
-                ? "rgba(34,197,94,0.12)"
-                : "var(--bg-base)",
-              border: "1px solid var(--border-subtle)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: hasUpdate ? "var(--accent-subtle)" : checkedOnce && !checking ? "rgba(34,197,94,0.12)" : "var(--bg-base)", border: "1px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {hasUpdate ? (
               <IconReload size={20} color="var(--accent-color)" stroke={1.5} />
             ) : checkedOnce && !checking ? (
@@ -697,52 +308,23 @@ function SettingsPage() {
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
-              {hasUpdate
-                ? "¡Hay una nueva versión disponible!"
-                : checkedOnce && !checking
-                ? "Estás en la última versión"
-                : "Versión actual"}
+              {hasUpdate ? "¡Hay una nueva versión disponible!" : checkedOnce && !checking ? "Estás en la última versión" : "Versión actual"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-              {hasUpdate
-                ? "Reinicia para aplicar la actualización."
-                : checking
-                ? "Buscando actualizaciones…"
-                : "v0.4.0"}
+              {hasUpdate ? "Reinicia para aplicar la actualización." : checking ? "Buscando actualizaciones…" : "v0.4.0"}
             </div>
           </div>
         </div>
 
         {hasUpdate ? (
-          <button
-            onClick={skipWaiting}
-            style={{
-              background: "var(--accent-color)",
-              color: "white",
-              borderRadius: "var(--radius-pill)",
-              padding: "9px 22px",
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          >
+          <button onClick={skipWaiting} style={{ background: "var(--accent-color)", color: "white", borderRadius: "var(--radius-pill)", padding: "9px 22px", fontSize: 13, fontWeight: 500 }}>
             Reiniciar y actualizar
           </button>
         ) : (
           <button
-            onClick={async () => {
-              await update();
-              setCheckedOnce(true);
-            }}
+            onClick={async () => { await update(); setCheckedOnce(true); }}
             disabled={checking}
-            style={{
-              background: "transparent",
-              color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-pill)",
-              padding: "9px 22px",
-              fontSize: 13,
-              opacity: checking ? 0.5 : 1,
-            }}
+            style={{ background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: "9px 22px", fontSize: 13, opacity: checking ? 0.5 : 1 }}
           >
             {checking ? "Buscando…" : "Buscar actualizaciones"}
           </button>
@@ -750,7 +332,266 @@ function SettingsPage() {
       </section>
 
       <AboutSection />
+
+      {/* ============ SHEETS ============ */}
+
+      <BottomSheet open={openSheet === "nombre"} onClose={closeSheet} title="Nombre del asistente">
+        <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 12 }}>
+          Así se presentará tu IA.
+        </p>
+        <input
+          value={name}
+          maxLength={20}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Ej: Lia, Max, Nova…"
+          style={{ width: "100%", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: 15, color: "var(--text-primary)", outline: "none" }}
+        />
+        <SheetSaveButton onClick={async () => { await save(); closeSheet(); }} loading={saving} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "personalidad"} onClose={closeSheet} title="Personalidad">
+        <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 14 }}>
+          <PersonaCard active={gender === "feminine"} onClick={() => setGender("feminine")} Icon={IconVenus} label="Femenina" caption="Cercana, cálida" />
+          <PersonaCard active={gender === "masculine"} onClick={() => setGender("masculine")} Icon={IconMars} label="Masculino" caption="Directo, sólido" />
+        </div>
+        <div style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", marginBottom: 6, fontWeight: 600 }}>Vista previa</div>
+          <p style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>{greetingPreview}</p>
+        </div>
+        <SheetSaveButton onClick={async () => { await save(); closeSheet(); }} loading={saving} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "tono"} onClose={closeSheet} title="Tono">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {TONE_OPTIONS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTone(t.id)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", border: `1px solid ${tone === t.id ? "var(--accent-color)" : "var(--border)"}`, background: tone === t.id ? "var(--accent-subtle)" : "transparent", cursor: "pointer", textAlign: "left" }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{t.label}</div>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>{t.caption}</div>
+              </div>
+              {tone === t.id && <IconCheck size={18} color="var(--accent-color)" stroke={2} />}
+            </button>
+          ))}
+        </div>
+        <SheetSaveButton onClick={async () => { await saveProfile(); closeSheet(); }} loading={savingProfile} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "llamame"} onClose={closeSheet} title="¿Cómo quieres que te llame?">
+        <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 12 }}>
+          LIA te llamará así en saludos y resúmenes.
+        </p>
+        <input
+          value={userName}
+          maxLength={40}
+          onChange={(e) => setUserName(e.target.value)}
+          placeholder="Tu nombre"
+          style={{ width: "100%", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: 15, color: "var(--text-primary)", outline: "none" }}
+        />
+        <SheetSaveButton
+          onClick={async () => {
+            if (!user) return;
+            await supabase.from("profiles").update({ name: userName.trim() || null }).eq("id", user.id);
+            toast.success("Guardado ✓");
+            closeSheet();
+          }}
+        />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "objetivo"} onClose={closeSheet} title="Objetivo principal">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {GOAL_OPTIONS.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setGoals(g.id)}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", border: `1px solid ${goals === g.id ? "var(--accent-color)" : "var(--border)"}`, background: goals === g.id ? "var(--accent-subtle)" : "transparent", cursor: "pointer", textAlign: "left" }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{g.title}</div>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>{g.subtitle}</div>
+              </div>
+              {goals === g.id && <IconCheck size={18} color="var(--accent-color)" stroke={2} />}
+            </button>
+          ))}
+        </div>
+        <SheetSaveButton onClick={async () => { await saveProfile(); closeSheet(); }} loading={savingProfile} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "timezone"} onClose={closeSheet} title="Zona horaria">
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          style={{ width: "100%", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: 15, color: "var(--text-primary)", outline: "none" }}
+        >
+          {TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>{tz}</option>
+          ))}
+        </select>
+        <SheetSaveButton onClick={async () => { await saveProfile(); closeSheet(); }} loading={savingProfile} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "horario"} onClose={closeSheet} title="Horario laboral">
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Días laborales
+        </label>
+        <div className="flex gap-1.5" style={{ marginBottom: 20 }}>
+          {WEEKDAYS.map((d) => {
+            const active = workDays.includes(d.id);
+            return (
+              <button
+                key={d.id}
+                onClick={() => toggleDay(d.id)}
+                style={{ width: 36, height: 36, borderRadius: "50%", background: active ? "var(--accent-color)" : "transparent", border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`, color: active ? "white" : "var(--text-secondary)", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>Hora de inicio</label>
+            <input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} style={{ width: "100%", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 14, color: "var(--text-primary)", outline: "none" }} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>Hora de fin</label>
+            <input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} style={{ width: "100%", background: "var(--bg-base)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 14, color: "var(--text-primary)", outline: "none" }} />
+          </div>
+        </div>
+        <SheetSaveButton onClick={async () => { await saveSchedule(); closeSheet(); }} loading={savingSchedule} />
+      </BottomSheet>
+
+      <BottomSheet open={openSheet === "bloques"} onClose={closeSheet} title="Bloques visibles">
+        <DashboardBlocksSection />
+      </BottomSheet>
     </div>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600, padding: "20px 14px 8px" }}>
+      {label}
+    </div>
+  );
+}
+
+function SettingsGroup({ children }: { children: React.ReactNode }) {
+  const arr = React.Children.toArray(children);
+  return (
+    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+      {arr.map((child, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <div style={{ height: 1, background: "var(--border-subtle)", marginLeft: 60 }} />}
+          {child}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function SettingsRow({
+  icon, iconBg, label, hint, value, onClick, chevron = true,
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  iconColor?: string;
+  label: string;
+  hint?: string;
+  value?: string;
+  onClick?: () => void;
+  chevron?: boolean;
+}) {
+  return (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onMouseEnter={(e) => { if (onClick) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+      style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", cursor: onClick ? "pointer" : "default", transition: "background 0.15s" }}
+    >
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
+        {hint && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hint}</div>}
+      </div>
+      {(value || chevron) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {value && (
+            <span style={{ fontSize: 13, color: "var(--text-tertiary)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {value}
+            </span>
+          )}
+          {chevron && <IconChevronRight size={16} stroke={1.75} color="var(--text-tertiary)" style={{ opacity: 0.6 }} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BottomSheet({
+  open, onClose, title, children,
+}: {
+  open: boolean; onClose: () => void; title: string; children: React.ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 90, animation: "fadeIn 0.2s ease" }}
+      />
+      <div
+        style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 91,
+          background: "var(--bg-elevated)", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+          borderTop: "1px solid var(--border)", padding: "12px 18px 28px",
+          maxHeight: "85vh", overflowY: "auto",
+          animation: "sheetIn 0.25s cubic-bezier(0.32, 0.72, 0, 1)",
+          paddingBottom: "calc(28px + env(safe-area-inset-bottom))",
+        }}
+      >
+        <style>{`@keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } } @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+        <div style={{ width: 36, height: 4, background: "var(--border)", borderRadius: 2, margin: "4px auto 14px" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{title}</div>
+          <button onClick={onClose} aria-label="Cerrar" style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer", color: "var(--text-tertiary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <IconX size={20} stroke={1.75} />
+          </button>
+        </div>
+        <div>{children}</div>
+      </div>
+    </>
+  );
+}
+
+function SheetSaveButton({ onClick, loading }: { onClick: () => void; loading?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      style={{ marginTop: 18, width: "100%", background: "var(--accent-color)", color: "white", borderRadius: "var(--radius-pill)", padding: "12px 22px", fontSize: 14, fontWeight: 500, border: "none", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}
+    >
+      {loading ? "Guardando…" : "Guardar"}
+    </button>
   );
 }
 
