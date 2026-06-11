@@ -637,8 +637,8 @@ function Dashboard() {
           </div>
         </Block>
       )}
-
-
+      </>
+      )}
 
       {editingMeeting && (
         <EditMeetingModal
