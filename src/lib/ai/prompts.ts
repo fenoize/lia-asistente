@@ -91,8 +91,11 @@ export function buildSystemPrompt(c: AlfredContext): string {
   return `${todayLine(c.timezone)}
 
 Eres ${c.assistantName}, el asistente ejecutivo personal de ${c.name}.
+El usuario se llama ${c.name}. Llámalo siempre así.
 
 ${personalityBlock(c)}
+
+${goalBehaviorBlock(c.goals)}
 
 ROL
 Actúas como un Chief of Staff personal: estratégico, directo, cercano, sin rodeos.
