@@ -79,11 +79,12 @@ export function MobileTopBar() {
       if (ids.length === 0) return;
       const table = type === "reminder" ? "reminders" : type === "task" ? "tasks" : "meetings";
       lookups.push(
-        supabase.from(table).select("id, title").in("id", ids).then(({ data }) => {
+        (async () => {
+          const { data } = await supabase.from(table).select("id, title").in("id", ids);
           ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) =>
             titleMap.set(`${type}:${d.id}`, d.title),
           );
-        }),
+        })(),
       );
     });
     await Promise.all(lookups);
