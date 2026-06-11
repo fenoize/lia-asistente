@@ -327,6 +327,18 @@ function Dashboard() {
     }
   };
 
+  const toggleReminder = async (r: Reminder) => {
+    const next = !r.done;
+    setReminders((prev) =>
+      next ? prev.filter((x) => x.id !== r.id) : prev.map((x) => (x.id === r.id ? { ...x, done: false } : x)),
+    );
+    const { error } = await supabase.from("reminders").update({ done: next }).eq("id", r.id);
+    if (error) {
+      toast.error("No pude actualizar.");
+      setReminders((prev) => (next ? [...prev, r] : prev));
+    }
+  };
+
   const dateLabel = today
     .toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })
     .replace(/^\w/, (c) => c.toUpperCase());
