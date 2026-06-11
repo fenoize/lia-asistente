@@ -697,7 +697,7 @@ function AlfredBubble({
             {time}
           </div>
         )}
-        <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } }`}</style>
+        <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } } @keyframes alfredSkeleton { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }`}</style>
       </div>
     </div>
   );
