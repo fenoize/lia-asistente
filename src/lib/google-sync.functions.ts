@@ -22,7 +22,7 @@ function meetingToGoogleEvent(m: any, tz: string) {
         .map((a: any) => ({ email: a.email, displayName: a.name }))
     : undefined;
   const desc = [m.notes, m.link ? `Link: ${m.link}` : null].filter(Boolean).join("\n\n");
-  return {
+  const event: any = {
     summary: m.title,
     description: desc || undefined,
     location: m.location ?? undefined,
@@ -30,6 +30,17 @@ function meetingToGoogleEvent(m: any, tz: string) {
     end: { dateTime: end.toISOString(), timeZone: tz },
     attendees,
   };
+  // Request a Meet link only on first creation (no existing google_event_id and no link yet)
+  const wantsMeet = m.meeting_type === "video" && !m.link && !m.google_event_id;
+  if (wantsMeet) {
+    event.conferenceData = {
+      createRequest: {
+        requestId: m.id,
+        conferenceSolutionKey: { type: "hangoutsMeet" },
+      },
+    };
+  }
+  return event;
 }
 
 export const pushMeetingToGoogle = createServerFn({ method: "POST" })
@@ -63,28 +74,26 @@ export const pushMeetingToGoogle = createServerFn({ method: "POST" })
       if (meeting.google_event_id) {
         const updated = await gcalUpdateEvent(token, calendarId, meeting.google_event_id, event);
         if (updated) {
-          await context.supabase
-            .from("meetings")
-            .update({
-              google_etag: updated.etag ?? null,
-              last_synced_at: new Date().toISOString(),
-              sync_source: "app",
-            } as any)
-            .eq("id", meeting.id);
+          const patch: any = {
+            google_etag: updated.etag ?? null,
+            last_synced_at: new Date().toISOString(),
+            sync_source: "app",
+          };
+          if (updated.hangoutLink && !meeting.link) patch.link = updated.hangoutLink;
+          await context.supabase.from("meetings").update(patch).eq("id", meeting.id);
           return { ok: true, google_event_id: meeting.google_event_id };
         }
         // fall through to insert if not found
       }
       const created = await gcalInsertEvent(token, calendarId, event);
-      await context.supabase
-        .from("meetings")
-        .update({
-          google_event_id: created.id,
-          google_etag: created.etag ?? null,
-          last_synced_at: new Date().toISOString(),
-          sync_source: "app",
-        } as any)
-        .eq("id", meeting.id);
+      const patch: any = {
+        google_event_id: created.id,
+        google_etag: created.etag ?? null,
+        last_synced_at: new Date().toISOString(),
+        sync_source: "app",
+      };
+      if (created.hangoutLink) patch.link = created.hangoutLink;
+      await context.supabase.from("meetings").update(patch).eq("id", meeting.id);
       return { ok: true, google_event_id: created.id };
     } catch (err: any) {
       console.error("[pushMeetingToGoogle]", err?.message ?? err);
