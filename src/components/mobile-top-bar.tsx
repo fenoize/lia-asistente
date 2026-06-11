@@ -13,6 +13,8 @@ type NotificationItem = {
   entity_id: string;
   sent_at: string;
   title: string;
+  body: string | null;
+  read_at: string | null;
 };
 
 
@@ -27,6 +29,7 @@ const GROUP_META: Record<EntityType, { label: string; icon: typeof IconBell }> =
 };
 
 const CACHE_TTL_MS = 60_000;
+const POLL_MS = 60_000;
 const notificationsCache = new Map<string, { at: number; items: NotificationItem[] }>();
 
 export function MobileTopBar() {
@@ -51,39 +54,82 @@ export function MobileTopBar() {
 
     setLoading(true);
 
-    // Fire all queries in parallel from the start. The lookup tables are
-    // filtered by user_id (RLS would do this anyway) so the worst case is
-    // ~30 extra rows per table — cheaper than a second round trip.
-    const [logsRes, remindersRes, tasksRes, meetingsRes] = await Promise.all([
-      supabase
-        .from("notification_log")
-        .select("id, entity_type, entity_id, sent_at")
-        .eq("user_id", user.id)
-        .order("sent_at", { ascending: false })
-        .limit(30),
-      supabase.from("reminders").select("id, title").eq("user_id", user.id),
-      supabase.from("tasks").select("id, title").eq("user_id", user.id),
-      supabase.from("meetings").select("id, title").eq("user_id", user.id),
-    ]);
+    const logsRes = await supabase
+      .from("notification_log")
+      .select("id, entity_type, entity_id, sent_at, title, body, read_at")
+      .eq("user_id", user.id)
+      .order("sent_at", { ascending: false })
+      .limit(30);
 
-    const rows = (logsRes.data ?? []) as Array<{ id: string; entity_type: EntityType; entity_id: string; sent_at: string }>;
+    const rows = (logsRes.data ?? []) as Array<{
+      id: string; entity_type: EntityType; entity_id: string;
+      sent_at: string; title: string | null; body: string | null; read_at: string | null;
+    }>;
+
+    // Resolve missing titles (legacy rows) by joining live entity tables
+    const missingByType: Record<EntityType, string[]> = { reminder: [], task: [], meeting: [] };
+    for (const r of rows) {
+      if (!r.title) missingByType[r.entity_type].push(r.entity_id);
+    }
+
     const titleMap = new Map<string, string>();
-    ((remindersRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`reminder:${d.id}`, d.title));
-    ((tasksRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`task:${d.id}`, d.title));
-    ((meetingsRes.data ?? []) as Array<{ id: string; title: string }>).forEach((d) => titleMap.set(`meeting:${d.id}`, d.title));
+    const lookups: Promise<unknown>[] = [];
+    (Object.keys(missingByType) as EntityType[]).forEach((type) => {
+      const ids = missingByType[type];
+      if (ids.length === 0) return;
+      const table = type === "reminder" ? "reminders" : type === "task" ? "tasks" : "meetings";
+      lookups.push(
+        supabase.from(table).select("id, title").in("id", ids).then(({ data }) => {
+          ((data ?? []) as Array<{ id: string; title: string }>).forEach((d) =>
+            titleMap.set(`${type}:${d.id}`, d.title),
+          );
+        }),
+      );
+    });
+    await Promise.all(lookups);
 
     const enriched: NotificationItem[] = rows.map((r) => ({
       id: r.id,
       entity_type: r.entity_type,
       entity_id: r.entity_id,
       sent_at: r.sent_at,
-      title: titleMap.get(`${r.entity_type}:${r.entity_id}`) ?? "(elemento eliminado)",
+      title: r.title || titleMap.get(`${r.entity_type}:${r.entity_id}`) || "(elemento eliminado)",
+      body: r.body,
+      read_at: r.read_at,
     }));
 
     notificationsCache.set(user.id, { at: Date.now(), items: enriched });
     setItems(enriched);
     setLoading(false);
   };
+
+  // Poll for unread changes so the badge updates without manual refresh.
+  useEffect(() => {
+    if (!user) return;
+    void load(true);
+    const t = setInterval(() => void load(true), POLL_MS);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Mark all unread as read shortly after opening the panel.
+  useEffect(() => {
+    if (!open || !user) return;
+    const unreadIds = items.filter((i) => !i.read_at).map((i) => i.id);
+    if (unreadIds.length === 0) return;
+    const t = setTimeout(async () => {
+      const nowIso = new Date().toISOString();
+      await supabase.from("notification_log").update({ read_at: nowIso }).in("id", unreadIds);
+      setItems((prev) => prev.map((i) => (unreadIds.includes(i.id) ? { ...i, read_at: nowIso } : i)));
+      notificationsCache.delete(user.id);
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const unreadCount = items.filter((i) => !i.read_at).length;
+
+
 
 
 
