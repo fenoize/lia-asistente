@@ -298,12 +298,14 @@ export function MobileTopBar() {
                           {Meta.label}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {list.map((n) => (
+                          {list.map((n) => {
+                            const unread = !n.read_at;
+                            return (
                             <div
                               key={n.id}
                               style={{
-                                background: "#181818",
-                                border: "1px solid #1e1e1e",
+                                background: unread ? "#1d1d27" : "#181818",
+                                border: `1px solid ${unread ? "rgba(99,102,241,0.35)" : "#1e1e1e"}`,
                                 borderRadius: 12,
                                 padding: "12px 14px",
                                 display: "flex",
@@ -315,20 +317,33 @@ export function MobileTopBar() {
                                 width: 32, height: 32, borderRadius: 8,
                                 background: "#1f1f1f", display: "flex",
                                 alignItems: "center", justifyContent: "center",
-                                color: "#a5a5f5", flexShrink: 0,
+                                color: "#a5a5f5", flexShrink: 0, position: "relative",
                               }}>
                                 <Icon size={16} stroke={1.75} />
+                                {unread && (
+                                  <span style={{
+                                    position: "absolute", top: -2, right: -2,
+                                    width: 8, height: 8, borderRadius: "50%",
+                                    background: "#6366f1", border: "2px solid #181818",
+                                  }} />
+                                )}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: 500, wordBreak: "break-word" }}>
+                                <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: unread ? 600 : 500, wordBreak: "break-word" }}>
                                   {n.title}
                                 </div>
+                                {n.body && (
+                                  <div style={{ fontSize: 12, color: "#888", marginTop: 2, wordBreak: "break-word" }}>
+                                    {n.body}
+                                  </div>
+                                )}
                                 <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>
                                   {formatWhen(n.sent_at)}
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
