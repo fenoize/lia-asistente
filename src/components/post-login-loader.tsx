@@ -128,8 +128,6 @@ export function PostLoginLoader({ userId, onDone }: { userId: string; onDone: ()
           @keyframes pll-shine2{from{stroke-dashoffset:600;}to{stroke-dashoffset:-600;}}
           @keyframes pll-shine-cross{from{stroke-dashoffset:500;}to{stroke-dashoffset:-500;}}
           @keyframes pll-pulse-dot{0%,100%{r:12.3;opacity:.7;}50%{r:15.5;opacity:1;}}
-          @keyframes pll-bar-breathe{0%,100%{opacity:.25;}50%{opacity:.7;}}
-          @keyframes pll-bar-shimmer{0%{transform:translateX(-80px);}100%{transform:translateX(100vw);}}
         `}</style>
         <path d="M199.7,200.03s-40.72-56.45-84.86-56.45-72.49,56.45-72.49,56.45c0,0,26.1,56.31,70.88,56.31s86.47-56.31,86.47-56.31Z" fill="none" stroke="#818cf8" strokeWidth="9" strokeMiterlimit="10" opacity="0.3" />
         <path d="M200.04,200.09s40.72-56.45,84.86-56.45c44.14,0,72.49,56.45,72.49,56.45,0,0-26.1,56.31-70.88,56.31s-86.47-56.31-86.47-56.31Z" fill="none" stroke="#818cf8" strokeWidth="9" strokeMiterlimit="10" opacity="0.3" />
