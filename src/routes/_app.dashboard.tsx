@@ -29,6 +29,7 @@ import {
   ActiveProjectsWidget,
   FinanceSnapshotWidget,
 } from "@/components/dashboard/intelligent-widgets";
+import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -79,6 +80,7 @@ function Dashboard() {
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
   const prefetch = usePrefetchStore();
+  const { blocks } = useDashboardBlocks();
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -370,6 +372,7 @@ function Dashboard() {
       </header>
 
       {/* 1. Resumen de LIA */}
+      {blocks.brief && (
       <section
         style={{
           background: "#111111",
@@ -435,14 +438,17 @@ function Dashboard() {
           </p>
         )}
       </section>
+      )}
 
       {/* Priority actions (smart ranking) */}
+      {blocks.priority && (
       <PriorityActionsWidget
         tasks={tasks}
         reminders={reminders}
         meetings={meetings}
         projectMap={projectMap}
       />
+      )}
 
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
@@ -474,6 +480,7 @@ function Dashboard() {
       })}
 
       {/* 2. Requiere atención */}
+      {blocks.attention && (
       <Block label="REQUIERE ATENCIÓN">
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <AttentionMiniCard
@@ -514,10 +521,11 @@ function Dashboard() {
           />
         </div>
       </Block>
+      )}
 
 
       {/* 3. Recordatorios y eventos (combinado) */}
-      {timeline.length > 0 && (
+      {blocks.timeline && timeline.length > 0 && (
         <Block label="RECORDATORIOS Y EVENTOS">
           <div className="space-y-2">
             {timeline.map((item) =>
@@ -552,7 +560,7 @@ function Dashboard() {
       )}
 
       {/* 4. Tareas del día */}
-      {(pendingTodayTasks.length > 0 || doneTodayTasks.length > 0) && (
+      {blocks.tasks && (pendingTodayTasks.length > 0 || doneTodayTasks.length > 0) && (
         <Block label="TAREAS DEL DÍA">
           <div
             style={{
@@ -610,9 +618,9 @@ function Dashboard() {
       {/* Intelligent widgets */}
       {user && (
         <>
-          <ActiveProjectsWidget userId={user.id} />
-          <WeeklyInsightsWidget userId={user.id} />
-          <FinanceSnapshotWidget userId={user.id} />
+          {blocks.projects && <ActiveProjectsWidget userId={user.id} />}
+          {blocks.weekly && <WeeklyInsightsWidget userId={user.id} />}
+          {blocks.finance && <FinanceSnapshotWidget userId={user.id} />}
         </>
       )}
 

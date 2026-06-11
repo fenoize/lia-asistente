@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar, IconLayoutDashboard } from "@tabler/icons-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
+import { useDashboardBlocks, DASHBOARD_BLOCKS } from "@/hooks/use-dashboard-blocks";
 import { startGoogleOAuth, getGoogleStatus, disconnectGoogle } from "@/lib/google-oauth.functions";
 import { pullGoogleEvents } from "@/lib/google-sync.functions";
 
@@ -503,10 +504,12 @@ function SettingsPage() {
           {savingSchedule ? "Guardando…" : "Guardar"}
         </button>
       </section>
+      <DashboardBlocksSection />
 
       <PushNotificationsSettings />
 
       <GoogleCalendarSection />
+
 
 
 
@@ -689,6 +692,87 @@ function SettingsPage() {
 
       <AboutSection />
     </div>
+  );
+}
+
+function DashboardBlocksSection() {
+  const { blocks, toggle, loading } = useDashboardBlocks();
+  return (
+    <section
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+        padding: 24,
+        marginTop: 24,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <IconLayoutDashboard size={14} color="var(--text-tertiary)" stroke={1.75} />
+        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+          Personalización de Inicio
+        </div>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
+        Elige qué bloques mostrar en tu dashboard.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {DASHBOARD_BLOCKS.map((b, idx) => {
+          const on = blocks[b.key];
+          return (
+            <div
+              key={b.key}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                padding: "12px 0",
+                borderTop: idx === 0 ? "none" : "1px solid var(--border-subtle)",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+                  {b.label}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+                  {b.description}
+                </div>
+              </div>
+              <button
+                onClick={() => toggle(b.key)}
+                disabled={loading}
+                aria-pressed={on}
+                aria-label={`Mostrar ${b.label}`}
+                style={{
+                  width: 44,
+                  height: 26,
+                  borderRadius: 100,
+                  background: on ? "var(--accent-color)" : "var(--border)",
+                  position: "relative",
+                  transition: "background 0.2s",
+                  flexShrink: 0,
+                  opacity: loading ? 0.5 : 1,
+                  cursor: loading ? "not-allowed" : "pointer",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 3,
+                    left: on ? 21 : 3,
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    background: "white",
+                    transition: "left 0.2s",
+                  }}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
