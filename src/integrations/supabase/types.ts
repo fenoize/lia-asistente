@@ -443,39 +443,66 @@ export type Database = {
       }
       meetings: {
         Row: {
+          action_items: Json
+          analyzed_at: string | null
+          attendees: Json
           created_at: string | null
           datetime: string
           duration_minutes: number | null
           id: string
+          link: string | null
           location: string | null
+          meeting_type: string | null
           notes: string | null
           preparation_needed: boolean | null
           project_id: string | null
+          status: string
+          summary: string | null
           title: string
+          transcript: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
+          action_items?: Json
+          analyzed_at?: string | null
+          attendees?: Json
           created_at?: string | null
           datetime: string
           duration_minutes?: number | null
           id?: string
+          link?: string | null
           location?: string | null
+          meeting_type?: string | null
           notes?: string | null
           preparation_needed?: boolean | null
           project_id?: string | null
+          status?: string
+          summary?: string | null
           title: string
+          transcript?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
+          action_items?: Json
+          analyzed_at?: string | null
+          attendees?: Json
           created_at?: string | null
           datetime?: string
           duration_minutes?: number | null
           id?: string
+          link?: string | null
           location?: string | null
+          meeting_type?: string | null
           notes?: string | null
           preparation_needed?: boolean | null
           project_id?: string | null
+          status?: string
+          summary?: string | null
           title?: string
+          transcript?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
