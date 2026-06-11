@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar } from "@tabler/icons-react";
+import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
+import { startGoogleOAuth, getGoogleStatus, disconnectGoogle } from "@/lib/google-oauth.functions";
+import { pullGoogleEvents } from "@/lib/google-sync.functions";
 
 export const Route = createFileRoute("/_app/settings")({
   component: SettingsPage,
@@ -502,6 +505,10 @@ function SettingsPage() {
       </section>
 
       <PushNotificationsSettings />
+
+      <GoogleCalendarSection />
+
+
 
 
       <section
