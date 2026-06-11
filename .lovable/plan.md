@@ -1,43 +1,37 @@
-## 1. Inicio — Sección "Recordatorios y eventos"
+# Fase 1 — Arranque y splash
 
-Archivo: `src/routes/_app.dashboard.tsx`
+Anotado todo:
+- Asistentes pre-cargados desde contacto/proyecto vinculado, editables (Fase 9).
+- Integraciones siempre desde Configuración → subcategoría "Integraciones" (Fase 10+).
+- Scopes Google los detallo cuando entremos a Fase 10.
 
-- Ya existe un bloque `timeline` (reminders + upcomingMeetings combinados) renderizado entre "Requiere atención" y "Tareas del día". Lo voy a reusar / renombrar.
-- Cambios:
-  - Cambiar la consulta de `reminders` para traer también recordatorios `done=false` de hoy aunque ya hayan vencido (hoy ya filtra por rango del día — verificar que incluya los vencidos del día; los pasados de días anteriores no se incluyen, que es lo correcto).
-  - Reordenar `timeline`: primero todos los recordatorios de hoy ordenados por hora, después todos los eventos/reuniones ordenados por hora (no intercalados).
-  - Si un recordatorio tiene `datetime < now`, mostrar un badge rojo "vencido" junto al título.
-  - Envolver toda la sección en `{ (reminders.length + upcomingMeetings.length) > 0 && ... }` con label `RECORDATORIOS Y EVENTOS`. Si está vacío, no renderizar nada (sin label, sin espacio).
-  - Mantener el estilo oscuro existente (mismos tokens / mismas cards que ya usa el timeline actual).
+## Cambios
 
-No se tocan: tarjetas de tareas (folder+proyecto), mini-cards de atención, resumen LIA.
+### BUG-033 — Flash de login al abrir PWA
+Causa real: `useAuth` ya tiene `loading`, pero `routes/login.tsx` no lo respeta y renderiza el formulario antes de que Supabase resuelva la sesión. Si hay sesión, debería redirigir a `/dashboard` directamente.
 
-## 2. Inicio — Nombres de tareas sin truncar
+**Fix:**
+- En `src/routes/login.tsx`: mientras `loading === true`, renderizar `<LiaSplash />` en vez del formulario. Si `session` existe, `navigate({ to: "/dashboard", replace: true })`.
+- En `src/routes/index.tsx`: aplicar la misma lógica (splash mientras loading, redirect a dashboard si hay sesión, a login si no) para que la raíz no parpadee.
+- `_app.tsx` ya muestra `<LiaSplash />` mientras `loading || !authGateReady` — se queda igual.
 
-Archivo: `src/routes/_app.dashboard.tsx` (componente `TaskRow`)
+Resultado: al abrir la PWA con sesión activa, el usuario ve splash → dashboard (sin pasar por login).
 
-- Quitar `truncate` / `whitespace-nowrap` / `text-overflow: ellipsis` del título de la tarea.
-- Permitir wrap a 2+ líneas (`whiteSpace: normal`, `wordBreak: break-word`).
-- No tocar tamaño de fuente, ícono de folder/proyecto, assignee, checkbox ni el resto del layout.
+### BUG-035 — Squircle de fondo en el SVG
+En `src/components/lia-logo.tsx` existe `<rect ... fill={rectFill} />` que pinta el fondo redondeado oscuro detrás del logo.
 
-## 3. Chat — Scroll solo vertical
+**Fix:**
+- Agregar prop `showBackground?: boolean` (default `true` para no romper otros usos como sidebar).
+- En `src/components/lia-splash.tsx`: pasar `showBackground={false}` para que solo se vean los trazos sobre `#08081a`.
+- Revisar `post-login-loader.tsx` y aplicar lo mismo si usa `LiaLogo`.
 
-Archivo: `src/components/alfred/chat-interface.tsx` (y CSS si hace falta en `src/styles.css`).
+## Archivos a tocar
+- `src/components/lia-logo.tsx` — añadir prop `showBackground`.
+- `src/components/lia-splash.tsx` — usar `showBackground={false}`.
+- `src/components/post-login-loader.tsx` — verificar y aplicar.
+- `src/routes/login.tsx` — guard de `loading` + redirect si hay sesión.
+- `src/routes/index.tsx` — guard de `loading` + redirect según sesión.
 
-- En el contenedor scroll del chat: añadir `overflow-x: hidden` y `max-width: 100%`.
-- En los bubbles/mensajes: aplicar `max-width: 100%`, `word-break: break-word`, `overflow-wrap: anywhere` para que URLs largas / código inline no rompan el layout horizontalmente.
-- Revisar bloques de markdown / `pre`/`code` y agregarles `overflow-x: auto` propio (scroll interno) en vez de empujar el ancho de la pantalla.
-- Verificar el input `MentionInput` y la lista de mensajes — sin alterar la lógica del chat.
+Sin migraciones, sin nuevas dependencias. Cambios de bajo riesgo.
 
-## 4. Toasts arriba (global)
-
-Archivo: `src/components/ui/sonner.tsx`
-
-- Ya está configurado con `position="top-center"`. Voy a confirmar por inspección si el Toaster está montado una sola vez (en `__root.tsx` o `_app.tsx`). Si hay un segundo `<Toaster />` con default `bottom-right`, lo elimino o le paso `position="top-center"`.
-- Resultado: todos los `toast(...)` aparecen arriba, no tapan los botones de acción.
-
----
-
-### Notas técnicas
-- Plan limitado a frontend/presentation. No toco esquema, queries de otros módulos, ni lógica de acciones del chat.
-- Sin nuevas dependencias.
+Confirma para arrancar.
