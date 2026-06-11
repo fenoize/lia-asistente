@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconMapPin, IconVideo, IconBolt } from "@tabler/icons-react";
-import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
+import { IconPlus, IconMapPin, IconVideo, IconPhone, IconBolt, IconUsers } from "@tabler/icons-react";
+import { EditMeetingModal, type Attendee, type ActionItem } from "@/components/meetings/edit-meeting-modal";
 import { detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/meetings")({
@@ -16,12 +16,25 @@ type Meeting = {
   datetime: string;
   duration_minutes: number | null;
   location: string | null;
+  link: string | null;
   notes: string | null;
   preparation_needed: boolean | null;
   project_id: string | null;
+  meeting_type: string | null;
+  status: string | null;
+  attendees: Attendee[] | null;
+  summary: string | null;
+  action_items: ActionItem[] | null;
 };
 
-type ProjectOption = { id: string; name: string };
+type ProjectOption = { id: string; name: string; client_id: string | null };
+type ContactOption = { id: string; name: string; email: string | null };
+
+const STATUS_FILTERS = [
+  { value: "all", label: "Todas" },
+  { value: "scheduled", label: "Programadas" },
+  { value: "done", label: "Finalizadas" },
+];
 
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
