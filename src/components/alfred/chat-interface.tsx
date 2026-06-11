@@ -659,22 +659,29 @@ function AlfredBubble({
           }}
         >
           {text || streaming ? (
-            <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
-              {text ? <ReactMarkdown>{text}</ReactMarkdown> : null}
-              {streaming && (
-                <span
-                  className="inline-block ml-0.5 align-baseline"
-                  style={{
-                    width: 7,
-                    height: 14,
-                    background: "var(--accent-color)",
-                    animation: "alfredBlinkChat 1s step-end infinite",
-                    verticalAlign: "-2px",
-                  }}
-                />
-              )}
-            </div>
-
+            text ? (
+              <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
+                <ReactMarkdown>{text}</ReactMarkdown>
+                {streaming && (
+                  <span
+                    className="inline-block ml-0.5 align-baseline"
+                    style={{
+                      width: 7,
+                      height: 14,
+                      background: "var(--accent-color)",
+                      animation: "alfredBlinkChat 1s step-end infinite",
+                      verticalAlign: "-2px",
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 py-1" aria-label="Escribiendo…">
+                <div className="h-3 rounded" style={{ width: "85%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite" }} />
+                <div className="h-3 rounded" style={{ width: "65%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.15s" }} />
+                <div className="h-3 rounded" style={{ width: "40%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.3s" }} />
+              </div>
+            )
           ) : null}
         </div>
         {action && (
