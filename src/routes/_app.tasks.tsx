@@ -3,11 +3,28 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconTrash, IconCheck, IconLayoutGrid, IconTable } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconTrash,
+  IconCheck,
+  IconLayoutGrid,
+  IconTable,
+  IconTimeline,
+} from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
+import {
+  addDays,
+  subDays,
+  differenceInDays,
+  parseISO,
+  startOfDay,
+  format,
+  isSameDay,
+} from "date-fns";
+import { es } from "date-fns/locale";
 
-type ViewMode = "cards" | "table";
+type ViewMode = "cards" | "table" | "gantt";
 
 export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
@@ -27,15 +44,8 @@ type Task = {
 
 type ProjectOption = { id: string; name: string };
 
-type Filter = "all" | "urgent" | "today" | "week" | "done";
-
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: "all", label: "Todas" },
-  { id: "urgent", label: "Urgente" },
-  { id: "today", label: "Hoy" },
-  { id: "week", label: "Esta semana" },
-  { id: "done", label: "Completadas" },
-];
+type FilterStatus = "all" | "borrador" | "en_curso" | "listo";
+type FilterDate = "all" | "day" | "week" | "month";
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
   borrador: { label: "Borrador", color: "#9ca3af", bg: "rgba(156,163,175,0.12)", border: "rgba(156,163,175,0.3)" },
@@ -43,15 +53,12 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string; bo
   listo: { label: "Listo", color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.35)" },
 };
 
-const startOfToday = () => {
-  const d = new Date(); d.setHours(0, 0, 0, 0); return d;
-};
-const endOfToday = () => {
-  const d = new Date(); d.setHours(23, 59, 59, 999); return d;
-};
-const endOfWeek = () => {
-  const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(23, 59, 59, 999); return d;
-};
+const PROJECT_COLORS = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ec4899","#8b5cf6","#14b8a6","#f97316"];
+function projectColor(name: string) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return PROJECT_COLORS[h % PROJECT_COLORS.length];
+}
 
 function openCapture() {
   window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
@@ -62,7 +69,9 @@ function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [filterDate, setFilterDate] = useState<FilterDate>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [editing, setEditing] = useState<Task | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window === "undefined") return "cards";
@@ -89,36 +98,59 @@ function TasksPage() {
     })();
   }, [user]);
 
-  const filtered = useMemo(() => {
-    return tasks.filter((t) => {
-      if (filter === "done") return t.status === "listo";
-      if (t.status === "listo") return false;
-      if (filter === "urgent") return t.priority === "high" || t.priority === "urgent";
-      if (filter === "today") {
-        if (!t.due_date) return false;
-        const d = new Date(t.due_date);
-        return d <= endOfToday() && d >= startOfToday();
+  const projectMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projects) m.set(p.id, p.name);
+    return m;
+  }, [projects]);
+
+  // Unique projects from the loaded tasks
+  const taskProjects = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const t of tasks) {
+      if (t.project_id) {
+        const name = projectMap.get(t.project_id) ?? t.project ?? "Proyecto";
+        if (!seen.has(t.project_id)) seen.set(t.project_id, name);
       }
-      if (filter === "week") {
-        if (!t.due_date) return false;
-        const d = new Date(t.due_date);
-        return d <= endOfWeek();
-      }
-      return true;
-    });
-  }, [tasks, filter]);
+    }
+    return Array.from(seen, ([id, name]) => ({ id, name }));
+  }, [tasks, projectMap]);
+
+  const filteredTasks = useMemo(() => {
+    let filtered = tasks;
+    if (filterStatus !== "all") filtered = filtered.filter((t) => t.status === filterStatus);
+    if (filterProject !== "all") filtered = filtered.filter((t) => t.project_id === filterProject);
+    if (filterDate !== "all") {
+      const now = startOfDay(new Date());
+      filtered = filtered.filter((t) => {
+        const start = t.start_date ? parseISO(t.start_date) : t.due_date ? parseISO(t.due_date) : null;
+        const end = t.due_date ? parseISO(t.due_date) : start;
+        if (!start || !end) return false;
+        if (filterDate === "day") return start <= now && end >= now;
+        if (filterDate === "week") return start <= addDays(now, 7) && end >= now;
+        if (filterDate === "month") return start <= addDays(now, 30) && end >= now;
+        return true;
+      });
+    }
+    return filtered;
+  }, [tasks, filterStatus, filterProject, filterDate]);
 
   const groups = useMemo(() => {
+    const endOfWeek = addDays(startOfDay(new Date()), 7);
     const urgent: Task[] = [], week: Task[] = [], later: Task[] = [];
-    for (const t of filtered) {
+    for (const t of filteredTasks) {
+      if (t.status === "listo" && filterStatus === "all") {
+        later.push(t);
+        continue;
+      }
       if (t.priority === "high" || t.priority === "urgent") { urgent.push(t); continue; }
       if (!t.due_date) { later.push(t); continue; }
       const d = new Date(t.due_date);
-      if (d <= endOfWeek()) week.push(t);
+      if (d <= endOfWeek) week.push(t);
       else later.push(t);
     }
     return { urgent, week, later };
-  }, [filtered]);
+  }, [filteredTasks, filterStatus]);
 
   const toggle = async (t: Task) => {
     const status = t.status === "listo" ? "borrador" : "listo";
@@ -185,38 +217,83 @@ function TasksPage() {
         </button>
       </header>
 
-      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
-        <div className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => {
-            const active = filter === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                style={{
-                  fontSize: 12,
-                  padding: "6px 16px",
-                  borderRadius: 100,
-                  border: active ? "1px solid rgba(99,102,241,0.3)" : "1px solid #222",
-                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                  color: active ? "#818cf8" : "#555",
-                  transition: "color 0.15s, border-color 0.15s",
-                }}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Filters bar */}
+      <div
+        className="mb-4 overflow-x-auto"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          paddingBottom: 6,
+          scrollbarWidth: "thin",
+        }}
+      >
+        {/* Estado */}
+        <FilterChip
+          active={filterStatus === "all"}
+          onClick={() => setFilterStatus("all")}
+          label="Todos"
+        />
+        {(["borrador", "en_curso", "listo"] as const).map((s) => (
+          <FilterChip
+            key={s}
+            active={filterStatus === s}
+            onClick={() => setFilterStatus(s)}
+            label={STATUS_META[s].label}
+            dotColor={STATUS_META[s].color}
+            activeColor={STATUS_META[s].color}
+          />
+        ))}
+        <Divider />
+        {/* Fecha */}
+        {([
+          { id: "all", label: "Siempre" },
+          { id: "day", label: "Hoy" },
+          { id: "week", label: "Semana" },
+          { id: "month", label: "Mes" },
+        ] as const).map((d) => (
+          <FilterChip
+            key={d.id}
+            active={filterDate === d.id}
+            onClick={() => setFilterDate(d.id)}
+            label={d.label}
+          />
+        ))}
+        {taskProjects.length > 0 && <Divider />}
+        {/* Proyecto */}
+        {taskProjects.length > 0 && (
+          <FilterChip
+            active={filterProject === "all"}
+            onClick={() => setFilterProject("all")}
+            label="Todos"
+          />
+        )}
+        {taskProjects.map((p) => {
+          const col = projectColor(p.name);
+          return (
+            <FilterChip
+              key={p.id}
+              active={filterProject === p.id}
+              onClick={() => setFilterProject(p.id)}
+              label={p.name}
+              dotColor={col}
+              activeColor={col}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-end mb-6 gap-3 flex-wrap">
         <div className="flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
-          {(["cards", "table"] as const).map((v) => {
+          {(["cards", "table", "gantt"] as const).map((v) => {
             const active = view === v;
-            const Icon = v === "cards" ? IconLayoutGrid : IconTable;
+            const Icon = v === "cards" ? IconLayoutGrid : v === "table" ? IconTable : IconTimeline;
+            const label = v === "cards" ? "Cards" : v === "table" ? "Tabla" : "Gantt";
             return (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                aria-label={v === "cards" ? "Vista cards" : "Vista tabla"}
+                aria-label={`Vista ${label}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -230,7 +307,7 @@ function TasksPage() {
                 }}
               >
                 <Icon size={13} />
-                {v === "cards" ? "Cards" : "Tabla"}
+                {label}
               </button>
             );
           })}
@@ -239,16 +316,18 @@ function TasksPage() {
 
       {loading ? (
         <SkeletonList />
-      ) : filtered.length === 0 ? (
+      ) : filteredTasks.length === 0 ? (
         <Empty title="Cero tareas en esta lista." subtitle="Capturalas con ⌘K o el botón Nueva tarea." />
       ) : view === "table" ? (
         <TaskTable
-          tasks={filtered}
+          tasks={filteredTasks}
           projects={projects}
           onOpen={(t) => setEditing(t)}
           onPatch={patchInline}
           onRemove={remove}
         />
+      ) : view === "gantt" ? (
+        <GanttView tasks={filteredTasks} projectMap={projectMap} onOpen={(t) => setEditing(t)} />
       ) : (
         <div className="space-y-6">
           {(["urgent", "week", "later"] as const).map((g) => {
@@ -295,6 +374,69 @@ function TasksPage() {
         />
       )}
     </div>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+  dotColor,
+  activeColor,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  dotColor?: string;
+  activeColor?: string;
+}) {
+  const accent = activeColor ?? "#818cf8";
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 12,
+        padding: "6px 14px",
+        borderRadius: 100,
+        whiteSpace: "nowrap",
+        border: active ? `1px solid ${accent}66` : "1px solid #222",
+        background: active ? `${accent}22` : "transparent",
+        color: active ? accent : "#666",
+        transition: "all 0.15s",
+        flexShrink: 0,
+      }}
+    >
+      {dotColor && (
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: dotColor,
+            display: "inline-block",
+          }}
+        />
+      )}
+      {label}
+    </button>
+  );
+}
+
+function Divider() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 1,
+        height: 18,
+        background: "#222",
+        flexShrink: 0,
+        margin: "0 4px",
+      }}
+    />
   );
 }
 
@@ -652,3 +794,314 @@ const inlineSelect: React.CSSProperties = {
   padding: "3px 8px",
   colorScheme: "dark",
 };
+
+/* -------------------- Gantt View -------------------- */
+
+const DAY_W = 36;
+const LEFT_W = 140;
+const GANTT_DAYS = 28;
+
+const GANTT_COLORS = {
+  borrador: { bg: "rgba(148,163,184,0.15)", border: "rgba(148,163,184,0.3)", text: "#94a3b8" },
+  en_curso: { bg: "rgba(139,92,246,0.2)", border: "rgba(139,92,246,0.4)", text: "#a78bfa" },
+  listo: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", text: "#4ade80" },
+  overdue: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", text: "#f87171" },
+};
+
+function GanttView({
+  tasks,
+  projectMap,
+  onOpen,
+}: {
+  tasks: Task[];
+  projectMap: Map<string, string>;
+  onOpen: (t: Task) => void;
+}) {
+  const ganttStart = useMemo(() => subDays(startOfDay(new Date()), 5), []);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const days = useMemo(
+    () => Array.from({ length: GANTT_DAYS }, (_, i) => addDays(ganttStart, i)),
+    [ganttStart],
+  );
+
+  const { dated, undated } = useMemo(() => {
+    const dated: Task[] = [];
+    const undated: Task[] = [];
+    for (const t of tasks) {
+      if (t.start_date || t.due_date) dated.push(t);
+      else undated.push(t);
+    }
+    return { dated, undated };
+  }, [tasks]);
+
+  const totalWidth = LEFT_W + GANTT_DAYS * DAY_W;
+
+  return (
+    <div
+      style={{
+        border: "1px solid #1e1e1e",
+        borderRadius: 12,
+        background: "#0a0a0a",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: totalWidth, position: "relative" }}>
+          {/* Header */}
+          <div
+            style={{
+              display: "flex",
+              borderBottom: "1px solid #1e1e1e",
+              position: "sticky",
+              top: 0,
+              background: "#0a0a0a",
+              zIndex: 5,
+            }}
+          >
+            <div
+              style={{
+                width: LEFT_W,
+                flexShrink: 0,
+                position: "sticky",
+                left: 0,
+                background: "#0a0a0a",
+                zIndex: 6,
+                padding: "10px 12px",
+                fontSize: 11,
+                color: "#666",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                borderRight: "1px solid #1e1e1e",
+              }}
+            >
+              Tarea
+            </div>
+            {days.map((d, i) => {
+              const isToday = isSameDay(d, today);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    width: DAY_W,
+                    flexShrink: 0,
+                    textAlign: "center",
+                    padding: "6px 0",
+                    fontSize: 10,
+                    color: isToday ? "#818cf8" : "#666",
+                    borderRight: "1px solid #141414",
+                  }}
+                >
+                  <div style={{ fontWeight: 600, fontSize: 12 }}>{format(d, "d")}</div>
+                  <div style={{ textTransform: "uppercase" }}>
+                    {format(d, "EEE", { locale: es }).slice(0, 3)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Rows */}
+          <div style={{ position: "relative" }}>
+            {/* Today vertical indicator */}
+            {(() => {
+              const offset = differenceInDays(today, ganttStart);
+              if (offset < 0 || offset >= GANTT_DAYS) return null;
+              return (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: LEFT_W + offset * DAY_W + DAY_W / 2,
+                    width: 1,
+                    background: "rgba(99,102,241,0.4)",
+                    zIndex: 1,
+                    pointerEvents: "none",
+                  }}
+                />
+              );
+            })()}
+
+            {dated.length === 0 && (
+              <div style={{ padding: 24, color: "#555", fontSize: 13, textAlign: "center" }}>
+                Sin tareas con fechas para mostrar.
+              </div>
+            )}
+
+            {dated.map((t) => {
+              const startISO = t.start_date ?? t.due_date!;
+              const endISO = t.due_date ?? t.start_date!;
+              const taskStart = startOfDay(parseISO(startISO));
+              const taskEnd = startOfDay(parseISO(endISO));
+              const barStartOffset = differenceInDays(taskStart, ganttStart);
+              const barDays = Math.max(differenceInDays(taskEnd, taskStart) + 1, 1);
+              const barLeft = LEFT_W + barStartOffset * DAY_W;
+              const barWidth = barDays * DAY_W - 4;
+
+              const overdue = t.status !== "listo" && t.due_date && parseISO(t.due_date) < today;
+              const c = overdue
+                ? GANTT_COLORS.overdue
+                : GANTT_COLORS[(t.status as keyof typeof GANTT_COLORS)] ?? GANTT_COLORS.borrador;
+
+              const projName = t.project_id ? projectMap.get(t.project_id) : null;
+
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    position: "relative",
+                    height: 36,
+                    borderBottom: "1px solid #141414",
+                    display: "flex",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: LEFT_W,
+                      flexShrink: 0,
+                      position: "sticky",
+                      left: 0,
+                      background: "#0a0a0a",
+                      zIndex: 4,
+                      padding: "6px 12px",
+                      borderRight: "1px solid #1e1e1e",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#ccc",
+                        whiteSpace: "nowrap",
+                        textOverflow: "ellipsis",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {t.title}
+                    </div>
+                    {projName && (
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "#555",
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {projName}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => onOpen(t)}
+                    title={t.title}
+                    style={{
+                      position: "absolute",
+                      top: 7,
+                      left: Math.max(barLeft, LEFT_W + 2),
+                      width: Math.max(
+                        barWidth - Math.max(0, LEFT_W + 2 - barLeft),
+                        24,
+                      ),
+                      height: 22,
+                      borderRadius: 8,
+                      background: c.bg,
+                      border: `1px solid ${c.border}`,
+                      color: c.text,
+                      fontSize: 11,
+                      padding: "0 8px",
+                      textAlign: "left",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      cursor: "pointer",
+                      zIndex: 2,
+                    }}
+                  >
+                    {t.title}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {undated.length > 0 && (
+        <div style={{ borderTop: "1px solid #1e1e1e", padding: "12px 16px" }}>
+          <div
+            style={{
+              fontSize: 11,
+              color: "#666",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginBottom: 8,
+            }}
+          >
+            Sin fecha asignada
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {undated.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onOpen(t)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
+                  padding: "4px 10px",
+                  borderRadius: 100,
+                  border: "1px solid #1e1e1e",
+                  background: "#0d0d0d",
+                  color: "#ccc",
+                  cursor: "pointer",
+                }}
+              >
+                {t.title}
+                <StatusBadge status={t.status} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      <div
+        style={{
+          borderTop: "1px solid #1e1e1e",
+          padding: "10px 16px",
+          display: "flex",
+          gap: 16,
+          flexWrap: "wrap",
+          fontSize: 11,
+          color: "#666",
+        }}
+      >
+        <LegendDot color="#a78bfa" label="En curso" />
+        <LegendDot color="#94a3b8" label="Borrador" />
+        <LegendDot color="#4ade80" label="Listo" />
+        <LegendDot color="#f87171" label="Atrasada" />
+      </div>
+    </div>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: color,
+          display: "inline-block",
+        }}
+      />
+      {label}
+    </span>
+  );
+}
