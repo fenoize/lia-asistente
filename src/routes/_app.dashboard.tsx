@@ -607,6 +607,17 @@ function Dashboard() {
         </Block>
       )}
 
+      {/* Intelligent widgets */}
+      {user && (
+        <>
+          <ActiveProjectsWidget userId={user.id} />
+          <WeeklyInsightsWidget userId={user.id} />
+          <FinanceSnapshotWidget userId={user.id} />
+        </>
+      )}
+
+
+
       {editingMeeting && (
         <EditMeetingModal
           meeting={editingMeeting}
