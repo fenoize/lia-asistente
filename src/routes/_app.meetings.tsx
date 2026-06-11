@@ -158,6 +158,23 @@ function MeetingsPage() {
         })}
       </div>
 
+      <div className="flex gap-1.5" style={{ marginBottom: 16 }}>
+        {STATUS_FILTERS.map((f) => {
+          const active = statusFilter === f.value;
+          return (
+            <button key={f.value} onClick={() => setStatusFilter(f.value)}
+              style={{
+                fontSize: 11, padding: "4px 10px", borderRadius: 100,
+                background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                border: `1px solid ${active ? "rgba(99,102,241,0.4)" : "#1e1e1e"}`,
+                color: active ? "#a5b4fc" : "#666",
+              }}>
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+
       {loading ? (
         <Skeletons />
       ) : dayMeetings.length === 0 ? (
@@ -179,6 +196,7 @@ function MeetingsPage() {
         <EditMeetingModal
           meeting={editing}
           projects={projects}
+          contacts={contacts}
           onClose={() => setEditing(null)}
           onSaved={async () => { setEditing(null); await load(); }}
         />
@@ -186,6 +204,7 @@ function MeetingsPage() {
     </div>
   );
 }
+
 
 function MeetingCard({ meeting: m, onClick }: { meeting: Meeting; onClick: () => void }) {
   const time = formatTimeInTimeZone(m.datetime, detectUserTimeZone());
