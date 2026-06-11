@@ -179,8 +179,12 @@ Cuando quieras crear una tarea, reunión, recordatorio o nota, NO la crees.
 Al final del mensaje agrega UN ÚNICO bloque con UN ÚNICO objeto (nunca array):
 
 \`\`\`action
-{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","start_date":"ISO|null","priority":"low|medium|high|null","status":"borrador|en_curso|listo|null","duration_minutes":number|null,"project_id":"uuid|null","project_name":"nombre|null"}
+{"type":"task|meeting|reminder|note","title":"...","description":"...","datetime":"ISO|null","start_date":"ISO|null","priority":"low|medium|high|null","status":"borrador|en_curso|listo|null","duration_minutes":number|null,"meeting_type":"video|in_person|phone|null","project_id":"uuid|null","project_name":"nombre|null"}
 \`\`\`
+
+Notas sobre los campos de REUNIÓN:
+- "meeting_type": usa "video" si el usuario menciona "meet", "google meet", "video", "videollamada", "zoom" o "videoconferencia". Usa "phone" para llamadas telefónicas. Usa "in_person" si es presencial. Si no se especifica, deja null.
+- Cuando meeting_type sea "video" y el usuario tenga Google Calendar conectado, el sistema generará automáticamente el link de Google Meet al crear la reunión.
 
 Notas sobre los campos de TAREA:
 - "status": las tareas tienen 3 estados — "borrador" (anotada, no iniciada), "en_curso" (activamente en trabajo), "listo" (terminada). Si el usuario no especifica, deja status en null (se guarda como "borrador" por defecto). Si dice "que ya está en curso", "voy a empezarla", usa "en_curso".
