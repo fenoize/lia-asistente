@@ -3,9 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconTrash, IconCheck } from "@tabler/icons-react";
+import { IconPlus, IconTrash, IconCheck, IconLayoutGrid, IconTable } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
+
+type ViewMode = "cards" | "table";
 
 export const Route = createFileRoute("/_app/tasks")({
   component: TasksPage,
