@@ -123,6 +123,12 @@ export type GoogleEventInput = {
   start: { dateTime: string; timeZone?: string };
   end: { dateTime: string; timeZone?: string };
   attendees?: { email: string; displayName?: string }[];
+  conferenceData?: {
+    createRequest?: {
+      requestId: string;
+      conferenceSolutionKey?: { type: string };
+    };
+  };
 };
 
 async function gcalFetch(accessToken: string, path: string, init: RequestInit = {}) {
@@ -138,7 +144,8 @@ async function gcalFetch(accessToken: string, path: string, init: RequestInit = 
 }
 
 export async function gcalInsertEvent(accessToken: string, calendarId: string, event: GoogleEventInput) {
-  const res = await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events`, {
+  const qs = event.conferenceData ? "?conferenceDataVersion=1" : "";
+  const res = await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events${qs}`, {
     method: "POST",
     body: JSON.stringify(event),
   });
@@ -152,7 +159,8 @@ export async function gcalUpdateEvent(
   eventId: string,
   event: GoogleEventInput,
 ) {
-  const res = await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`, {
+  const qs = event.conferenceData ? "?conferenceDataVersion=1" : "";
+  const res = await gcalFetch(accessToken, `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}${qs}`, {
     method: "PATCH",
     body: JSON.stringify(event),
   });
