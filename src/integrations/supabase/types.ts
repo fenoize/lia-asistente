@@ -578,6 +578,7 @@ export type Database = {
           email: string | null
           goals: string | null
           id: string
+          lia_tone: string | null
           name: string | null
           onboarding_completed: boolean | null
           onesignal_player_id: string | null
@@ -585,6 +586,9 @@ export type Database = {
           preferred_model: string | null
           role: string | null
           timezone: string | null
+          work_days: string[] | null
+          work_end: string | null
+          work_start: string | null
         }
         Insert: {
           assistant_gender?: string | null
@@ -593,6 +597,7 @@ export type Database = {
           email?: string | null
           goals?: string | null
           id: string
+          lia_tone?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
           onesignal_player_id?: string | null
@@ -600,6 +605,9 @@ export type Database = {
           preferred_model?: string | null
           role?: string | null
           timezone?: string | null
+          work_days?: string[] | null
+          work_end?: string | null
+          work_start?: string | null
         }
         Update: {
           assistant_gender?: string | null
@@ -608,6 +616,7 @@ export type Database = {
           email?: string | null
           goals?: string | null
           id?: string
+          lia_tone?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
           onesignal_player_id?: string | null
@@ -615,6 +624,9 @@ export type Database = {
           preferred_model?: string | null
           role?: string | null
           timezone?: string | null
+          work_days?: string[] | null
+          work_end?: string | null
+          work_start?: string | null
         }
         Relationships: []
       }

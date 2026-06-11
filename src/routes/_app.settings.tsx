@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +13,36 @@ export const Route = createFileRoute("/_app/settings")({
 });
 
 type Gender = "feminine" | "masculine";
+type Tone = "casual" | "formal" | "direct";
+
+const TONE_OPTIONS: { id: Tone; label: string; caption: string }[] = [
+  { id: "casual", label: "Casual", caption: "Cercana, conversacional" },
+  { id: "formal", label: "Formal", caption: "Profesional, cuidada" },
+  { id: "direct", label: "Directo", caption: "Breve, al grano" },
+];
+
+const WEEKDAYS: { id: string; label: string }[] = [
+  { id: "mon", label: "L" },
+  { id: "tue", label: "M" },
+  { id: "wed", label: "X" },
+  { id: "thu", label: "J" },
+  { id: "fri", label: "V" },
+  { id: "sat", label: "S" },
+  { id: "sun", label: "D" },
+];
+
+const TIMEZONES = [
+  "America/Santiago",
+  "America/Argentina/Buenos_Aires",
+  "America/Mexico_City",
+  "America/Bogota",
+  "America/Lima",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Europe/Madrid",
+  "Europe/London",
+  "UTC",
+];
 
 function SettingsPage() {
   const { user } = useAuth();
@@ -25,18 +55,38 @@ function SettingsPage() {
   const [name, setName] = useState("Lia");
   const [gender, setGender] = useState<Gender>("feminine");
 
+  // Perfil
+  const [goals, setGoals] = useState("");
+  const [tone, setTone] = useState<Tone>("casual");
+  const [timezone, setTimezone] = useState<string>("America/Santiago");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Horario
+  const [workDays, setWorkDays] = useState<string[]>(["mon", "tue", "wed", "thu", "fri"]);
+  const [workStart, setWorkStart] = useState<string>("09:00");
+  const [workEnd, setWorkEnd] = useState<string>("18:00");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("name, assistant_name, assistant_gender")
+        .select("name, assistant_name, assistant_gender, goals, lia_tone, timezone, work_days, work_start, work_end")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
-        setUserName(((data as any).name ?? "").split(" ")[0] || "");
-        setName((data as any).assistant_name || "Lia");
-        setGender(((data as any).assistant_gender === "masculine" ? "masculine" : "feminine"));
+        const d = data as Record<string, unknown>;
+        setUserName(((d.name as string | null) ?? "").split(" ")[0] || "");
+        setName((d.assistant_name as string | null) || "Lia");
+        setGender(d.assistant_gender === "masculine" ? "masculine" : "feminine");
+        setGoals((d.goals as string | null) ?? "");
+        setTone(((d.lia_tone as string | null) === "formal" || d.lia_tone === "direct") ? (d.lia_tone as Tone) : "casual");
+        setTimezone((d.timezone as string | null) || "America/Santiago");
+        const days = d.work_days as string[] | null;
+        if (days && days.length) setWorkDays(days);
+        setWorkStart(((d.work_start as string | null) ?? "09:00:00").slice(0, 5));
+        setWorkEnd(((d.work_end as string | null) ?? "18:00:00").slice(0, 5));
       }
       setLoading(false);
     })();
@@ -53,6 +103,43 @@ function SettingsPage() {
     setSaving(false);
     if (error) toast.error(error.message);
     else toast.success("Guardado ✓");
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ goals: goals.trim() || null, lia_tone: tone, timezone })
+      .eq("id", user.id);
+    setSavingProfile(false);
+    if (error) toast.error(error.message);
+    else toast.success("Perfil guardado ✓");
+  };
+
+  const toggleDay = (day: string) =>
+    setWorkDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort(
+      (a, b) => WEEKDAYS.findIndex((w) => w.id === a) - WEEKDAYS.findIndex((w) => w.id === b),
+    )));
+
+  const saveSchedule = async () => {
+    if (!user) return;
+    if (workDays.length === 0) {
+      toast.error("Selecciona al menos un día");
+      return;
+    }
+    if (workStart >= workEnd) {
+      toast.error("La hora de inicio debe ser menor que la de fin");
+      return;
+    }
+    setSavingSchedule(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ work_days: workDays, work_start: workStart, work_end: workEnd })
+      .eq("id", user.id);
+    setSavingSchedule(false);
+    if (error) toast.error(error.message);
+    else toast.success("Horario guardado ✓");
   };
 
   const greetingPreview =
@@ -196,7 +283,226 @@ function SettingsPage() {
         </button>
       </section>
 
+      {/* Perfil */}
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <IconUser size={14} color="var(--text-tertiary)" stroke={1.75} />
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+            Perfil
+          </div>
+        </div>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+          Tus objetivos
+        </label>
+        <textarea
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+          disabled={loading}
+          placeholder="¿Qué quieres lograr este trimestre? LIA usará esto para priorizar."
+          rows={3}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            marginBottom: 20,
+            resize: "vertical",
+            outline: "none",
+          }}
+        />
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Tono de LIA
+        </label>
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {TONE_OPTIONS.map((t) => {
+            const active = tone === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTone(t.id)}
+                style={{
+                  background: active ? "var(--accent-subtle)" : "transparent",
+                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                  color: active ? "var(--accent-color)" : "var(--text-primary)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 8px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{t.label}</div>
+                <div style={{ fontSize: 10, color: active ? "var(--accent-color)" : "var(--text-tertiary)", marginTop: 2 }}>
+                  {t.caption}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+          Zona horaria
+        </label>
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          disabled={loading}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            marginBottom: 20,
+            outline: "none",
+          }}
+        >
+          {TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>{tz}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={saveProfile}
+          disabled={savingProfile || loading}
+          style={{
+            background: "var(--accent-color)",
+            color: "white",
+            borderRadius: "var(--radius-pill)",
+            padding: "9px 22px",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: savingProfile || loading ? 0.5 : 1,
+          }}
+        >
+          {savingProfile ? "Guardando…" : "Guardar"}
+        </button>
+      </section>
+
+      {/* Horario laboral */}
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <IconClock size={14} color="var(--text-tertiary)" stroke={1.75} />
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+            Horario laboral
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
+          LIA usa tu horario para planificar tareas y reuniones.
+        </p>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Días laborales
+        </label>
+        <div className="flex gap-1.5 mb-5">
+          {WEEKDAYS.map((d) => {
+            const active = workDays.includes(d.id);
+            return (
+              <button
+                key={d.id}
+                onClick={() => toggleDay(d.id)}
+                style={{
+                  width: 36, height: 36,
+                  borderRadius: "50%",
+                  background: active ? "var(--accent-color)" : "transparent",
+                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                  color: active ? "white" : "var(--text-secondary)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Hora de inicio
+            </label>
+            <input
+              type="time"
+              value={workStart}
+              onChange={(e) => setWorkStart(e.target.value)}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                outline: "none",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Hora de fin
+            </label>
+            <input
+              type="time"
+              value={workEnd}
+              onChange={(e) => setWorkEnd(e.target.value)}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                outline: "none",
+              }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={saveSchedule}
+          disabled={savingSchedule || loading}
+          style={{
+            background: "var(--accent-color)",
+            color: "white",
+            borderRadius: "var(--radius-pill)",
+            padding: "9px 22px",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: savingSchedule || loading ? 0.5 : 1,
+          }}
+        >
+          {savingSchedule ? "Guardando…" : "Guardar"}
+        </button>
+      </section>
+
       <PushNotificationsSettings />
+
 
       <section
         style={{
