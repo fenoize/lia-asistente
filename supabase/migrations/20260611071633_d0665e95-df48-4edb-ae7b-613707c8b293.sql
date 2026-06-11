@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS dashboard_blocks jsonb NOT NULL DEFAULT '{"brief":true,"priority":true,"attention":true,"timeline":true,"tasks":true,"projects":true,"weekly":true,"finance":true}'::jsonb;
