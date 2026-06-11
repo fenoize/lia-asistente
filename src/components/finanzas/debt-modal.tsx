@@ -31,7 +31,7 @@ export function DebtModal({
   );
   const [currency, setCurrency] = useState<string>(r.currency ?? "CLP");
   const [payment, setPayment] = useState<string>("");
-  const [dueDate, setDueDate] = useState<string>(r.due_date ?? "");
+  const [dueDate, setDueDate] = useState<string>(r.due_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState<string>(r.notes ?? "");
   const [saving, setSaving] = useState(false);
 

@@ -21,6 +21,7 @@ export type FinanceRecord = {
   expense_type?: string | null;
   task_id?: string | null;
   project_id?: string | null;
+  account_id?: string | null;
   // sub
   name?: string | null;
   frequency?: string | null;
@@ -33,6 +34,9 @@ export type FinanceRecord = {
 
 type TaskOption = { id: string; title: string };
 type ProjectOption = { id: string; name: string };
+type AccountOption = { id: string; name: string };
+
+const TODAY = () => new Date().toISOString().slice(0, 10);
 
 const TABLE: Record<FinanceKind, string> = {
   cobro: "finance_incomes",
@@ -69,13 +73,13 @@ export function FinanceModal({
 
   // Cobro
   const [description, setDescription] = useState<string>(r.description ?? "");
-  const [dueDate, setDueDate] = useState<string>(r.due_date ?? "");
+  const [dueDate, setDueDate] = useState<string>(r.due_date ?? (kind === "cobro" ? TODAY() : ""));
   const [status, setStatus] = useState<string>(r.status ?? "pending");
 
   // Gasto
   const [category, setCategory] = useState<string>(r.category ?? "");
   const [expenseDate, setExpenseDate] = useState<string>(
-    r.expense_date ?? new Date().toISOString().slice(0, 10),
+    r.expense_date ?? TODAY(),
   );
 
   // Gasto extra
@@ -85,24 +89,40 @@ export function FinanceModal({
   const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
 
+  // Account (cobro, gasto, sub)
+  const [accountId, setAccountId] = useState<string>(r.account_id ?? "");
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+
   useEffect(() => {
-    if (kind !== "gasto") return;
+    if (kind === "cuenta") return;
     void (async () => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) return;
-      const [t, p] = await Promise.all([
-        supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200),
-        supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200),
-      ]);
-      setTasks((t.data ?? []) as TaskOption[]);
-      setProjects((p.data ?? []) as ProjectOption[]);
+      const promises: Promise<unknown>[] = [
+        Promise.resolve(supabase.from("finance_accounts").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200)),
+      ];
+      if (kind === "gasto") {
+        promises.push(
+          Promise.resolve(supabase.from("tasks").select("id,title").eq("user_id", u.user.id).order("created_at", { ascending: false }).limit(200)),
+          Promise.resolve(supabase.from("projects").select("id,name").eq("user_id", u.user.id).order("name", { ascending: true }).limit(200)),
+        );
+      }
+      const res = await Promise.all(promises);
+      const a = res[0] as { data: AccountOption[] | null };
+      setAccounts(a.data ?? []);
+      if (kind === "gasto") {
+        const t = res[1] as { data: TaskOption[] | null };
+        const p = res[2] as { data: ProjectOption[] | null };
+        setTasks(t.data ?? []);
+        setProjects(p.data ?? []);
+      }
     })();
   }, [kind]);
 
   // Sub
   const [name, setName] = useState<string>(r.name ?? "");
   const [frequency, setFrequency] = useState<string>(r.frequency ?? "monthly");
-  const [nextCharge, setNextCharge] = useState<string>(r.next_charge_date ?? "");
+  const [nextCharge, setNextCharge] = useState<string>(r.next_charge_date ?? (kind === "sub" ? TODAY() : ""));
   const [active, setActive] = useState<boolean>(r.active ?? true);
 
   // Cuenta
@@ -113,7 +133,7 @@ export function FinanceModal({
 
   const canSave = (() => {
     if (kind === "cobro") return description.trim() && amount;
-    if (kind === "gasto") return description.trim() && amount;
+    if (kind === "gasto") return description.trim() && amount && accountId;
     if (kind === "sub") return name.trim() && amount;
     if (kind === "cuenta") return name.trim();
     return false;
@@ -136,6 +156,8 @@ export function FinanceModal({
         currency,
         due_date: dueDate || null,
         status,
+        paid_at: status === "paid" ? (r.paid_at ?? TODAY()) : null,
+        account_id: accountId || null,
         notes: notes.trim() || null,
       };
     } else if (kind === "gasto") {
@@ -148,6 +170,7 @@ export function FinanceModal({
         expense_type: expenseType,
         task_id: taskId || null,
         project_id: projectId || null,
+        account_id: accountId || null,
         notes: notes.trim() || null,
       };
     } else if (kind === "sub") {
@@ -158,6 +181,7 @@ export function FinanceModal({
         frequency,
         next_charge_date: nextCharge || null,
         active,
+        account_id: accountId || null,
         notes: notes.trim() || null,
       };
     } else if (kind === "cuenta") {
@@ -276,6 +300,14 @@ export function FinanceModal({
                   </select>
                 </Field>
               </div>
+              <Field label="Cuenta (opcional)">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
+                  <option value="">— Ninguna —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </Field>
             </>
           )}
 
@@ -293,6 +325,19 @@ export function FinanceModal({
                   </select>
                 </Field>
               </div>
+              <Field label="Cuenta *">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle} required>
+                  <option value="">— Selecciona una cuenta —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                {accounts.length === 0 && (
+                  <div style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+                    Crea una cuenta primero en la pestaña Cuentas.
+                  </div>
+                )}
+              </Field>
               <Field label="Categoría">
                 <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Comida, transporte..." style={inputStyle} />
               </Field>
@@ -336,6 +381,14 @@ export function FinanceModal({
                 <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
                 Activa
               </label>
+              <Field label="Cuenta (opcional)">
+                <select value={accountId} onChange={(e) => setAccountId(e.target.value)} style={inputStyle}>
+                  <option value="">— Ninguna —</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </Field>
             </>
           )}
 
