@@ -192,5 +192,6 @@ export function PostLoginLoader({ userId, onDone }: { userId: string; onDone: ()
         />
       </div>
     </div>
+    </>
   );
 }
