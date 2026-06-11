@@ -639,22 +639,7 @@ function AlfredBubble({
   assistantInitial?: string;
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <div
-        className="shrink-0 flex items-center justify-center"
-        style={{
-          width: 24,
-          height: 24,
-          borderRadius: "50%",
-          background: "var(--accent-subtle)",
-          color: "var(--accent-color)",
-          fontWeight: 600,
-          fontSize: 11,
-          marginTop: 2,
-        }}
-      >
-        {assistantInitial ?? "A"}
-      </div>
+    <div className="flex items-start">
       <div className="flex-1 min-w-0">
         <div
           style={{
