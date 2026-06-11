@@ -101,6 +101,18 @@ function TasksPage() {
     })();
   }, [user]);
 
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("tasks").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Task);
+      navigate({ to: "/tasks", search: {}, replace: true });
+    })();
+  }, [openId, user, navigate]);
+
+
   const projectMap = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of projects) m.set(p.id, p.name);
