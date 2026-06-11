@@ -84,6 +84,10 @@ function ProjectsPage() {
   const [editing, setEditing] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState<Project | null>(null);
 
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
+
   const reload = async () => {
     if (!user) return;
     const [p, c, t] = await Promise.all([
@@ -103,11 +107,47 @@ function ProjectsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const overdueByProject = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of tasks) {
+      if (!t.project_id || !isOverdue(t)) continue;
+      m[t.project_id] = (m[t.project_id] ?? 0) + 1;
+    }
+    return m;
+  }, [tasks]);
+
+  const filteredByQuery = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? projects.filter((p) => p.name.toLowerCase().includes(q)) : projects;
+  }, [projects, query]);
+
+  const counts = useMemo(() => ({
+    all: filteredByQuery.length,
+    active: filteredByQuery.filter((p) => p.status === "active").length,
+    paused: filteredByQuery.filter((p) => p.status === "paused").length,
+    completed: filteredByQuery.filter((p) => p.status === "completed").length,
+    overdue: filteredByQuery.filter((p) => (overdueByProject[p.id] ?? 0) > 0).length,
+  }), [filteredByQuery, overdueByProject]);
+
   const grouped = useMemo(() => {
     const m: Record<Project["status"], Project[]> = { active: [], paused: [], completed: [] };
-    for (const p of projects) m[p.status]?.push(p);
+    for (const p of filteredByQuery) m[p.status]?.push(p);
     return m;
-  }, [projects]);
+  }, [filteredByQuery]);
+
+  const flatFiltered = useMemo(() => {
+    if (filter === "all") return [];
+    if (filter === "overdue") return filteredByQuery.filter((p) => (overdueByProject[p.id] ?? 0) > 0);
+    return filteredByQuery.filter((p) => p.status === filter);
+  }, [filter, filteredByQuery, overdueByProject]);
+
+  const FILTERS: { key: FilterKey; label: string; count: number; danger?: boolean }[] = [
+    { key: "all", label: "Todos", count: counts.all },
+    { key: "active", label: "Activos", count: counts.active },
+    { key: "paused", label: "En pausa", count: counts.paused },
+    { key: "completed", label: "Completados", count: counts.completed },
+    { key: "overdue", label: "Con atrasos", count: counts.overdue, danger: true },
+  ];
 
   return (
     <div>
@@ -122,6 +162,63 @@ function ProjectsPage() {
           <IconPlus size={14} stroke={2} /> Nuevo proyecto
         </button>
       </div>
+
+      {!loading && projects.length > 0 && (
+        <>
+          <div
+            className="flex items-center gap-2 mb-3"
+            style={{
+              background: "#0e0e0e",
+              border: "1px solid #1a1a1a",
+              borderRadius: 100,
+              padding: "8px 14px",
+            }}
+          >
+            <IconSearch size={15} color="var(--text-tertiary)" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar proyecto…"
+              className="flex-1 bg-transparent focus:outline-none"
+              style={{ fontSize: 13, color: "var(--text-primary)" }}
+            />
+          </div>
+
+          <style>{`.lia-proj-filters::-webkit-scrollbar{display:none}`}</style>
+          <div
+            className="lia-proj-filters flex items-center gap-2 mb-5"
+            style={{ overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}
+          >
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  style={{
+                    flex: "0 0 auto",
+                    fontSize: 12,
+                    padding: "6px 12px",
+                    borderRadius: 100,
+                    border: active
+                      ? "1px solid #6366f1"
+                      : `1px solid ${f.danger ? "#3a1a1a" : "#1a1a1a"}`,
+                    background: active
+                      ? "rgba(99,102,241,0.15)"
+                      : f.danger ? "#1a0a0a" : "transparent",
+                    color: active
+                      ? "#818cf8"
+                      : f.danger ? "#f87171" : "var(--text-tertiary)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {f.label} · {f.count}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -173,29 +270,66 @@ function ProjectsPage() {
             Crear proyecto
           </button>
         </div>
+      ) : filter !== "all" ? (
+        flatFiltered.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "24px 0", textAlign: "center" }}>
+            Sin proyectos para este filtro.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {flatFiltered.map((p) => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                contacts={contacts}
+                tasks={tasks}
+                overdueCount={overdueByProject[p.id] ?? 0}
+                onOpen={() => setOpenProject(p)}
+                onEdit={() => setEditing(p)}
+                onDelete={() => setDeleting(p)}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <div className="space-y-8">
           {GROUPS.map((g) => {
             const list = grouped[g.key];
             if (list.length === 0) return null;
+            const isCompleted = g.key === "completed";
+            const visible = isCompleted && !showAllCompleted && list.length > 3 ? list.slice(0, 3) : list;
             return (
               <section key={g.key}>
                 <div className="alfred-section-label">
                   {g.label} · {list.length}
                 </div>
                 <div className="space-y-3">
-                  {list.map((p) => (
+                  {visible.map((p) => (
                     <ProjectCard
                       key={p.id}
                       project={p}
                       contacts={contacts}
                       tasks={tasks}
+                      overdueCount={overdueByProject[p.id] ?? 0}
                       onOpen={() => setOpenProject(p)}
                       onEdit={() => setEditing(p)}
                       onDelete={() => setDeleting(p)}
                     />
                   ))}
                 </div>
+                {isCompleted && list.length > 3 && (
+                  <button
+                    onClick={() => setShowAllCompleted((v) => !v)}
+                    className="flex items-center gap-1 mt-3"
+                    style={{ fontSize: 12, color: "var(--text-tertiary)" }}
+                  >
+                    <IconChevronDown
+                      size={14}
+                      style={{ transform: showAllCompleted ? "rotate(180deg)" : "none", transition: "transform .2s" }}
+                    />
+                    {showAllCompleted ? "Mostrar menos" : `Ver ${list.length - 3} más`}
+                  </button>
+                )}
               </section>
             );
           })}
