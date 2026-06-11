@@ -436,6 +436,14 @@ function Dashboard() {
         )}
       </section>
 
+      {/* Priority actions (smart ranking) */}
+      <PriorityActionsWidget
+        tasks={tasks}
+        reminders={reminders}
+        meetings={meetings}
+        projectMap={projectMap}
+      />
+
       {/* Birthday alerts (small, optional) */}
       {birthdays.map((b) => {
         const when =
