@@ -22,11 +22,19 @@ export const Route = createFileRoute("/_app/settings")({
 
 type Gender = "feminine" | "masculine";
 type Tone = "casual" | "formal" | "direct";
+type GoalId = "focus" | "projects" | "clcalarity" | "growth";
 
 const TONE_OPTIONS: { id: Tone; label: string; caption: string }[] = [
   { id: "casual", label: "Casual", caption: "Cercana, conversacional" },
   { id: "formal", label: "Formal", caption: "Profesional, cuidada" },
   { id: "direct", label: "Directo", caption: "Breve, al grano" },
+];
+
+const GOAL_OPTIONS: { id: "focus" | "projects" | "clarity" | "growth"; title: string; subtitle: string }[] = [
+  { id: "focus", title: "Claridad y foco diario", subtitle: "Saber qué hacer cada día sin distracciones" },
+  { id: "projects", title: "Control de proyectos y clientes", subtitle: "Que nada se escape entre proyectos activos" },
+  { id: "clarity", title: "Reducir el caos mental", subtitle: "Recuperar el control cuando todo se acumula" },
+  { id: "growth", title: "Hacer crecer mi negocio", subtitle: "Invertir el tiempo en lo que realmente importa" },
 ];
 
 const WEEKDAYS: { id: string; label: string }[] = [
