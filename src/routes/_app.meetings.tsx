@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,6 +7,9 @@ import { EditMeetingModal, type Attendee, type ActionItem } from "@/components/m
 import { detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
 export const Route = createFileRoute("/_app/meetings")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    open: typeof s.open === "string" ? s.open : undefined,
+  }),
   component: MeetingsPage,
 });
 
