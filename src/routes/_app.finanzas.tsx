@@ -11,6 +11,11 @@ import {
   IconEye,
   IconEyeOff,
   IconCoin,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconWallet,
+  IconClockHour4,
+  IconAlertCircle,
 } from "@tabler/icons-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FinanceModal, type FinanceKind, type FinanceRecord } from "@/components/finanzas/finance-modal";
