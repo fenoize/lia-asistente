@@ -23,6 +23,12 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
+import {
+  PriorityActionsWidget,
+  WeeklyInsightsWidget,
+  ActiveProjectsWidget,
+  FinanceSnapshotWidget,
+} from "@/components/dashboard/intelligent-widgets";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
