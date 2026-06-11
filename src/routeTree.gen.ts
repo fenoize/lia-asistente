@@ -26,6 +26,7 @@ import { Route as AppFinanzasRouteImport } from './routes/_app.finanzas'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppContactsRouteImport } from './routes/_app.contacts'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
+import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google.callback'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -111,6 +112,11 @@ const AppChatRoute = AppChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
+  id: '/api/public/google/callback',
+  path: '/api/public/google/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/api/ai': typeof ApiAiRoute
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
+  '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
+    | '/api/public/google/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
+    | '/api/public/google/callback'
   id:
     | '__root__'
     | '/'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/api/ai'
     | '/api/daily-brief'
     | '/api/quick-capture'
+    | '/api/public/google/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -234,6 +246,7 @@ export interface RootRouteChildren {
   ApiAiRoute: typeof ApiAiRoute
   ApiDailyBriefRoute: typeof ApiDailyBriefRoute
   ApiQuickCaptureRoute: typeof ApiQuickCaptureRoute
+  ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -357,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/google/callback': {
+      id: '/api/public/google/callback'
+      path: '/api/public/google/callback'
+      fullPath: '/api/public/google/callback'
+      preLoaderRoute: typeof ApiPublicGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -396,7 +416,18 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAiRoute: ApiAiRoute,
   ApiDailyBriefRoute: ApiDailyBriefRoute,
   ApiQuickCaptureRoute: ApiQuickCaptureRoute,
+  ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
