@@ -50,11 +50,26 @@ function initials(name: string) {
   return ((p[0]?.[0] ?? "?") + (p[1]?.[0] ?? "")).toUpperCase();
 }
 
+const PROJECT_COLORS = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ec4899","#8b5cf6","#14b8a6","#f97316"];
+function projectColor(name: string) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+  return PROJECT_COLORS[h % PROJECT_COLORS.length];
+}
+
+function isOverdue(t: TaskRow) {
+  if (!t.due_date || t.status === "listo") return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return new Date(t.due_date) < today;
+}
+
 const GROUPS: { key: Project["status"]; label: string }[] = [
   { key: "active", label: "Activos" },
   { key: "paused", label: "En pausa" },
   { key: "completed", label: "Completados" },
 ];
+
+type FilterKey = "all" | "active" | "paused" | "completed" | "overdue";
 
 function ProjectsPage() {
   const { user } = useAuth();
