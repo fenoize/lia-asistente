@@ -191,6 +191,8 @@ function ContactsPage() {
   const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string>("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -218,6 +220,18 @@ function ContactsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Reset project filter when leaving Clientes tab
+  useEffect(() => {
+    if (tab !== "client" && projectFilter) setProjectFilter("");
+  }, [tab, projectFilter]);
+
+  const clientIdsInProject = useMemo(() => {
+    if (!projectFilter) return null;
+    return new Set(
+      projects.filter((p) => p.id === projectFilter && p.client_id).map((p) => p.client_id as string),
+    );
+  }, [projects, projectFilter]);
+
   const filtered = useMemo(
     () =>
       contacts
@@ -234,8 +248,17 @@ function ContactsPage() {
                 .toLowerCase()
                 .includes(search.toLowerCase())
             : true,
-        ),
-    [contacts, tab, search],
+        )
+        .filter((c) => {
+          if (tagFilters.length === 0) return true;
+          const ctags = c.tags ?? [];
+          return tagFilters.some((t) => ctags.includes(t));
+        })
+        .filter((c) => {
+          if (!clientIdsInProject) return true;
+          return clientIdsInProject.has(c.id);
+        }),
+    [contacts, tab, search, tagFilters, clientIdsInProject],
   );
 
   const projectsForClient = (id: string) => projects.filter((p) => p.client_id === id);
@@ -336,6 +359,74 @@ function ContactsPage() {
           />
         </div>
       </div>
+
+      {/* Filtros: tags + proyecto */}
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
+        {TAG_OPTIONS.map((tagOpt) => {
+          const active = tagFilters.includes(tagOpt);
+          const s = tagStyle(tagOpt);
+          return (
+            <button
+              key={tagOpt}
+              onClick={() =>
+                setTagFilters((prev) =>
+                  prev.includes(tagOpt) ? prev.filter((x) => x !== tagOpt) : [...prev, tagOpt],
+                )
+              }
+              style={{
+                fontSize: 11,
+                padding: "4px 12px",
+                borderRadius: 100,
+                background: active ? s.bg : "transparent",
+                color: active ? s.fg : "#666",
+                border: `1px solid ${active ? s.border : "#222"}`,
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              {tagOpt}
+            </button>
+          );
+        })}
+        {tab === "client" && projects.length > 0 && (
+          <select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: projectFilter ? "rgba(99,102,241,0.15)" : "transparent",
+              color: projectFilter ? "#818cf8" : "#666",
+              border: `1px solid ${projectFilter ? "rgba(99,102,241,0.3)" : "#222"}`,
+              outline: "none",
+              cursor: "pointer",
+            }}
+          >
+            <option value="">Todos los proyectos</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        )}
+        {(tagFilters.length > 0 || projectFilter) && (
+          <button
+            onClick={() => { setTagFilters([]); setProjectFilter(""); }}
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#888",
+              border: "1px solid #222",
+              display: "inline-flex", alignItems: "center", gap: 4,
+            }}
+          >
+            <IconX size={11} /> Limpiar
+          </button>
+        )}
+      </div>
+
 
       {loading ? (
         <div className="space-y-3">
