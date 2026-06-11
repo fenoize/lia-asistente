@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const in15 = new Date(now.getTime() + 15 * 60 * 1000);
-    const in30 = new Date(now.getTime() + 30 * 60 * 1000);
+    
     const todayStart = new Date(now);
     todayStart.setUTCHours(0, 0, 0, 0);
     const tomorrowStart = new Date(todayStart);
@@ -112,23 +112,38 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Meetings in next 30 min
+    // Meetings: 3 windows — 1h before, 10 min before, at start.
+    // scheduled_for stores the canonical anchor so each window dedupes independently.
+    const in75 = new Date(now.getTime() + 75 * 60 * 1000);
     const { data: meetings } = await sb
       .from("meetings")
-      .select("id, user_id, title, datetime")
-      .gte("datetime", now.toISOString())
-      .lte("datetime", in30.toISOString());
+      .select("id, user_id, title, datetime, status")
+      .neq("status", "cancelled")
+      .gte("datetime", new Date(now.getTime() - 5 * 60 * 1000).toISOString())
+      .lte("datetime", in75.toISOString());
 
     for (const m of meetings ?? []) {
-      jobs.push({
-        userId: m.user_id,
-        entityType: "meeting",
-        entityId: m.id,
-        scheduledFor: m.datetime,
-        title: "Reunión pronto",
-        body: m.title,
-      });
+      const startMs = new Date(m.datetime).getTime();
+      const minutesUntil = (startMs - now.getTime()) / 60000;
+      const windows: { match: boolean; offset: number; title: string }[] = [
+        { match: minutesUntil >= 55 && minutesUntil <= 65, offset: 60, title: "Reunión en 1h" },
+        { match: minutesUntil >= 5 && minutesUntil <= 15, offset: 10, title: "Reunión en 10 min" },
+        { match: minutesUntil >= -5 && minutesUntil <= 5, offset: 0, title: "Reunión empezando" },
+      ];
+      for (const w of windows) {
+        if (!w.match) continue;
+        const anchor = new Date(startMs - w.offset * 60 * 1000).toISOString();
+        jobs.push({
+          userId: m.user_id,
+          entityType: "meeting",
+          entityId: m.id,
+          scheduledFor: anchor,
+          title: w.title,
+          body: m.title,
+        });
+      }
     }
+
 
     if (jobs.length === 0) {
       return new Response(JSON.stringify({ sent: 0, skipped: 0 }), {
@@ -158,18 +173,21 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Dedup: try to insert log row first
+      // Dedup: try to insert log row first (also stores title/body for in-app feed)
       const { error: logErr } = await sb.from("notification_log").insert({
         user_id: job.userId,
         entity_type: job.entityType,
         entity_id: job.entityId,
         scheduled_for: job.scheduledFor,
+        title: job.title,
+        body: job.body,
       });
       if (logErr) {
         // Unique violation = already sent
         skipped++;
         continue;
       }
+
 
       const notifId = await sendOneSignal(player, job.title, job.body, restKey);
       if (notifId) {
