@@ -542,3 +542,113 @@ export function Empty({ title, subtitle }: { title: string; subtitle?: string })
     </div>
   );
 }
+
+function TaskTable({
+  tasks,
+  projects,
+  onOpen,
+  onPatch,
+  onRemove,
+}: {
+  tasks: Task[];
+  projects: ProjectOption[];
+  onOpen: (t: Task) => void;
+  onPatch: (id: string, patch: Partial<Task>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const projectMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of projects) m.set(p.id, p.name);
+    return m;
+  }, [projects]);
+
+  return (
+    <div
+      className="overflow-x-auto"
+      style={{ border: "1px solid #1e1e1e", borderRadius: 12, background: "#0a0a0a" }}
+    >
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+        <thead>
+          <tr style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <th style={thStyle}>Tarea</th>
+            <th style={thStyle}>Estado</th>
+            <th style={thStyle}>Prioridad</th>
+            <th style={thStyle}>Proyecto</th>
+            <th style={thStyle}>Término</th>
+            <th style={{ ...thStyle, width: 40 }}></th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => {
+            const done = t.status === "listo";
+            const overdue = !!t.due_date && new Date(t.due_date) < new Date() && !done;
+            return (
+              <tr
+                key={t.id}
+                style={{ borderTop: "1px solid #141414", cursor: "pointer" }}
+                onClick={() => onOpen(t)}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#0f0f0f")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <td style={{ ...tdStyle, color: done ? "#444" : "#ddd", textDecoration: done ? "line-through" : "none" }}>
+                  {t.title}
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={t.status}
+                    onChange={(e) => onPatch(t.id, { status: e.target.value })}
+                    style={inlineSelect}
+                  >
+                    <option value="borrador">Borrador</option>
+                    <option value="en_curso">En Curso</option>
+                    <option value="listo">Listo</option>
+                  </select>
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={t.priority}
+                    onChange={(e) => onPatch(t.id, { priority: e.target.value })}
+                    style={inlineSelect}
+                  >
+                    <option value="urgent">Urgente</option>
+                    <option value="high">Alta</option>
+                    <option value="medium">Media</option>
+                    <option value="low">Baja</option>
+                  </select>
+                </td>
+                <td style={{ ...tdStyle, color: "#888" }}>{t.project_id ? projectMap.get(t.project_id) ?? "—" : "—"}</td>
+                <td style={{ ...tdStyle, color: overdue ? "#f87171" : "#888" }}>
+                  {t.due_date
+                    ? new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" }).format(new Date(t.due_date))
+                    : "—"}
+                </td>
+                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => onRemove(t.id)}
+                    aria-label="Eliminar"
+                    style={{ color: "#555", padding: 4 }}
+                    className="hover:text-red-400"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "10px 14px", fontWeight: 500 };
+const tdStyle: React.CSSProperties = { padding: "10px 14px", verticalAlign: "middle" };
+const inlineSelect: React.CSSProperties = {
+  fontSize: 12,
+  background: "transparent",
+  border: "1px solid #1e1e1e",
+  color: "#ccc",
+  borderRadius: 6,
+  padding: "3px 8px",
+  colorScheme: "dark",
+};
