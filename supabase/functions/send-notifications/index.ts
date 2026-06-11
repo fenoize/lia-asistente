@@ -173,18 +173,21 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Dedup: try to insert log row first
+      // Dedup: try to insert log row first (also stores title/body for in-app feed)
       const { error: logErr } = await sb.from("notification_log").insert({
         user_id: job.userId,
         entity_type: job.entityType,
         entity_id: job.entityId,
         scheduled_for: job.scheduledFor,
+        title: job.title,
+        body: job.body,
       });
       if (logErr) {
         // Unique violation = already sent
         skipped++;
         continue;
       }
+
 
       const notifId = await sendOneSignal(player, job.title, job.body, restKey);
       if (notifId) {
