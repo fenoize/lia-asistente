@@ -64,6 +64,13 @@ function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [editing, setEditing] = useState<Task | null>(null);
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window === "undefined") return "cards";
+    return (window.localStorage.getItem("tasks:view") as ViewMode) || "cards";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("tasks:view", view);
+  }, [view]);
 
   useEffect(() => {
     if (!user) return;
