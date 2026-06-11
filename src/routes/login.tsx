@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { LiaLogo } from "@/components/lia-logo";
+import { LiaSplash } from "@/components/lia-splash";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -17,8 +18,10 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/" });
+    if (!loading && session) navigate({ to: "/", replace: true });
   }, [session, loading, navigate]);
+
+  if (loading || session) return <LiaSplash />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

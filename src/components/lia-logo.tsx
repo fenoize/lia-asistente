@@ -2,9 +2,10 @@ type LiaLogoProps = {
   size?: number;
   animated?: boolean;
   rectFill?: string;
+  showBackground?: boolean;
 };
 
-export function LiaLogo({ size = 130, animated = true, rectFill = "#161628" }: LiaLogoProps) {
+export function LiaLogo({ size = 130, animated = true, rectFill = "#161628", showBackground = true }: LiaLogoProps) {
   return (
     <svg
       viewBox="0 0 399.84 399.84"
@@ -26,7 +27,8 @@ export function LiaLogo({ size = 130, animated = true, rectFill = "#161628" }: L
           @keyframes lia-pulse-dot{0%,100%{r:12.3;opacity:.7;}50%{r:15.5;opacity:1;}}
         `}</style>
       )}
-      <rect width="399.84" height="399.84" rx="90" ry="90" fill={rectFill} />
+      {showBackground && <rect width="399.84" height="399.84" rx="90" ry="90" fill={rectFill} />}
+
       {animated ? (
         <>
           <path d="M199.7,200.03s-40.72-56.45-84.86-56.45-72.49,56.45-72.49,56.45c0,0,26.1,56.31,70.88,56.31s86.47-56.31,86.47-56.31Z" fill="none" stroke="#818cf8" strokeWidth="9" strokeMiterlimit="10" opacity="0.3" />
