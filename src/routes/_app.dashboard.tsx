@@ -878,60 +878,80 @@ function TaskRow({
   );
 }
 
-function ReminderPill({ reminder, onClick }: { reminder: Reminder; onClick?: () => void }) {
+function ReminderPill({ reminder, onClick, onComplete }: { reminder: Reminder; onClick?: () => void; onComplete?: () => void }) {
   const time = formatTimeInTimeZone(reminder.datetime, detectUserTimeZone());
   const overdue = new Date(reminder.datetime).getTime() < Date.now();
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 w-full text-left"
+    <div
+      className="flex items-center gap-2 w-full"
       style={{
         background: "var(--bg-elevated)",
         border: `1px solid ${overdue ? "rgba(248,113,113,0.35)" : "var(--border)"}`,
         borderRadius: "var(--radius-pill)",
         padding: "6px 14px",
         fontSize: 12,
-        cursor: onClick ? "pointer" : "default",
       }}
     >
-      <IconBell
-        size={12}
-        stroke={1.75}
-        style={{ color: overdue ? "#f87171" : "var(--accent-color)", flexShrink: 0 }}
-      />
-      <span
-        className="flex-1 truncate"
-        style={{ color: overdue ? "#f87171" : "var(--text-primary)" }}
+      {onComplete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onComplete(); }}
+          aria-label="Completar recordatorio"
+          style={{
+            width: 18, height: 18, borderRadius: "50%",
+            border: `1.5px solid ${overdue ? "#f87171" : "var(--accent-color)"}`,
+            background: "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, padding: 0, cursor: "pointer",
+          }}
+          className="hover:scale-110 transition-transform"
+        />
+      )}
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-2 flex-1 min-w-0 text-left bg-transparent border-0 p-0"
+        style={{ cursor: onClick ? "pointer" : "default" }}
       >
-        {reminder.title}
-      </span>
-      {overdue && (
+        <IconBell
+          size={12}
+          stroke={1.75}
+          style={{ color: overdue ? "#f87171" : "var(--accent-color)", flexShrink: 0 }}
+        />
+        <span
+          className="flex-1 truncate"
+          style={{ color: overdue ? "#f87171" : "var(--text-primary)", fontSize: 12 }}
+        >
+          {reminder.title}
+        </span>
+        {overdue && (
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#f87171",
+              background: "rgba(248,113,113,0.12)",
+              border: "1px solid rgba(248,113,113,0.25)",
+              borderRadius: 999,
+              padding: "1px 8px",
+            }}
+          >
+            Vencido
+          </span>
+        )}
         <span
           style={{
-            fontSize: 10,
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            color: "#f87171",
-            background: "rgba(248,113,113,0.12)",
-            border: "1px solid rgba(248,113,113,0.25)",
-            borderRadius: 999,
-            padding: "1px 8px",
+            color: overdue ? "#f87171" : "var(--text-tertiary)",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: 12,
           }}
         >
-          Vencido
+          {time}
         </span>
-      )}
-      <span
-        style={{
-          color: overdue ? "#f87171" : "var(--text-tertiary)",
-          fontVariantNumeric: "tabular-nums",
-        }}
-      >
-        {time}
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
 
