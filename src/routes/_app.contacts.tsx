@@ -191,6 +191,8 @@ function ContactsPage() {
   const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [projectFilter, setProjectFilter] = useState<string>("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [showNew, setShowNew] = useState(false);
@@ -218,6 +220,18 @@ function ContactsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Reset project filter when leaving Clientes tab
+  useEffect(() => {
+    if (tab !== "client" && projectFilter) setProjectFilter("");
+  }, [tab, projectFilter]);
+
+  const clientIdsInProject = useMemo(() => {
+    if (!projectFilter) return null;
+    return new Set(
+      projects.filter((p) => p.id === projectFilter && p.client_id).map((p) => p.client_id as string),
+    );
+  }, [projects, projectFilter]);
+
   const filtered = useMemo(
     () =>
       contacts
@@ -234,8 +248,17 @@ function ContactsPage() {
                 .toLowerCase()
                 .includes(search.toLowerCase())
             : true,
-        ),
-    [contacts, tab, search],
+        )
+        .filter((c) => {
+          if (tagFilters.length === 0) return true;
+          const ctags = c.tags ?? [];
+          return tagFilters.some((t) => ctags.includes(t));
+        })
+        .filter((c) => {
+          if (!clientIdsInProject) return true;
+          return clientIdsInProject.has(c.id);
+        }),
+    [contacts, tab, search, tagFilters, clientIdsInProject],
   );
 
   const projectsForClient = (id: string) => projects.filter((p) => p.client_id === id);
