@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/settings")({
 
 type Gender = "feminine" | "masculine";
 type Tone = "casual" | "formal" | "direct";
-type GoalId = "focus" | "projects" | "clarity" | "growth";
+
 
 const TONE_OPTIONS: { id: Tone; label: string; caption: string }[] = [
   { id: "casual", label: "Casual", caption: "Cercana, conversacional" },
