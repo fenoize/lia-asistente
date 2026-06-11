@@ -109,7 +109,7 @@ function MeetingsPage() {
     (async () => {
       const { data } = await supabase.from("meetings").select("*").eq("id", openId).maybeSingle();
       if (data) setEditing(data as Meeting);
-      navigate({ to: "/meetings", search: {}, replace: true });
+      navigate({ to: "/meetings", search: {} as any, replace: true });
     })();
   }, [openId, user, navigate]);
 

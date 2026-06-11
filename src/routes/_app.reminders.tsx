@@ -66,7 +66,7 @@ function RemindersPage() {
     (async () => {
       const { data } = await supabase.from("reminders").select("*").eq("id", openId).maybeSingle();
       if (data) setEditing(data as Reminder);
-      navigate({ to: "/reminders", search: {}, replace: true });
+      navigate({ to: "/reminders", search: {} as any, replace: true });
     })();
   }, [openId, user, navigate]);
 

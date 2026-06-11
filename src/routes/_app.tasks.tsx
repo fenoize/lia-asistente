@@ -108,7 +108,7 @@ function TasksPage() {
     (async () => {
       const { data } = await supabase.from("tasks").select("*").eq("id", openId).maybeSingle();
       if (data) setEditing(data as Task);
-      navigate({ to: "/tasks", search: {}, replace: true });
+      navigate({ to: "/tasks", search: {} as any, replace: true });
     })();
   }, [openId, user, navigate]);
 
