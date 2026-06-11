@@ -519,18 +519,41 @@ function ResumenTab({
   const currency =
     accounts[0]?.currency ?? incomes[0]?.currency ?? expenses[0]?.currency ?? "CLP";
 
-  const cards = [
-    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Ingresos cobrados este mes" : "Sin ingresos cobrados" },
-    { label: "GASTOS DEL MES", value: mask(fmt(expenseMonth, currency)), hint: expenseMonth ? "Total de gastos del mes" : "Sin gastos este mes" },
-    { label: "BALANCE", value: mask(fmt(balance, currency)), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas para ver" },
-    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Ingresos pendientes" : "Sin ingresos pendientes" },
-    { label: "DEUDAS ACTIVAS", value: mask(fmt(debtsActive, currency)), hint: debtsActive ? `${debts.filter((d) => d.status === "active").length} deuda${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"} pendiente${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"}` : "Sin deudas activas" },
+  const net = incomeMonth - expenseMonth;
+  const cards: { label: string; value: string; hint: string; icon: React.ReactNode; accent: string }[] = [
+    { label: "INGRESOS DEL MES", value: mask(fmt(incomeMonth, currency)), hint: incomeMonth ? "Cobrados este mes" : "Sin ingresos cobrados", icon: <IconTrendingUp size={16} stroke={2} />, accent: "#22c55e" },
+    { label: "GASTOS DEL MES", value: mask(fmt(expenseMonth, currency)), hint: expenseMonth ? "Total del mes" : "Sin gastos este mes", icon: <IconTrendingDown size={16} stroke={2} />, accent: "#f87171" },
+    { label: "BALANCE", value: mask(fmt(balance, currency)), hint: accounts.length ? `${accounts.length} cuenta${accounts.length === 1 ? "" : "s"}` : "Configura cuentas", icon: <IconWallet size={16} stroke={2} />, accent: "#38bdf8" },
+    { label: "POR COBRAR", value: mask(fmt(pending, currency)), hint: pending ? "Ingresos pendientes" : "Nada pendiente", icon: <IconClockHour4 size={16} stroke={2} />, accent: "#fbbf24" },
+    { label: "DEUDAS ACTIVAS", value: mask(fmt(debtsActive, currency)), hint: debtsActive ? `${debts.filter((d) => d.status === "active").length} deuda${debts.filter((d) => d.status === "active").length === 1 ? "" : "s"}` : "Sin deudas", icon: <IconAlertCircle size={16} stroke={2} />, accent: "#a78bfa" },
   ];
 
   const hasData = incomes.length || expenses.length || accounts.length || debts.length;
 
   return (
     <div>
+      {hasData ? (
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${net >= 0 ? "rgba(34,197,94,0.08)" : "rgba(248,113,113,0.08)"}, rgba(99,102,241,0.05))`,
+            border: `1px solid ${net >= 0 ? "rgba(34,197,94,0.2)" : "rgba(248,113,113,0.2)"}`,
+            borderRadius: 16,
+            padding: "20px 22px",
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: "#888", marginBottom: 6 }}>
+            BALANCE DEL MES
+          </div>
+          <div style={{ fontSize: 30, fontWeight: 700, color: net >= 0 ? "#4ade80" : "#f87171", letterSpacing: "-0.02em" }}>
+            {net >= 0 ? "+" : "−"} {mask(fmt(Math.abs(net), currency))}
+          </div>
+          <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+            Ingresos {mask(fmt(incomeMonth, currency))} · Gastos {mask(fmt(expenseMonth, currency))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
         {cards.map((c) => (
           <div
@@ -540,15 +563,28 @@ function ResumenTab({
               border: "1px solid #1e1e1e",
               borderRadius: 12,
               padding: "16px 18px",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
+            <div style={{
+              position: "absolute", top: 14, right: 14,
+              width: 28, height: 28, borderRadius: 8,
+              background: `${c.accent}15`,
+              border: `1px solid ${c.accent}30`,
+              color: c.accent,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {c.icon}
+            </div>
             <div
               style={{
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: "0.08em",
-                color: "#555",
+                color: "#666",
                 marginBottom: 8,
+                paddingRight: 36,
               }}
             >
               {c.label}
@@ -556,7 +592,7 @@ function ResumenTab({
             <div style={{ fontSize: 22, fontWeight: 600, color: "#f2f2f2", letterSpacing: "-0.02em" }}>
               {c.value}
             </div>
-            <div style={{ fontSize: 11, color: "#444", marginTop: 4 }}>{c.hint}</div>
+            <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>{c.hint}</div>
           </div>
         ))}
       </div>
