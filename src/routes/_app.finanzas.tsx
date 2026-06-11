@@ -208,6 +208,8 @@ function FinanzasPage() {
         <ListOrEmpty
           rows={items.cobros ?? []}
           onClick={(r) => openEdit("cobro", r)}
+          icon={<IconReceipt size={16} stroke={1.8} />}
+          accent="#22c55e"
           empty={{
             icon: <IconReceipt size={28} stroke={1.5} color="#444" />,
             title: "Aún no hay ingresos.",
@@ -217,6 +219,7 @@ function FinanzasPage() {
             primary: r.description ?? "Sin descripción",
             secondary: [r.status === "paid" ? "Pagado" : r.status === "overdue" ? "Atrasado" : r.status === "cancelled" ? "Cancelado" : "Pendiente", r.due_date ? `vence ${r.due_date}` : null].filter(Boolean).join(" · "),
             amount: mask(fmt(r.amount, r.currency)),
+            amountColor: r.status === "paid" ? "#22c55e" : r.status === "overdue" ? "#f87171" : "#e0e0e0",
           })}
         />
       )}
@@ -225,6 +228,8 @@ function FinanzasPage() {
         <ListOrEmpty
           rows={items.gastos ?? []}
           onClick={(r) => openEdit("gasto", r)}
+          icon={<IconCreditCard size={16} stroke={1.8} />}
+          accent="#f87171"
           empty={{
             icon: <IconCreditCard size={28} stroke={1.5} color="#444" />,
             title: "Sin gastos registrados.",
@@ -233,7 +238,8 @@ function FinanzasPage() {
           render={(r) => ({
             primary: r.description ?? "Sin descripción",
             secondary: [r.category, r.expense_date].filter(Boolean).join(" · "),
-            amount: mask(fmt(r.amount, r.currency)),
+            amount: `− ${mask(fmt(r.amount, r.currency))}`,
+            amountColor: "#f87171",
           })}
         />
       )}
@@ -242,6 +248,8 @@ function FinanzasPage() {
         <ListOrEmpty
           rows={items.subs ?? []}
           onClick={(r) => openEdit("sub", r)}
+          icon={<IconRepeat size={16} stroke={1.8} />}
+          accent="#818cf8"
           empty={{
             icon: <IconRepeat size={28} stroke={1.5} color="#444" />,
             title: "No tienes suscripciones.",
@@ -251,6 +259,7 @@ function FinanzasPage() {
             primary: r.name ?? "Sin nombre",
             secondary: [r.frequency === "yearly" ? "Anual" : r.frequency === "weekly" ? "Semanal" : r.frequency === "quarterly" ? "Trimestral" : "Mensual", r.next_charge_date ? `próx. ${r.next_charge_date}` : null, r.active === false ? "Inactiva" : null].filter(Boolean).join(" · "),
             amount: mask(fmt(r.amount, r.currency)),
+            amountColor: r.active === false ? "#666" : "#e0e0e0",
           })}
         />
       )}
@@ -259,6 +268,8 @@ function FinanzasPage() {
         <ListOrEmpty
           rows={items.cuentas ?? []}
           onClick={(r) => openEdit("cuenta", r)}
+          icon={<IconBuildingBank size={16} stroke={1.8} />}
+          accent="#38bdf8"
           empty={{
             icon: <IconBuildingBank size={28} stroke={1.5} color="#444" />,
             title: "Sin cuentas configuradas.",
@@ -268,6 +279,7 @@ function FinanzasPage() {
             primary: r.name ?? "Sin nombre",
             secondary: r.type === "cash" ? "Efectivo" : r.type === "credit" ? "Tarjeta de crédito" : r.type === "savings" ? "Ahorros" : r.type === "other" ? "Otro" : "Banco",
             amount: mask(fmt(r.balance, r.currency)),
+            amountColor: (Number(r.balance) || 0) < 0 ? "#f87171" : "#e0e0e0",
           })}
         />
       )}
