@@ -59,6 +59,18 @@ function RemindersPage() {
     })();
   }, [user, userTimeZone]);
 
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("reminders").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Reminder);
+      navigate({ to: "/reminders", search: {}, replace: true });
+    })();
+  }, [openId, user, navigate]);
+
+
   const toggle = async (r: Reminder) => {
     const next = !r.done;
     setItems((prev) => prev.map((x) => (x.id === r.id ? { ...x, done: next } : x)));
