@@ -283,7 +283,226 @@ function SettingsPage() {
         </button>
       </section>
 
+      {/* Perfil */}
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <IconUser size={14} color="var(--text-tertiary)" stroke={1.75} />
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+            Perfil
+          </div>
+        </div>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+          Tus objetivos
+        </label>
+        <textarea
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+          disabled={loading}
+          placeholder="¿Qué quieres lograr este trimestre? LIA usará esto para priorizar."
+          rows={3}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            marginBottom: 20,
+            resize: "vertical",
+            outline: "none",
+          }}
+        />
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Tono de LIA
+        </label>
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {TONE_OPTIONS.map((t) => {
+            const active = tone === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTone(t.id)}
+                style={{
+                  background: active ? "var(--accent-subtle)" : "transparent",
+                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                  color: active ? "var(--accent-color)" : "var(--text-primary)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 8px",
+                  textAlign: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{t.label}</div>
+                <div style={{ fontSize: 10, color: active ? "var(--accent-color)" : "var(--text-tertiary)", marginTop: 2 }}>
+                  {t.caption}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+          Zona horaria
+        </label>
+        <select
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          disabled={loading}
+          style={{
+            width: "100%",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            marginBottom: 20,
+            outline: "none",
+          }}
+        >
+          {TIMEZONES.map((tz) => (
+            <option key={tz} value={tz}>{tz}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={saveProfile}
+          disabled={savingProfile || loading}
+          style={{
+            background: "var(--accent-color)",
+            color: "white",
+            borderRadius: "var(--radius-pill)",
+            padding: "9px 22px",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: savingProfile || loading ? 0.5 : 1,
+          }}
+        >
+          {savingProfile ? "Guardando…" : "Guardar"}
+        </button>
+      </section>
+
+      {/* Horario laboral */}
+      <section
+        style={{
+          background: "var(--bg-elevated)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          padding: 24,
+          marginTop: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <IconClock size={14} color="var(--text-tertiary)" stroke={1.75} />
+          <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
+            Horario laboral
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
+          LIA usa tu horario para planificar tareas y reuniones.
+        </p>
+
+        <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+          Días laborales
+        </label>
+        <div className="flex gap-1.5 mb-5">
+          {WEEKDAYS.map((d) => {
+            const active = workDays.includes(d.id);
+            return (
+              <button
+                key={d.id}
+                onClick={() => toggleDay(d.id)}
+                style={{
+                  width: 36, height: 36,
+                  borderRadius: "50%",
+                  background: active ? "var(--accent-color)" : "transparent",
+                  border: `1px solid ${active ? "var(--accent-color)" : "var(--border)"}`,
+                  color: active ? "white" : "var(--text-secondary)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {d.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Hora de inicio
+            </label>
+            <input
+              type="time"
+              value={workStart}
+              onChange={(e) => setWorkStart(e.target.value)}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                outline: "none",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
+              Hora de fin
+            </label>
+            <input
+              type="time"
+              value={workEnd}
+              onChange={(e) => setWorkEnd(e.target.value)}
+              style={{
+                width: "100%",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "10px 14px",
+                fontSize: 13,
+                color: "var(--text-primary)",
+                outline: "none",
+              }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={saveSchedule}
+          disabled={savingSchedule || loading}
+          style={{
+            background: "var(--accent-color)",
+            color: "white",
+            borderRadius: "var(--radius-pill)",
+            padding: "9px 22px",
+            fontSize: 13,
+            fontWeight: 500,
+            opacity: savingSchedule || loading ? 0.5 : 1,
+          }}
+        >
+          {savingSchedule ? "Guardando…" : "Guardar"}
+        </button>
+      </section>
+
       <PushNotificationsSettings />
+
 
       <section
         style={{
