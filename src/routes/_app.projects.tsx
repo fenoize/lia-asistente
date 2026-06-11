@@ -408,6 +408,7 @@ function ProjectCard({
   project,
   contacts,
   tasks,
+  overdueCount,
   onOpen,
   onEdit,
   onDelete,
@@ -415,6 +416,7 @@ function ProjectCard({
   project: Project;
   contacts: Contact[];
   tasks: TaskRow[];
+  overdueCount: number;
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -424,12 +426,14 @@ function ProjectCard({
   const done = projTasks.filter((t) => t.status === "listo").length;
   const total = projTasks.length;
   const pct = total ? (done / total) * 100 : 0;
-  const collabs = Array.from(
-    new Set(projTasks.map((t) => t.assigned_to).filter((x): x is string => !!x)),
-  )
-    .map((id) => contacts.find((c) => c.id === id))
-    .filter((c): c is Contact => !!c)
-    .slice(0, 3);
+  const color = projectColor(project.name);
+  const initialsTxt = initials(project.name);
+  const description = (project.notes ?? "")
+    .replace(/\[currency:(CLP|USD)\]/g, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .find((l) => l.length > 0);
+  const dimmed = project.status !== "active";
 
   return (
     <div
@@ -439,13 +443,18 @@ function ProjectCard({
         background: "#0e0e0e",
         border: "1px solid #141414",
         borderRadius: 12,
-        padding: "16px 18px",
+        padding: "14px 16px 14px 18px",
         cursor: "pointer",
+        opacity: dimmed ? 0.5 : 1,
+        overflow: "hidden",
       }}
     >
       <div
+        style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: color }}
+      />
+      <div
         className="absolute flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ top: 10, right: 10 }}
+        style={{ top: 8, right: 8 }}
       >
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -462,109 +471,131 @@ function ProjectCard({
           <IconTrash size={14} />
         </button>
       </div>
-      {client && (
-        <div className="flex items-center gap-2 mb-2">
-          <span
-            className="flex items-center justify-center rounded-full"
-            style={{
-              width: 20,
-              height: 20,
-              background: "var(--accent-subtle)",
-              color: "var(--accent-color)",
-              fontSize: 9,
-              fontWeight: 500,
-            }}
-          >
-            {initials(client.name)}
-          </span>
-          <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{client.name}</span>
-        </div>
-      )}
-      <div className="flex items-center justify-between mb-1">
-        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
-          {project.name}
-        </div>
-        <span
+
+      <div className="flex items-start gap-3">
+        <div
+          className="flex items-center justify-center"
           style={{
-            fontSize: 10,
-            padding: "1px 8px",
-            borderRadius: "var(--radius-pill)",
-            background:
-              project.status === "active" ? "var(--accent-subtle)" : "transparent",
-            border:
-              project.status === "active" ? "none" : "1px solid var(--border)",
-            color:
-              project.status === "active"
-                ? "var(--accent-color)"
-                : "var(--text-tertiary)",
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: `${color}1f`,
+            color,
+            fontSize: 13,
+            fontWeight: 500,
+            flexShrink: 0,
           }}
         >
-          {project.status === "active"
-            ? "Activo"
-            : project.status === "paused"
-              ? "En pausa"
-              : "Completado"}
-        </span>
-      </div>
-      <div className="flex items-center gap-3" style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 8 }}>
-        {project.due_date && (
-          <span>
-            {new Date(project.due_date).toLocaleDateString("es-CL", {
-              day: "numeric",
-              month: "short",
-            })}
-          </span>
-        )}
-        {project.budget != null && <span>· ${project.budget.toLocaleString("es-CL")}</span>}
-      </div>
-      <div
-        style={{
-          height: 3,
-          background: "var(--border)",
-          borderRadius: 4,
-          overflow: "hidden",
-          marginBottom: 8,
-        }}
-      >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: "100%",
-            background: "var(--accent-color)",
-            transition: "width 0.3s",
-          }}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-          {done}/{total} tareas
+          {initialsTxt}
         </div>
-        {collabs.length > 0 && (
-          <div className="flex -space-x-1.5">
-            {collabs.map((c) => (
+
+        <div className="flex-1 min-w-0">
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+            {project.name}
+          </div>
+          {description && (
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--text-tertiary)",
+                marginTop: 2,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {description}
+            </div>
+          )}
+          <div className="flex items-center flex-wrap" style={{ gap: 6, marginTop: 8 }}>
+            {client && (
               <span
-                key={c.id}
-                title={c.name}
-                className="rounded-full flex items-center justify-center"
+                className="inline-flex items-center"
                 style={{
-                  width: 20,
-                  height: 20,
-                  background: "var(--bg-base)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-secondary)",
-                  fontSize: 9,
-                  fontWeight: 500,
+                  gap: 4,
+                  fontSize: 11,
+                  color: "var(--text-tertiary)",
+                  background: "#141414",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 100,
+                  padding: "2px 8px",
                 }}
               >
-                {initials(c.name)}
+                <IconUser size={11} /> {client.name}
               </span>
-            ))}
+            )}
+            {project.due_date && (
+              <span
+                className="inline-flex items-center"
+                style={{
+                  gap: 4,
+                  fontSize: 11,
+                  color: "var(--text-tertiary)",
+                  background: "#141414",
+                  border: "1px solid #1a1a1a",
+                  borderRadius: 100,
+                  padding: "2px 8px",
+                }}
+              >
+                <IconCalendar size={11} />
+                {new Date(project.due_date).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+              </span>
+            )}
+            {overdueCount > 0 && (
+              <span
+                style={{
+                  fontSize: 11,
+                  background: "#1a0a0a",
+                  border: "1px solid #3a1a1a",
+                  color: "#f87171",
+                  borderRadius: 100,
+                  padding: "2px 8px",
+                }}
+              >
+                🔥 {overdueCount} atrasada{overdueCount === 1 ? "" : "s"}
+              </span>
+            )}
           </div>
-        )}
+
+          <div
+            style={{
+              height: 2,
+              background: "#1a1a2e",
+              borderRadius: 4,
+              overflow: "hidden",
+              marginTop: 10,
+            }}
+          >
+            <div
+              style={{
+                width: `${pct}%`,
+                height: "100%",
+                background: color,
+                transition: "width 0.3s",
+              }}
+            />
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4 }}>
+            {done}/{total} tareas completadas
+          </div>
+        </div>
+
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: pct === 0 ? "var(--text-tertiary)" : color,
+            flexShrink: 0,
+            marginLeft: 4,
+          }}
+        >
+          {Math.round(pct)}%
+        </div>
       </div>
     </div>
   );
 }
+
 
 function NewProjectModal({
   contacts,
