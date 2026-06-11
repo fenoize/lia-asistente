@@ -514,7 +514,7 @@ export function ChatInterface() {
             {messages.map((m, idx) => {
               const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               return (
-                <div key={m.id}>
+                <div key={m.id} className="animate-fade-in">
                   {m.role === "user" ? (
                     <UserBubble text={m.content} time={time} />
                   ) : (
@@ -533,7 +533,9 @@ export function ChatInterface() {
               );
             })}
             {streaming && messages[messages.length - 1]?.role === "user" && (
-              <AlfredBubble text="" streaming action={null} assistantInitial={assistant.name.charAt(0).toUpperCase()} />
+              <div className="animate-fade-in">
+                <AlfredBubble text="" streaming action={null} assistantInitial={assistant.name.charAt(0).toUpperCase()} />
+              </div>
             )}
           </div>
         </div>
@@ -657,22 +659,29 @@ function AlfredBubble({
           }}
         >
           {text || streaming ? (
-            <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
-              {text ? <ReactMarkdown>{text}</ReactMarkdown> : null}
-              {streaming && (
-                <span
-                  className="inline-block ml-0.5 align-baseline"
-                  style={{
-                    width: 7,
-                    height: 14,
-                    background: "var(--accent-color)",
-                    animation: "alfredBlinkChat 1s step-end infinite",
-                    verticalAlign: "-2px",
-                  }}
-                />
-              )}
-            </div>
-
+            text ? (
+              <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
+                <ReactMarkdown>{text}</ReactMarkdown>
+                {streaming && (
+                  <span
+                    className="inline-block ml-0.5 align-baseline"
+                    style={{
+                      width: 7,
+                      height: 14,
+                      background: "var(--accent-color)",
+                      animation: "alfredBlinkChat 1s step-end infinite",
+                      verticalAlign: "-2px",
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 py-1" aria-label="Escribiendo…">
+                <div className="h-3 rounded" style={{ width: "85%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite" }} />
+                <div className="h-3 rounded" style={{ width: "65%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.15s" }} />
+                <div className="h-3 rounded" style={{ width: "40%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.3s" }} />
+              </div>
+            )
           ) : null}
         </div>
         {action && (
@@ -688,7 +697,7 @@ function AlfredBubble({
             {time}
           </div>
         )}
-        <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } }`}</style>
+        <style>{`@keyframes alfredBlinkChat { 50% { opacity: 0; } } @keyframes alfredSkeleton { 0%,100% { opacity: 0.35; } 50% { opacity: 0.7; } }`}</style>
       </div>
     </div>
   );
