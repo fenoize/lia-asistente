@@ -272,6 +272,7 @@ export type Database = {
       }
       finance_expenses: {
         Row: {
+          account_id: string | null
           amount: number
           category: string | null
           created_at: string
@@ -287,6 +288,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount?: number
           category?: string | null
           created_at?: string
@@ -302,6 +304,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           category?: string | null
           created_at?: string
@@ -316,10 +319,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "finance_expenses_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       finance_incomes: {
         Row: {
+          account_id: string | null
           amount: number
           client_id: string | null
           created_at: string
@@ -335,6 +347,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           amount?: number
           client_id?: string | null
           created_at?: string
@@ -350,6 +363,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           client_id?: string | null
           created_at?: string
@@ -364,10 +378,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "finance_incomes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       finance_subscriptions: {
         Row: {
+          account_id: string | null
           active: boolean
           amount: number
           created_at: string
@@ -381,6 +404,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           active?: boolean
           amount?: number
           created_at?: string
@@ -394,6 +418,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           active?: boolean
           amount?: number
           created_at?: string
@@ -406,7 +431,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "finance_subscriptions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meetings: {
         Row: {
