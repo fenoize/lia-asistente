@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const in15 = new Date(now.getTime() + 15 * 60 * 1000);
-    const in30 = new Date(now.getTime() + 30 * 60 * 1000);
+    
     const todayStart = new Date(now);
     todayStart.setUTCHours(0, 0, 0, 0);
     const tomorrowStart = new Date(todayStart);
