@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { IconBriefcase, IconPlus, IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconBriefcase, IconPlus, IconPencil, IconTrash, IconSearch, IconUser, IconCalendar, IconChevronDown } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { supabase } from "@/integrations/supabase/client";
