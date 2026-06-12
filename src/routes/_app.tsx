@@ -8,12 +8,15 @@ import { LiaSplash } from "@/components/lia-splash";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { MobileTopBar } from "@/components/mobile-top-bar";
 import { ChatStoreProvider } from "@/hooks/use-chat-store";
-import { PrefetchStoreProvider, usePrefetchStore } from "@/hooks/use-prefetch-store";
+import { PrefetchStoreProvider } from "@/hooks/use-prefetch-store";
 import { PostLoginLoader } from "@/components/post-login-loader";
 
 // In-memory cache: once we've confirmed onboarding for a user in this tab,
 // skip the DB roundtrip on every subsequent module navigation.
 const onboardedUsers = new Set<string>();
+// Module-scope so the post-login loader never re-appears within a tab,
+// even if the auth gate above briefly remounts the provider tree.
+const prefetchedUserIds = new Set<string>();
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -24,7 +27,12 @@ function AppLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLoading = useRouterState({ select: (s) => s.isLoading || s.isTransitioning });
-  const [authGateReady, setAuthGateReady] = useState(false);
+  // Lazy init: if we've already cleared this user during the tab's lifetime,
+  // skip the splash entirely on subsequent renders/remounts.
+  const [authGateReady, setAuthGateReady] = useState(
+    () => !!session && onboardedUsers.has(session.user.id),
+  );
+
 
   useEffect(() => {
     let cancelled = false;
@@ -83,20 +91,20 @@ function AppLayout() {
 }
 
 function AppContent({ pathname, isLoading, userId }: { pathname: string; isLoading: boolean; userId: string }) {
-  const { prefetchedUsers } = usePrefetchStore();
-  const [showLoader, setShowLoader] = useState(() => !prefetchedUsers.current.has(userId));
+  const [showLoader, setShowLoader] = useState(() => !prefetchedUserIds.has(userId));
 
   if (showLoader) {
     return (
       <PostLoginLoader
         userId={userId}
         onDone={() => {
-          prefetchedUsers.current.add(userId);
+          prefetchedUserIds.add(userId);
           setShowLoader(false);
         }}
       />
     );
   }
+
 
   return (
     <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
