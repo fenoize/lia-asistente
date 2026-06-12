@@ -10,4 +10,4 @@ export const createLovableAiGatewayProvider = (lovableApiKey: string) =>
     },
   });
 
-export const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+export const DEFAULT_MODEL = "openai/gpt-4o-mini";
