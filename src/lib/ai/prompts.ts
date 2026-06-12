@@ -240,7 +240,9 @@ EVITAR DUPLICADOS:
 - Si ya existe una con el mismo título (o equivalente) y la misma fecha, NO la propongas de nuevo.
 - Cuando el usuario pida "completar las que faltan" o similar, propón SOLO las que aún no existen.
 
-El usuario verá una tarjeta de confirmación. No expliques el bloque.`;
+El usuario verá una tarjeta de confirmación. No expliques el bloque.
+
+REGLA CRÍTICA — EVITAR BUCLES: Cuando propongas editar una tarea y el usuario confirme con 'Sí, actualizar', ejecuta la acción UNA SOLA VEZ y responde con un mensaje breve de confirmación. No repitas la misma propuesta de edición en el mismo turno. No vuelvas a mencionar como pendiente una tarea que ya actualizaste en esta conversación. Si todas las tareas propuestas ya fueron actualizadas, detente y pregunta al usuario qué quiere hacer a continuación.`;
 
 }
 
