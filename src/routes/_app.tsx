@@ -91,20 +91,20 @@ function AppLayout() {
 }
 
 function AppContent({ pathname, isLoading, userId }: { pathname: string; isLoading: boolean; userId: string }) {
-  const { prefetchedUsers } = usePrefetchStore();
-  const [showLoader, setShowLoader] = useState(() => !prefetchedUsers.current.has(userId));
+  const [showLoader, setShowLoader] = useState(() => !prefetchedUserIds.has(userId));
 
   if (showLoader) {
     return (
       <PostLoginLoader
         userId={userId}
         onDone={() => {
-          prefetchedUsers.current.add(userId);
+          prefetchedUserIds.add(userId);
           setShowLoader(false);
         }}
       />
     );
   }
+
 
   return (
     <div className="min-h-screen flex w-full" style={{ background: "var(--bg-base)" }}>
