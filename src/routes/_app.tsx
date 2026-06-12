@@ -14,6 +14,9 @@ import { PostLoginLoader } from "@/components/post-login-loader";
 // In-memory cache: once we've confirmed onboarding for a user in this tab,
 // skip the DB roundtrip on every subsequent module navigation.
 const onboardedUsers = new Set<string>();
+// Module-scope so the post-login loader never re-appears within a tab,
+// even if the auth gate above briefly remounts the provider tree.
+const prefetchedUserIds = new Set<string>();
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -24,7 +27,12 @@ function AppLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLoading = useRouterState({ select: (s) => s.isLoading || s.isTransitioning });
-  const [authGateReady, setAuthGateReady] = useState(false);
+  // Lazy init: if we've already cleared this user during the tab's lifetime,
+  // skip the splash entirely on subsequent renders/remounts.
+  const [authGateReady, setAuthGateReady] = useState(
+    () => !!session && onboardedUsers.has(session.user.id),
+  );
+
 
   useEffect(() => {
     let cancelled = false;
