@@ -8,7 +8,7 @@ import { LiaSplash } from "@/components/lia-splash";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { MobileTopBar } from "@/components/mobile-top-bar";
 import { ChatStoreProvider } from "@/hooks/use-chat-store";
-import { PrefetchStoreProvider, usePrefetchStore } from "@/hooks/use-prefetch-store";
+import { PrefetchStoreProvider } from "@/hooks/use-prefetch-store";
 import { PostLoginLoader } from "@/components/post-login-loader";
 
 // In-memory cache: once we've confirmed onboarding for a user in this tab,
