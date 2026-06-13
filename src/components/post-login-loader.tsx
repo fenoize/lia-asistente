@@ -46,7 +46,7 @@ export function PostLoginLoader({ userId, onDone }: { userId: string; onDone: ()
           setMsgVisible(true);
           cycle();
         }, 500);
-      }, 3000);
+      }, 2000);
     };
     cycle();
     return () => {
