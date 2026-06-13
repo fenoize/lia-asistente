@@ -80,7 +80,20 @@ function MeetingsPage() {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
 
-  const weekStart = useMemo(() => startOfWeek(new Date()), []);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const goToPrevWeek = () => setWeekStart(prev => {
+    const d = new Date(prev); d.setDate(d.getDate() - 7); return d;
+  });
+  const goToNextWeek = () => setWeekStart(prev => {
+    const d = new Date(prev); d.setDate(d.getDate() + 7); return d;
+  });
+  const goToToday = () => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    setWeekStart(startOfWeek(today));
+    setSelected(today);
+  };
+  const isCurrentWeek = sameDay(weekStart, startOfWeek(new Date()));
+
   const days = useMemo(
     () => Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
