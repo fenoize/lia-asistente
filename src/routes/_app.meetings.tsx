@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconMapPin, IconVideo, IconPhone, IconBolt, IconUsers } from "@tabler/icons-react";
+import { IconPlus, IconMapPin, IconVideo, IconPhone, IconBolt, IconUsers, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { EditMeetingModal, type Attendee, type ActionItem } from "@/components/meetings/edit-meeting-modal";
 import { detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
