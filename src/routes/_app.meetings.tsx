@@ -151,10 +151,50 @@ function MeetingsPage() {
         </button>
       </header>
 
+      <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+        <div className="flex items-center" style={{ gap: 4 }}>
+          <button
+            onClick={goToPrevWeek}
+            aria-label="Semana anterior"
+            style={{
+              width: 30, height: 30, display: "grid", placeItems: "center",
+              borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
+            }}
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <span style={{ fontSize: 13, color: "#bbb", fontWeight: 500, padding: "0 10px", fontVariantNumeric: "tabular-nums" }}>
+            {weekLabel(weekStart)}
+          </span>
+          <button
+            onClick={goToNextWeek}
+            aria-label="Semana siguiente"
+            style={{
+              width: 30, height: 30, display: "grid", placeItems: "center",
+              borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
+            }}
+          >
+            <IconChevronRight size={16} />
+          </button>
+        </div>
+        {!isCurrentWeek && (
+          <button
+            onClick={goToToday}
+            style={{
+              fontSize: 11, padding: "5px 12px", borderRadius: 100,
+              background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
+              color: "#a5b4fc",
+            }}
+          >
+            Hoy
+          </button>
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
         {days.map((d, i) => {
           const isSel = sameDay(d, selected);
+          const hasMeeting = meetings.some(m => sameDay(new Date(m.datetime), d));
           return (
             <button
               key={i}
@@ -190,10 +230,16 @@ function MeetingsPage() {
               >
                 {d.getDate()}
               </span>
+              {hasMeeting ? (
+                <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? "#a5b4fc" : "#6366f1" }} />
+              ) : (
+                <span style={{ width: 4, height: 4 }} />
+              )}
             </button>
           );
         })}
       </div>
+
 
       <div className="flex gap-1.5" style={{ marginBottom: 16 }}>
         {STATUS_FILTERS.map((f) => {
