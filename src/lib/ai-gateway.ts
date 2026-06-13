@@ -10,4 +10,4 @@ export const createLovableAiGatewayProvider = (lovableApiKey: string) =>
     },
   });
 
-export const DEFAULT_MODEL = "openai/gpt-4o-mini";
+export const DEFAULT_MODEL = "openai/gpt-5-mini";
