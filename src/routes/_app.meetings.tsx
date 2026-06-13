@@ -54,6 +54,20 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function sameDay(a: Date, b: Date) {
+  // (function already defined above; keep marker)
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function weekLabel(start: Date): string {
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${months[start.getMonth()]}`;
+  }
+  return `${start.getDate()} ${months[start.getMonth()]} – ${end.getDate()} ${months[end.getMonth()]}`;
+}
+
 function openCapture() {
   window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
 }
