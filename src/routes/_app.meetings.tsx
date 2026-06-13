@@ -54,11 +54,6 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function sameDay(a: Date, b: Date) {
-  // (function already defined above; keep marker)
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 function weekLabel(start: Date): string {
   const end = new Date(start); end.setDate(end.getDate() + 6);
   const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
