@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { IconPlus, IconMapPin, IconVideo, IconPhone, IconBolt, IconUsers } from "@tabler/icons-react";
+import { IconPlus, IconMapPin, IconVideo, IconPhone, IconBolt, IconUsers, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { EditMeetingModal, type Attendee, type ActionItem } from "@/components/meetings/edit-meeting-modal";
 import { detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 
@@ -54,6 +54,15 @@ function sameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function weekLabel(start: Date): string {
+  const end = new Date(start); end.setDate(end.getDate() + 6);
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${months[start.getMonth()]}`;
+  }
+  return `${start.getDate()} ${months[start.getMonth()]} – ${end.getDate()} ${months[end.getMonth()]}`;
+}
+
 function openCapture() {
   window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
 }
@@ -71,7 +80,20 @@ function MeetingsPage() {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
 
-  const weekStart = useMemo(() => startOfWeek(new Date()), []);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
+  const goToPrevWeek = () => setWeekStart(prev => {
+    const d = new Date(prev); d.setDate(d.getDate() - 7); return d;
+  });
+  const goToNextWeek = () => setWeekStart(prev => {
+    const d = new Date(prev); d.setDate(d.getDate() + 7); return d;
+  });
+  const goToToday = () => {
+    const today = new Date(); today.setHours(0,0,0,0);
+    setWeekStart(startOfWeek(today));
+    setSelected(today);
+  };
+  const isCurrentWeek = sameDay(weekStart, startOfWeek(new Date()));
+
   const days = useMemo(
     () => Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
@@ -129,10 +151,50 @@ function MeetingsPage() {
         </button>
       </header>
 
+      <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
+        <div className="flex items-center" style={{ gap: 4 }}>
+          <button
+            onClick={goToPrevWeek}
+            aria-label="Semana anterior"
+            style={{
+              width: 30, height: 30, display: "grid", placeItems: "center",
+              borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
+            }}
+          >
+            <IconChevronLeft size={16} />
+          </button>
+          <span style={{ fontSize: 13, color: "#bbb", fontWeight: 500, padding: "0 10px", fontVariantNumeric: "tabular-nums" }}>
+            {weekLabel(weekStart)}
+          </span>
+          <button
+            onClick={goToNextWeek}
+            aria-label="Semana siguiente"
+            style={{
+              width: 30, height: 30, display: "grid", placeItems: "center",
+              borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
+            }}
+          >
+            <IconChevronRight size={16} />
+          </button>
+        </div>
+        {!isCurrentWeek && (
+          <button
+            onClick={goToToday}
+            style={{
+              fontSize: 11, padding: "5px 12px", borderRadius: 100,
+              background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
+              color: "#a5b4fc",
+            }}
+          >
+            Hoy
+          </button>
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
         {days.map((d, i) => {
           const isSel = sameDay(d, selected);
+          const hasMeeting = meetings.some(m => sameDay(new Date(m.datetime), d));
           return (
             <button
               key={i}
@@ -168,10 +230,16 @@ function MeetingsPage() {
               >
                 {d.getDate()}
               </span>
+              {hasMeeting ? (
+                <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? "#a5b4fc" : "#6366f1" }} />
+              ) : (
+                <span style={{ width: 4, height: 4 }} />
+              )}
             </button>
           );
         })}
       </div>
+
 
       <div className="flex gap-1.5" style={{ marginBottom: 16 }}>
         {STATUS_FILTERS.map((f) => {
