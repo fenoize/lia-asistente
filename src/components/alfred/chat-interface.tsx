@@ -994,12 +994,12 @@ function InputBar({
   const hasText = value.trim().length > 0;
   return (
     <div
-      className="flex items-end gap-2"
+      className="flex items-center gap-2"
       style={{
         background: "rgba(255,255,255,0.04)",
         border: `1.5px solid ${focused ? "rgba(99,102,241,0.55)" : "rgba(255,255,255,0.07)"}`,
         borderRadius: 22,
-        padding: "10px 10px 10px 16px",
+        padding: "8px 8px 8px 16px",
         transition: "border-color 0.2s",
         boxShadow: focused ? "0 0 0 3px rgba(99,102,241,0.08)" : "none",
       }}
