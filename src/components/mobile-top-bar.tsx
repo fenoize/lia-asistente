@@ -169,19 +169,14 @@ export function MobileTopBar() {
       `}</style>
       <header
         style={{
-          position: "sticky",
-          top: 0,
+          position: "absolute",
+          top: 12,
+          right: 12,
           zIndex: 90,
-          height: 52,
-          background: "rgba(10,10,10,0.85)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderBottom: "1px solid #141414",
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
-          padding: "0 16px",
           gap: 8,
+          pointerEvents: "auto",
         }}
       >
         <button
