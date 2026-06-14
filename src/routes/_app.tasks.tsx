@@ -10,6 +10,7 @@ import {
   IconLayoutGrid,
   IconTable,
   IconTimeline,
+  IconChevronDown,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
@@ -232,74 +233,47 @@ function TasksPage() {
         </button>
       </header>
 
-      {/* Filters bar */}
-      <div
-        className="mb-4 overflow-x-auto"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          paddingBottom: 6,
-          scrollbarWidth: "thin",
-        }}
-      >
-        {/* Estado */}
-        <FilterChip
-          active={filterStatus === "all"}
-          onClick={() => setFilterStatus("all")}
-          label="Todos"
+      {/* Filters + view bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <FilterDropdown
+          label="Estado"
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as FilterStatus)}
+          options={[
+            { id: "all", label: "Todos" },
+            { id: "borrador", label: "Borrador", color: STATUS_META.borrador.color },
+            { id: "en_curso", label: "En Curso", color: STATUS_META.en_curso.color },
+            { id: "listo", label: "Listo", color: STATUS_META.listo.color },
+          ]}
         />
-        {(["borrador", "en_curso", "listo"] as const).map((s) => (
-          <FilterChip
-            key={s}
-            active={filterStatus === s}
-            onClick={() => setFilterStatus(s)}
-            label={STATUS_META[s].label}
-            dotColor={STATUS_META[s].color}
-            activeColor={STATUS_META[s].color}
-          />
-        ))}
-        <Divider />
-        {/* Fecha */}
-        {([
-          { id: "all", label: "Siempre" },
-          { id: "day", label: "Hoy" },
-          { id: "week", label: "Semana" },
-          { id: "month", label: "Mes" },
-        ] as const).map((d) => (
-          <FilterChip
-            key={d.id}
-            active={filterDate === d.id}
-            onClick={() => setFilterDate(d.id)}
-            label={d.label}
-          />
-        ))}
-        {taskProjects.length > 0 && <Divider />}
-        {/* Proyecto */}
+        <FilterDropdown
+          label="Fecha"
+          value={filterDate}
+          onChange={(v) => setFilterDate(v as FilterDate)}
+          options={[
+            { id: "all", label: "Siempre" },
+            { id: "day", label: "Hoy" },
+            { id: "week", label: "Semana" },
+            { id: "month", label: "Mes" },
+          ]}
+        />
         {taskProjects.length > 0 && (
-          <FilterChip
-            active={filterProject === "all"}
-            onClick={() => setFilterProject("all")}
-            label="Todos"
+          <FilterDropdown
+            label="Proyecto"
+            value={filterProject}
+            onChange={(v) => setFilterProject(v)}
+            options={[
+              { id: "all", label: "Todos" },
+              ...taskProjects.map((p) => ({
+                id: p.id,
+                label: p.name,
+                color: projectColor(p.name),
+              })),
+            ]}
           />
         )}
-        {taskProjects.map((p) => {
-          const col = projectColor(p.name);
-          return (
-            <FilterChip
-              key={p.id}
-              active={filterProject === p.id}
-              onClick={() => setFilterProject(p.id)}
-              label={p.name}
-              dotColor={col}
-              activeColor={col}
-            />
-          );
-        })}
-      </div>
 
-      <div className="flex items-center justify-end mb-6 gap-3 flex-wrap">
-        <div className="flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
+        <div className="ml-auto flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
           {(["cards", "table", "gantt"] as const).map((v) => {
             const active = view === v;
             const Icon = v === "cards" ? IconLayoutGrid : v === "table" ? IconTable : IconTimeline;
@@ -387,6 +361,133 @@ function TasksPage() {
           onSaved={updateTask}
           onDeleted={removeTask}
         />
+      )}
+    </div>
+  );
+}
+
+type DropdownOption = { id: string; label: string; color?: string };
+
+function FilterDropdown({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: DropdownOption[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.id === value) ?? options[0];
+  const isAll = selected?.id === "all";
+  const accent = selected?.color ?? "#818cf8";
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [open]);
+
+  return (
+    <div style={{ position: "relative", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          padding: "6px 10px 6px 12px",
+          borderRadius: 100,
+          whiteSpace: "nowrap",
+          border: !isAll ? `1px solid ${accent}66` : "1px solid #222",
+          background: !isAll ? `${accent}22` : "transparent",
+          color: !isAll ? accent : "#999",
+          transition: "all 0.15s",
+        }}
+      >
+        {selected?.color && (
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: selected.color,
+              display: "inline-block",
+            }}
+          />
+        )}
+        <span style={{ color: "#666" }}>{label}:</span>
+        <span>{selected?.label}</span>
+        <IconChevronDown size={12} style={{ opacity: 0.6 }} />
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 50,
+            minWidth: 180,
+            background: "#0d0d0d",
+            border: "1px solid #1e1e1e",
+            borderRadius: 10,
+            padding: 4,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          }}
+        >
+          {options.map((o) => {
+            const active = o.id === value;
+            return (
+              <button
+                key={o.id}
+                onClick={() => {
+                  onChange(o.id);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                  textAlign: "left",
+                  fontSize: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                  color: active ? "#a5b4fc" : "#ccc",
+                  transition: "background 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) e.currentTarget.style.background = "#161616";
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) e.currentTarget.style.background = "transparent";
+                }}
+              >
+                {o.color ? (
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: o.color,
+                      display: "inline-block",
+                      flexShrink: 0,
+                    }}
+                  />
+                ) : (
+                  <span style={{ width: 8, flexShrink: 0 }} />
+                )}
+                <span style={{ flex: 1 }}>{o.label}</span>
+                {active && <IconCheck size={12} />}
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );
