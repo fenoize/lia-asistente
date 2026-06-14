@@ -10,6 +10,7 @@ import {
   IconLayoutGrid,
   IconTable,
   IconTimeline,
+  IconChevronDown,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
