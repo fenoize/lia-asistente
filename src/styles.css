@@ -141,7 +141,7 @@
 
 @media (max-width: 767px) {
   .alfred-page-shell {
-    padding: 20px 24px calc(var(--alfred-mobile-bottom-nav-height) + 32px);
+    padding: 56px 24px calc(var(--alfred-mobile-bottom-nav-height) + 32px);
   }
   .alfred-chat-route-frame {
     height: calc(100dvh - var(--alfred-mobile-top-bar-height) - var(--alfred-mobile-bottom-nav-height));
