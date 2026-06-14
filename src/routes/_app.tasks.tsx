@@ -232,74 +232,47 @@ function TasksPage() {
         </button>
       </header>
 
-      {/* Filters bar */}
-      <div
-        className="mb-4 overflow-x-auto"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          paddingBottom: 6,
-          scrollbarWidth: "thin",
-        }}
-      >
-        {/* Estado */}
-        <FilterChip
-          active={filterStatus === "all"}
-          onClick={() => setFilterStatus("all")}
-          label="Todos"
+      {/* Filters + view bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <FilterDropdown
+          label="Estado"
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as FilterStatus)}
+          options={[
+            { id: "all", label: "Todos" },
+            { id: "borrador", label: "Borrador", color: STATUS_META.borrador.color },
+            { id: "en_curso", label: "En Curso", color: STATUS_META.en_curso.color },
+            { id: "listo", label: "Listo", color: STATUS_META.listo.color },
+          ]}
         />
-        {(["borrador", "en_curso", "listo"] as const).map((s) => (
-          <FilterChip
-            key={s}
-            active={filterStatus === s}
-            onClick={() => setFilterStatus(s)}
-            label={STATUS_META[s].label}
-            dotColor={STATUS_META[s].color}
-            activeColor={STATUS_META[s].color}
-          />
-        ))}
-        <Divider />
-        {/* Fecha */}
-        {([
-          { id: "all", label: "Siempre" },
-          { id: "day", label: "Hoy" },
-          { id: "week", label: "Semana" },
-          { id: "month", label: "Mes" },
-        ] as const).map((d) => (
-          <FilterChip
-            key={d.id}
-            active={filterDate === d.id}
-            onClick={() => setFilterDate(d.id)}
-            label={d.label}
-          />
-        ))}
-        {taskProjects.length > 0 && <Divider />}
-        {/* Proyecto */}
+        <FilterDropdown
+          label="Fecha"
+          value={filterDate}
+          onChange={(v) => setFilterDate(v as FilterDate)}
+          options={[
+            { id: "all", label: "Siempre" },
+            { id: "day", label: "Hoy" },
+            { id: "week", label: "Semana" },
+            { id: "month", label: "Mes" },
+          ]}
+        />
         {taskProjects.length > 0 && (
-          <FilterChip
-            active={filterProject === "all"}
-            onClick={() => setFilterProject("all")}
-            label="Todos"
+          <FilterDropdown
+            label="Proyecto"
+            value={filterProject}
+            onChange={(v) => setFilterProject(v)}
+            options={[
+              { id: "all", label: "Todos" },
+              ...taskProjects.map((p) => ({
+                id: p.id,
+                label: p.name,
+                color: projectColor(p.name),
+              })),
+            ]}
           />
         )}
-        {taskProjects.map((p) => {
-          const col = projectColor(p.name);
-          return (
-            <FilterChip
-              key={p.id}
-              active={filterProject === p.id}
-              onClick={() => setFilterProject(p.id)}
-              label={p.name}
-              dotColor={col}
-              activeColor={col}
-            />
-          );
-        })}
-      </div>
 
-      <div className="flex items-center justify-end mb-6 gap-3 flex-wrap">
-        <div className="flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
+        <div className="ml-auto flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
           {(["cards", "table", "gantt"] as const).map((v) => {
             const active = view === v;
             const Icon = v === "cards" ? IconLayoutGrid : v === "table" ? IconTable : IconTimeline;
