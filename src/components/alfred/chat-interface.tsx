@@ -1326,7 +1326,7 @@ function WeeklyPlanCard({ planJson }: { planJson: string }) {
         project: !projectId && task.project_name ? task.project_name : null,
       };
       if (task.action === "update" && task.task_id) {
-        return supabase.from("tasks").update(payload).eq("id", task.task_id).eq("user_id", user.id);
+        return supabase.from("tasks").update(payload as never).eq("id", task.task_id).eq("user_id", user.id);
       }
       return supabase.from("tasks").insert({
         ...payload,
