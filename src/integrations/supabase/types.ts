@@ -776,11 +776,13 @@ export type Database = {
           created_at: string | null
           description: string | null
           due_date: string | null
+          duration_minutes: number | null
           id: string
           priority: string
           project: string | null
           project_id: string | null
           start_date: string | null
+          start_time: string | null
           status: string
           title: string
           updated_at: string | null
@@ -792,11 +794,13 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           due_date?: string | null
+          duration_minutes?: number | null
           id?: string
           priority?: string
           project?: string | null
           project_id?: string | null
           start_date?: string | null
+          start_time?: string | null
           status?: string
           title: string
           updated_at?: string | null
@@ -808,11 +812,13 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           due_date?: string | null
+          duration_minutes?: number | null
           id?: string
           priority?: string
           project?: string | null
           project_id?: string | null
           start_date?: string | null
+          start_time?: string | null
           status?: string
           title?: string
           updated_at?: string | null
