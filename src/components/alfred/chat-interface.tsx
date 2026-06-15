@@ -74,13 +74,56 @@ function parseAction(text: string): { clean: string; action: Action | null } {
 }
 
 function stripPartialJsonForLive(raw: string): string {
-  // Cut at first opening fence or first standalone JSON start
+  // Cut at first opening fence or first standalone JSON start.
+  // IMPORTANT: do NOT cut on `[PLAN]` blocks — those render as WeeklyPlanCard.
   let cut = raw.length;
   const fence = raw.search(/```/);
   if (fence !== -1) cut = Math.min(cut, fence);
-  const jsonStart = raw.search(/(?:^|\n)\s*[{\[]/);
-  if (jsonStart !== -1) cut = Math.min(cut, jsonStart);
+  // Match `[` or `{` at line start, but skip `[PLAN]` / `[/PLAN]` markers.
+  const jsonRe = /(?:^|\n)\s*([{\[])/g;
+  let m: RegExpExecArray | null;
+  while ((m = jsonRe.exec(raw)) !== null) {
+    if (m[1] === "[") {
+      const rest = raw.slice(m.index + m[0].length - 1);
+      if (/^\[\/?PLAN\]/.test(rest)) continue;
+    }
+    const idx = m.index + m[0].length - 1;
+    cut = Math.min(cut, idx);
+    break;
+  }
   return raw.slice(0, cut).trimEnd();
+}
+
+// ─── Weekly Plan types & parser ──────────────────────────────────────────────
+interface PlanTask {
+  task_id: string | null;
+  action: "update" | "create";
+  title: string;
+  priority: "urgente" | "alta" | "media" | "baja";
+  start_time: string;
+  duration_minutes: number;
+  project_name: string | null;
+}
+interface PlanDay { date: string; label: string; tasks: PlanTask[]; }
+interface WeeklyPlan { type: "weekly_plan"; summary: string; days: PlanDay[]; }
+interface DragState {
+  taskId: string; fromDayIdx: number; fromTaskIdx: number;
+  title: string; active: boolean; targetDayIdx: number | null;
+  startX: number; startY: number;
+}
+
+function parseMessageParts(content: string): Array<{ type: "text" | "plan"; value: string }> {
+  const parts: Array<{ type: "text" | "plan"; value: string }> = [];
+  const regex = /\[PLAN\]([\s\S]*?)\[\/PLAN\]/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    if (match.index > last) parts.push({ type: "text", value: content.slice(last, match.index).trim() });
+    parts.push({ type: "plan", value: match[1].trim() });
+    last = match.index + match[0].length;
+  }
+  if (last < content.length) parts.push({ type: "text", value: content.slice(last).trim() });
+  return parts.filter((p) => p.value);
 }
 
 export function ChatInterface() {
