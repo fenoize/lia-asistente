@@ -716,50 +716,61 @@ function AlfredBubble({
   onDecline?: () => void;
   assistantInitial?: string;
 }) {
+  const parts = text ? parseMessageParts(text) : [];
+  const hasOnlyPlan = parts.length > 0 && parts.every((p) => p.type === "plan");
+  const bubbleStyle: React.CSSProperties = {
+    maxWidth: "85%",
+    background: "var(--bg-elevated)",
+    border: "1px solid var(--border)",
+    borderRadius: "4px 18px 18px 18px",
+    padding: "12px 16px",
+    fontSize: 14,
+    lineHeight: 1.65,
+    color: "var(--text-primary)",
+    wordBreak: "break-word",
+    overflowWrap: "anywhere",
+    minWidth: 0,
+  };
   return (
     <div className="flex items-start">
-      <div className="flex-1 min-w-0">
-        <div
-          style={{
-            maxWidth: "85%",
-            background: "var(--bg-elevated)",
-            border: "1px solid var(--border)",
-            borderRadius: "4px 18px 18px 18px",
-            padding: "12px 16px",
-            fontSize: 14,
-            lineHeight: 1.65,
-            color: "var(--text-primary)",
-            wordBreak: "break-word",
-            overflowWrap: "anywhere",
-            minWidth: 0,
-          }}
-        >
-          {text || streaming ? (
-            text ? (
-              <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
-                <ReactMarkdown>{text}</ReactMarkdown>
-                {streaming && (
-                  <span
-                    className="inline-block ml-0.5 align-baseline"
-                    style={{
-                      width: 7,
-                      height: 14,
-                      background: "var(--accent-color)",
-                      animation: "alfredBlinkChat 1s step-end infinite",
-                      verticalAlign: "-2px",
-                    }}
-                  />
-                )}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        {/* Skeleton while waiting */}
+        {!text && streaming && (
+          <div style={bubbleStyle}>
+            <div className="flex flex-col gap-2 py-1" aria-label="Escribiendo…">
+              <div className="h-3 rounded" style={{ width: "85%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite" }} />
+              <div className="h-3 rounded" style={{ width: "65%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.15s" }} />
+              <div className="h-3 rounded" style={{ width: "40%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.3s" }} />
+            </div>
+          </div>
+        )}
+        {parts.map((part, i) => {
+          if (part.type === "plan") {
+            return <WeeklyPlanCard key={i} planJson={part.value} />;
+          }
+          const isLastText = i === parts.length - 1 && !hasOnlyPlan;
+          return (
+            <div key={i} style={{ maxWidth: "85%" }}>
+              <div style={bubbleStyle}>
+                <div className="prose prose-invert prose-sm max-w-none prose-p:my-1.5 prose-ul:my-1.5 prose-pre:overflow-x-auto prose-pre:max-w-full break-words">
+                  <ReactMarkdown>{part.value}</ReactMarkdown>
+                  {streaming && isLastText && (
+                    <span
+                      className="inline-block ml-0.5 align-baseline"
+                      style={{
+                        width: 7,
+                        height: 14,
+                        background: "var(--accent-color)",
+                        animation: "alfredBlinkChat 1s step-end infinite",
+                        verticalAlign: "-2px",
+                      }}
+                    />
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col gap-2 py-1" aria-label="Escribiendo…">
-                <div className="h-3 rounded" style={{ width: "85%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite" }} />
-                <div className="h-3 rounded" style={{ width: "65%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.15s" }} />
-                <div className="h-3 rounded" style={{ width: "40%", background: "var(--border)", animation: "alfredSkeleton 1.4s ease-in-out infinite", animationDelay: "0.3s" }} />
-              </div>
-            )
-          ) : null}
-        </div>
+            </div>
+          );
+        })}
         {action && (
           <ActionCard
             action={action}
