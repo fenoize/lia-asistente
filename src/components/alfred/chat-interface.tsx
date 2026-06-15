@@ -49,8 +49,16 @@ function tryParseAction(raw: string): Action | null {
 
 function stripJsonForDisplay(text: string): string {
   let out = text.replace(FENCE_RE, "").trim();
+  // Preserve [PLAN]…[/PLAN] blocks so the weekly-plan card can render them.
+  // Temporarily mask them, run trailing-JSON strip, then restore.
+  const masks: string[] = [];
+  out = out.replace(/\[PLAN\][\s\S]*?\[\/PLAN\]/g, (m) => {
+    masks.push(m);
+    return `\u0000PLAN${masks.length - 1}\u0000`;
+  });
   const tm = out.match(TRAILING_JSON_RE);
   if (tm) out = out.slice(0, tm.index).trim();
+  out = out.replace(/\u0000PLAN(\d+)\u0000/g, (_, i) => masks[Number(i)]);
   return out;
 }
 
