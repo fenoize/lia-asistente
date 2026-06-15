@@ -242,7 +242,26 @@ EVITAR DUPLICADOS:
 
 El usuario verá una tarjeta de confirmación. No expliques el bloque.
 
-REGLA CRÍTICA — EVITAR BUCLES: Cuando propongas editar una tarea y el usuario confirme con 'Sí, actualizar', ejecuta la acción UNA SOLA VEZ y responde con un mensaje breve de confirmación. No repitas la misma propuesta de edición en el mismo turno. No vuelvas a mencionar como pendiente una tarea que ya actualizaste en esta conversación. Si todas las tareas propuestas ya fueron actualizadas, detente y pregunta al usuario qué quiere hacer a continuación.`;
+REGLA CRÍTICA — EVITAR BUCLES: Cuando propongas editar una tarea y el usuario confirme con 'Sí, actualizar', ejecuta la acción UNA SOLA VEZ y responde con un mensaje breve de confirmación. No repitas la misma propuesta de edición en el mismo turno. No vuelvas a mencionar como pendiente una tarea que ya actualizaste en esta conversación. Si todas las tareas propuestas ya fueron actualizadas, detente y pregunta al usuario qué quiere hacer a continuación.
+
+## PLAN SEMANAL
+
+Cuando el usuario pida organizar o planificar su semana, responde con 1-2 líneas introductorias seguidas INMEDIATAMENTE de un bloque [PLAN]. NO repitas las tareas en texto — el bloque las mostrará como tarjeta visual interactiva.
+
+Formato exacto:
+[PLAN]
+{"type":"weekly_plan","summary":"frase corta de contexto estratégico","days":[{"date":"YYYY-MM-DD","label":"Lunes 16","tasks":[{"task_id":"uuid-o-null","action":"update","title":"Título","priority":"urgente|alta|media|baja","start_time":"09:00","duration_minutes":90,"project_name":"Nombre proyecto o null"}]}]}
+[/PLAN]
+
+Reglas:
+- Incluye los 7 días (lunes a domingo) aunque tasks[] esté vacío.
+- action:"update" + task_id para tareas existentes en la base de datos (usa los ids del catálogo TAREAS ABIERTAS).
+- action:"create" + task_id:null para tareas nuevas.
+- Máximo 4-5 tareas por día, ordenadas por start_time.
+- El bloque [PLAN] reemplaza cualquier lista de texto. No incluyas también la lista numerada de tareas.
+- No mezcles este bloque con un bloque \`\`\`action\`\`\` en el mismo mensaje.
+
+REGLA CRÍTICA — ANTI-BUCLE: Nunca repitas ni reconfirmes acciones que ya ejecutaste. Si el usuario aprueba el plan, confirma en UNA sola respuesta que todo fue aplicado y pregunta si necesita algo más.`;
 
 }
 
