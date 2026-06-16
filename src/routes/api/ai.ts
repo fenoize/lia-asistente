@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
 import { buildContext } from "@/lib/ai/context-builder";
 import { buildSystemPrompt } from "@/lib/ai/prompts";
@@ -147,7 +147,7 @@ function isPlanRequest(messages: ChatBodyMessage[]) {
 }
 
 async function buildTaskPlanResponse(
-  sb: ReturnType<typeof createClient>,
+  sb: SupabaseClient,
   messages: ChatBodyMessage[],
   timezone: string,
   userName: string,
@@ -177,7 +177,9 @@ async function buildTaskPlanResponse(
     const statusA = a.status === "en_curso" ? -1 : 0;
     const statusB = b.status === "en_curso" ? -1 : 0;
     if (statusA !== statusB) return statusA - statusB;
-    const pr = (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2);
+    const pr =
+      (a.priority ? PRIORITY_RANK[a.priority] ?? 2 : 2) -
+      (b.priority ? PRIORITY_RANK[b.priority] ?? 2 : 2);
     if (pr !== 0) return pr;
     return (
       new Date(a.due_date ?? "2999-12-31").getTime() -
@@ -193,7 +195,7 @@ async function buildTaskPlanResponse(
   const cursors = days.map((_, i) => timeToMinutes(i === 0 ? intent.startTime : "09:00"));
   const maxPerDay = 5;
 
-  sorted.slice(0, intent.isWeekly ? dayCount * maxPerDay : maxPerDay).forEach((task: any, index: number) => {
+  sorted.slice(0, intent.isWeekly ? dayCount * maxPerDay : maxPerDay).forEach((task, index) => {
     const dayIdx = intent.isWeekly ? Math.min(days.length - 1, Math.floor(index / maxPerDay)) : 0;
     const priority = PRIORITY_TO_PLAN[task.priority] ?? "media";
     const duration = priority === "urgente" ? 90 : priority === "alta" ? 75 : priority === "media" ? 60 : 45;
