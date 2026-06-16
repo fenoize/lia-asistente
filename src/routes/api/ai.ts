@@ -90,12 +90,12 @@ function planLabel(dateString: string) {
 
 function isPlanRequest(messages: { role: "user" | "assistant"; content: string }[]) {
   const text = norm(messages.filter((m) => m.role === "user").slice(-3).map((m) => m.content).join("\n"));
-  return /\b(plan|planifica|organiza|ordenar|armame|arma)\b/.test(text) && /\b(tarea|pendiente|semana|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
+  return /\bplan\b/.test(text) && /\b(planifica|organiza|ordenar|ordename|armame|arma|hazme|semana|tarea|pendiente|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
 }
 
 async function buildTaskPlanResponse(sb: any, messages: { role: "user" | "assistant"; content: string }[], timezone: string, userName: string) {
   const intent = parsePlanIntent(messages, timezone);
-  const dayCount = intent.isWeekly ? 7 : 1;
+  const dayCount = 7;
   const { data: tasks, error } = await sb
     .from("tasks")
     .select("id, title, priority, status, due_date, start_date, project_id, project")
@@ -127,7 +127,7 @@ async function buildTaskPlanResponse(sb: any, messages: { role: "user" | "assist
   const cursors = days.map((_, i) => timeToMinutes(i === 0 ? intent.startTime : "09:00"));
   const maxPerDay = 5;
 
-  sorted.slice(0, dayCount * maxPerDay).forEach((task: any, index: number) => {
+  sorted.slice(0, intent.isWeekly ? dayCount * maxPerDay : maxPerDay).forEach((task: any, index: number) => {
     const dayIdx = intent.isWeekly ? Math.min(days.length - 1, Math.floor(index / maxPerDay)) : 0;
     const priority = PRIORITY_TO_PLAN[task.priority] ?? "media";
     const duration = priority === "urgente" ? 90 : priority === "alta" ? 75 : priority === "media" ? 60 : 45;
