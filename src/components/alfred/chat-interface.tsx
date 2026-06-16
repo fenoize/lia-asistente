@@ -246,7 +246,10 @@ export function ChatInterface() {
       .order("created_at", { ascending: false })
       .limit(PAGE_SIZE);
     if (data) {
-      const older = data.map(rowToMsg).reverse();
+      const older = data
+        .filter((row: any) => row.role !== "assistant" || row.content.trim().length > 0)
+        .map(rowToMsg)
+        .reverse();
       skipAutoScrollRef.current = true;
       setMessages((m) => [...older, ...m]);
       setHasMore(data.length === PAGE_SIZE);
