@@ -250,6 +250,13 @@ export const Route = createFileRoute("/api/ai")({
           const mentionsBlock = await buildMentionsBlock(sb, lastUser);
           const system = buildSystemPrompt(ctx) + mentionsBlock;
 
+          if (isPlanRequest(body.messages)) {
+            const planText = await buildTaskPlanResponse(sb, body.messages, timezone, ctx.name);
+            return new Response(planText, {
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            });
+          }
+
           const uiMessages: UIMessage[] = body.messages.slice(-20).map((m, i) => ({
             id: String(i),
             role: m.role,
