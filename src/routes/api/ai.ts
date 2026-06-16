@@ -130,12 +130,28 @@ function planLabel(dateString: string) {
   return `${WEEKDAYS[d.getDay()]} ${d.getDate()}`;
 }
 
-function isPlanRequest(messages: { role: "user" | "assistant"; content: string }[]) {
-  const text = norm(messages.filter((m) => m.role === "user").slice(-3).map((m) => m.content).join("\n"));
-  return /\bplan\b/.test(text) && /\b(planifica|organiza|ordenar|ordename|armame|arma|hazme|semana|tarea|pendiente|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
+function isPlanRequest(messages: ChatBodyMessage[]) {
+  const text = norm(
+    messages
+      .filter((m) => m.role === "user")
+      .slice(-3)
+      .map((m) => m.content)
+      .join("\n"),
+  );
+  return (
+    /\bplan\b/.test(text) &&
+    /\b(planifica|organiza|ordenar|ordename|armame|arma|hazme|semana|tarea|pendiente|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(
+      text,
+    )
+  );
 }
 
-async function buildTaskPlanResponse(sb: any, messages: { role: "user" | "assistant"; content: string }[], timezone: string, userName: string) {
+async function buildTaskPlanResponse(
+  sb: ReturnType<typeof createClient>,
+  messages: ChatBodyMessage[],
+  timezone: string,
+  userName: string,
+) {
   const intent = parsePlanIntent(messages, timezone);
   const dayCount = 7;
   const { data: tasks, error } = await sb
@@ -146,25 +162,33 @@ async function buildTaskPlanResponse(sb: any, messages: { role: "user" | "assist
     .limit(intent.isWeekly ? 35 : 12);
   if (error) throw error;
 
-  const projectIds = Array.from(new Set((tasks ?? []).map((t: any) => t.project_id).filter(Boolean)));
+  const taskRows = (tasks ?? []) as TaskPlanRow[];
+  const projectIds = Array.from(
+    new Set(taskRows.map((t) => t.project_id).filter((id): id is string => Boolean(id))),
+  );
   const { data: projects } = projectIds.length
     ? await sb.from("projects").select("id, name").in("id", projectIds)
     : { data: [] };
-  const projectNames = new Map<string, string>((projects ?? []).map((p: any) => [p.id, p.name]));
+  const projectNames = new Map<string, string>(
+    ((projects ?? []) as ProjectPlanRow[]).map((p) => [p.id, p.name]),
+  );
 
-  const sorted = [...(tasks ?? [])].sort((a: any, b: any) => {
+  const sorted = [...taskRows].sort((a, b) => {
     const statusA = a.status === "en_curso" ? -1 : 0;
     const statusB = b.status === "en_curso" ? -1 : 0;
     if (statusA !== statusB) return statusA - statusB;
     const pr = (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2);
     if (pr !== 0) return pr;
-    return new Date(a.due_date ?? "2999-12-31").getTime() - new Date(b.due_date ?? "2999-12-31").getTime();
+    return (
+      new Date(a.due_date ?? "2999-12-31").getTime() -
+      new Date(b.due_date ?? "2999-12-31").getTime()
+    );
   });
 
   const days = Array.from({ length: dayCount }, (_, i) => ({
     date: addDays(intent.startDate, i),
     label: planLabel(addDays(intent.startDate, i)),
-    tasks: [] as any[],
+    tasks: [] as PlanResponseTask[],
   }));
   const cursors = days.map((_, i) => timeToMinutes(i === 0 ? intent.startTime : "09:00"));
   const maxPerDay = 5;
