@@ -114,6 +114,7 @@ export const Route = createFileRoute("/api/ai")({
             model: gateway(DEFAULT_MODEL),
             system,
             messages: await convertToModelMessages(uiMessages),
+            maxOutputTokens: 4000,
           });
           return result.toTextStreamResponse();
         } catch (e: any) {
