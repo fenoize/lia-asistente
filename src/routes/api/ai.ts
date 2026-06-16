@@ -62,7 +62,9 @@ function addDays(dateString: string, days: number) {
 }
 
 function parseStartTime(text: string) {
-  const matches = [...text.matchAll(/(?:desde\s+(?:las?\s+)?)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/gi)];
+  const matches = [
+    ...text.matchAll(/(?:desde\s+(?:las?\s+)?)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/gi),
+  ];
   const useful = matches.filter((m) => /desde|\d{1,2}:\d{2}|am|pm|a\.m\.|p\.m\./i.test(m[0]));
   const m = useful.at(-1);
   if (!m) return "09:00";
@@ -71,12 +73,20 @@ function parseStartTime(text: string) {
   const suffix = norm(m[3] ?? "");
   if (suffix.includes("pm") || suffix.includes("p.m")) hour = hour === 12 ? 12 : hour + 12;
   if ((suffix.includes("am") || suffix.includes("a.m")) && hour === 12) hour = 0;
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "09:00";
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return "09:00";
+  }
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-function parsePlanIntent(messages: { role: "user" | "assistant"; content: string }[], timezone: string) {
-  const userText = norm(messages.filter((m) => m.role === "user").slice(-4).map((m) => m.content).join("\n"));
+function parsePlanIntent(messages: ChatBodyMessage[], timezone: string) {
+  const userText = norm(
+    messages
+      .filter((m) => m.role === "user")
+      .slice(-4)
+      .map((m) => m.content)
+      .join("\n"),
+  );
   const today = localDateString(timezone);
   const isWeekly = /semana|semanal|lunes\s+a\s+domingo/.test(userText);
   let startDate = today;
@@ -85,7 +95,15 @@ function parsePlanIntent(messages: { role: "user" | "assistant"; content: string
   } else if (/hoy/.test(userText)) {
     startDate = today;
   } else {
-    const weekdayMap: Record<string, number> = { domingo: 0, lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6 };
+    const weekdayMap: Record<string, number> = {
+      domingo: 0,
+      lunes: 1,
+      martes: 2,
+      miercoles: 3,
+      jueves: 4,
+      viernes: 5,
+      sabado: 6,
+    };
     const hit = Object.entries(weekdayMap).find(([name]) => userText.includes(name));
     if (hit) {
       const current = new Date(`${today}T12:00:00`).getDay();
