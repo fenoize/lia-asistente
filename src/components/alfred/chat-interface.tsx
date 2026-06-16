@@ -82,20 +82,33 @@ function parseAction(text: string): { clean: string; action: Action | null } {
 }
 
 function stripPartialJsonForLive(raw: string): string {
-  // Cut at first opening fence or first standalone JSON start.
-  // IMPORTANT: do NOT cut on `[PLAN]` blocks — those render as WeeklyPlanCard.
+  // Cut at first opening fence or first standalone JSON start,
+  // BUT never cut inside a [PLAN]…[/PLAN] block (even if still streaming).
   let cut = raw.length;
   const fence = raw.search(/```/);
   if (fence !== -1) cut = Math.min(cut, fence);
-  // Match `[` or `{` at line start, but skip `[PLAN]` / `[/PLAN]` markers.
+
+  // Compute plan ranges (closed or open-until-end).
+  const planRanges: Array<[number, number]> = [];
+  const planOpenRe = /\[PLAN\]/g;
+  let pm: RegExpExecArray | null;
+  while ((pm = planOpenRe.exec(raw)) !== null) {
+    const start = pm.index;
+    const closeIdx = raw.indexOf("[/PLAN]", start);
+    const end = closeIdx === -1 ? raw.length : closeIdx + "[/PLAN]".length;
+    planRanges.push([start, end]);
+  }
+  const insidePlan = (idx: number) => planRanges.some(([s, e]) => idx >= s && idx < e);
+
   const jsonRe = /(?:^|\n)\s*([{\[])/g;
   let m: RegExpExecArray | null;
   while ((m = jsonRe.exec(raw)) !== null) {
+    const idx = m.index + m[0].length - 1;
     if (m[1] === "[") {
-      const rest = raw.slice(m.index + m[0].length - 1);
+      const rest = raw.slice(idx);
       if (/^\[\/?PLAN\]/.test(rest)) continue;
     }
-    const idx = m.index + m[0].length - 1;
+    if (insidePlan(idx)) continue;
     cut = Math.min(cut, idx);
     break;
   }
@@ -122,16 +135,72 @@ interface DragState {
 
 function parseMessageParts(content: string): Array<{ type: "text" | "plan"; value: string }> {
   const parts: Array<{ type: "text" | "plan"; value: string }> = [];
-  const regex = /\[PLAN\]([\s\S]*?)\[\/PLAN\]/g;
+  const openRe = /\[PLAN\]/g;
   let last = 0;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
+  while ((match = openRe.exec(content)) !== null) {
     if (match.index > last) parts.push({ type: "text", value: content.slice(last, match.index).trim() });
-    parts.push({ type: "plan", value: match[1].trim() });
-    last = match.index + match[0].length;
+    const after = match.index + match[0].length;
+    const closeIdx = content.indexOf("[/PLAN]", after);
+    if (closeIdx === -1) {
+      // Plan abierto sin cierre (stream truncado) — toma el resto.
+      parts.push({ type: "plan", value: content.slice(after).trim() });
+      last = content.length;
+      break;
+    }
+    parts.push({ type: "plan", value: content.slice(after, closeIdx).trim() });
+    last = closeIdx + "[/PLAN]".length;
+    openRe.lastIndex = last;
   }
   if (last < content.length) parts.push({ type: "text", value: content.slice(last).trim() });
   return parts.filter((p) => p.value);
+}
+
+// Repara un JSON de plan truncado: descarta la última tarea/objeto incompleto
+// y cierra los corchetes/llaves abiertos.
+export function tryRepairPlanJson(raw: string): string {
+  const s = raw.trim();
+  let inStr = false;
+  let esc = false;
+  let lastSafe = -1;
+  const stack: string[] = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{" || c === "[") stack.push(c);
+    else if (c === "}" || c === "]") {
+      stack.pop();
+      if (stack.length <= 2) lastSafe = i;
+    }
+  }
+  let trimmed = lastSafe >= 0 ? s.slice(0, lastSafe + 1) : s;
+  // Re-evalúa stack del fragmento recortado.
+  const stack2: string[] = [];
+  inStr = false; esc = false;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{" || c === "[") stack2.push(c);
+    else if (c === "}" || c === "]") stack2.pop();
+  }
+  trimmed = trimmed.replace(/,\s*$/, "");
+  while (stack2.length) {
+    const open = stack2.pop();
+    trimmed += open === "{" ? "}" : "]";
+  }
+  return trimmed;
 }
 
 export function ChatInterface() {
