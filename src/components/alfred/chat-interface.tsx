@@ -1194,7 +1194,9 @@ const PRIORITY_UI_TO_DB: Record<PlanTask["priority"], string> = {
 
 function WeeklyPlanCard({ planJson }: { planJson: string }) {
   const parsed = useMemo<WeeklyPlan | null>(() => {
-    try { return JSON.parse(planJson) as WeeklyPlan; } catch { return null; }
+    try { return JSON.parse(planJson) as WeeklyPlan; } catch {}
+    try { return JSON.parse(tryRepairPlanJson(planJson)) as WeeklyPlan; } catch {}
+    return null;
   }, [planJson]);
   const { user } = useAuth();
   const { setMessages } = useChatStore();
