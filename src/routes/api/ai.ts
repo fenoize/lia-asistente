@@ -197,7 +197,7 @@ async function buildTaskPlanResponse(
 
   sorted.slice(0, intent.isWeekly ? dayCount * maxPerDay : maxPerDay).forEach((task, index) => {
     const dayIdx = intent.isWeekly ? Math.min(days.length - 1, Math.floor(index / maxPerDay)) : 0;
-    const priority = PRIORITY_TO_PLAN[task.priority] ?? "media";
+    const priority = task.priority ? PRIORITY_TO_PLAN[task.priority] ?? "media" : "media";
     const duration = priority === "urgente" ? 90 : priority === "alta" ? 75 : priority === "media" ? 60 : 45;
     days[dayIdx].tasks.push({
       task_id: task.id,
