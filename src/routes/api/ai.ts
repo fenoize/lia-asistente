@@ -16,8 +16,32 @@ const PRIORITY_TO_PLAN: Record<string, "urgente" | "alta" | "media" | "baja"> = 
 };
 const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
+type ChatBodyMessage = { role: "user" | "assistant"; content: string };
+type TaskPlanRow = {
+  id: string;
+  title: string;
+  priority: string | null;
+  status: string | null;
+  due_date: string | null;
+  project_id: string | null;
+  project: string | null;
+};
+type ProjectPlanRow = { id: string; name: string };
+type PlanResponseTask = {
+  task_id: string;
+  action: "update";
+  title: string;
+  priority: "urgente" | "alta" | "media" | "baja";
+  start_time: string;
+  duration_minutes: number;
+  project_name: string | null;
+};
+
 function norm(text: string) {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 }
 
 function localDateString(timezone: string, date = new Date()) {
