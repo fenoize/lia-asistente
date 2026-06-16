@@ -7,6 +7,153 @@ import { buildSystemPrompt } from "@/lib/ai/prompts";
 import { extractMentions } from "@/lib/mentions";
 import { USER_TZ } from "@/lib/timezone";
 
+const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const PRIORITY_TO_PLAN: Record<string, "urgente" | "alta" | "media" | "baja"> = {
+  urgent: "urgente",
+  high: "alta",
+  medium: "media",
+  low: "baja",
+};
+const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+
+function norm(text: string) {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function localDateString(timezone: string, date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function addDays(dateString: string, days: number) {
+  const d = new Date(`${dateString}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function parseStartTime(text: string) {
+  const matches = [...text.matchAll(/(?:desde\s+(?:las?\s+)?)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?/gi)];
+  const useful = matches.filter((m) => /desde|\d{1,2}:\d{2}|am|pm|a\.m\.|p\.m\./i.test(m[0]));
+  const m = useful.at(-1);
+  if (!m) return "09:00";
+  let hour = Number(m[1]);
+  const minute = Number(m[2] ?? "0");
+  const suffix = norm(m[3] ?? "");
+  if (suffix.includes("pm") || suffix.includes("p.m")) hour = hour === 12 ? 12 : hour + 12;
+  if ((suffix.includes("am") || suffix.includes("a.m")) && hour === 12) hour = 0;
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "09:00";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function parsePlanIntent(messages: { role: "user" | "assistant"; content: string }[], timezone: string) {
+  const userText = norm(messages.filter((m) => m.role === "user").slice(-4).map((m) => m.content).join("\n"));
+  const today = localDateString(timezone);
+  const isWeekly = /semana|semanal|lunes\s+a\s+domingo/.test(userText);
+  let startDate = today;
+  if (/manana/.test(userText)) {
+    startDate = addDays(today, 1);
+  } else if (/hoy/.test(userText)) {
+    startDate = today;
+  } else {
+    const weekdayMap: Record<string, number> = { domingo: 0, lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6 };
+    const hit = Object.entries(weekdayMap).find(([name]) => userText.includes(name));
+    if (hit) {
+      const current = new Date(`${today}T12:00:00`).getDay();
+      const target = hit[1];
+      const diff = (target - current + 7) % 7;
+      startDate = addDays(today, diff);
+    }
+  }
+  return { isWeekly, startDate, startTime: parseStartTime(userText) };
+}
+
+function timeToMinutes(value: string) {
+  const [h, m] = value.split(":").map(Number);
+  return (Number.isFinite(h) ? h : 9) * 60 + (Number.isFinite(m) ? m : 0);
+}
+
+function minutesToTime(minutes: number) {
+  const normalized = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+function planLabel(dateString: string) {
+  const d = new Date(`${dateString}T12:00:00`);
+  return `${WEEKDAYS[d.getDay()]} ${d.getDate()}`;
+}
+
+function isPlanRequest(messages: { role: "user" | "assistant"; content: string }[]) {
+  const text = norm(messages.filter((m) => m.role === "user").slice(-3).map((m) => m.content).join("\n"));
+  return /\b(plan|planifica|organiza|ordenar|armame|arma)\b/.test(text) && /\b(tarea|pendiente|semana|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
+}
+
+async function buildTaskPlanResponse(sb: any, messages: { role: "user" | "assistant"; content: string }[], timezone: string, userName: string) {
+  const intent = parsePlanIntent(messages, timezone);
+  const dayCount = intent.isWeekly ? 7 : 1;
+  const { data: tasks, error } = await sb
+    .from("tasks")
+    .select("id, title, priority, status, due_date, start_date, project_id, project")
+    .in("status", ["borrador", "en_curso"])
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(intent.isWeekly ? 35 : 12);
+  if (error) throw error;
+
+  const projectIds = Array.from(new Set((tasks ?? []).map((t: any) => t.project_id).filter(Boolean)));
+  const { data: projects } = projectIds.length
+    ? await sb.from("projects").select("id, name").in("id", projectIds)
+    : { data: [] };
+  const projectNames = new Map<string, string>((projects ?? []).map((p: any) => [p.id, p.name]));
+
+  const sorted = [...(tasks ?? [])].sort((a: any, b: any) => {
+    const statusA = a.status === "en_curso" ? -1 : 0;
+    const statusB = b.status === "en_curso" ? -1 : 0;
+    if (statusA !== statusB) return statusA - statusB;
+    const pr = (PRIORITY_RANK[a.priority] ?? 2) - (PRIORITY_RANK[b.priority] ?? 2);
+    if (pr !== 0) return pr;
+    return new Date(a.due_date ?? "2999-12-31").getTime() - new Date(b.due_date ?? "2999-12-31").getTime();
+  });
+
+  const days = Array.from({ length: dayCount }, (_, i) => ({
+    date: addDays(intent.startDate, i),
+    label: planLabel(addDays(intent.startDate, i)),
+    tasks: [] as any[],
+  }));
+  const cursors = days.map((_, i) => timeToMinutes(i === 0 ? intent.startTime : "09:00"));
+  const maxPerDay = 5;
+
+  sorted.slice(0, dayCount * maxPerDay).forEach((task: any, index: number) => {
+    const dayIdx = intent.isWeekly ? Math.min(days.length - 1, Math.floor(index / maxPerDay)) : 0;
+    const priority = PRIORITY_TO_PLAN[task.priority] ?? "media";
+    const duration = priority === "urgente" ? 90 : priority === "alta" ? 75 : priority === "media" ? 60 : 45;
+    days[dayIdx].tasks.push({
+      task_id: task.id,
+      action: "update",
+      title: task.title,
+      priority,
+      start_time: minutesToTime(cursors[dayIdx]),
+      duration_minutes: duration,
+      project_name: task.project_id ? (projectNames.get(task.project_id) ?? null) : (task.project ?? null),
+    });
+    cursors[dayIdx] += duration + 15;
+  });
+
+  const firstName = (userName || "Diego").split(" ")[0];
+  const summary = intent.isWeekly
+    ? "Prioricé tus tareas abiertas en bloques manejables para la semana."
+    : `Prioricé tus tareas abiertas desde las ${intent.startTime}.`;
+  const plan = { type: "weekly_plan", summary, days };
+  const intro = days.reduce((sum, day) => sum + day.tasks.length, 0) > 0
+    ? `Perfecto, ${firstName} — armé el plan con tus tareas pendientes. Revísalo y apruébalo si te calza.`
+    : `${firstName}, no encontré tareas pendientes abiertas para planificar. Te dejo el plan vacío para que lo usemos como base.`;
+  return `${intro}\n\n[PLAN]\n${JSON.stringify(plan)}\n[/PLAN]`;
+}
+
 async function buildMentionsBlock(sb: any, lastUserText: string): Promise<string> {
   const mentions = extractMentions(lastUserText);
   if (mentions.length === 0) return "";
