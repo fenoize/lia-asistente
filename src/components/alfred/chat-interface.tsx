@@ -289,7 +289,9 @@ export function ChatInterface() {
       if (cancelled) return;
 
       if (history?.data) {
-        const rows = [...history.data].reverse();
+        const rows = [...history.data]
+          .reverse()
+          .filter((row: any) => row.role !== "assistant" || row.content.trim().length > 0);
         setMessages(rows.map(rowToMsg));
         setHasMore(history.data.length === PAGE_SIZE);
       }
@@ -379,6 +381,7 @@ export function ChatInterface() {
         const display = stripPartialJsonForLive(raw);
         setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: display } : msg));
       }
+      if (!raw.trim()) throw new Error("empty_ai_response");
       const { clean, action } = parseAction(raw);
       setMessages((m) => m.map((msg) => msg.id === assistantId
         ? { ...msg, content: clean, action, actionStatus: action ? "pending" : undefined }
