@@ -137,6 +137,14 @@ function isPlanRequest(messages: ChatBodyMessage[]) {
   return (planningVerb && planningScope) || (planWord && planningVerb);
 }
 
+function sanitizeHistoryMessage(message: ChatBodyMessage): ChatBodyMessage {
+  if (message.role !== "assistant" || !message.content.includes("[PLAN]")) return message;
+  const content = message.content
+    .replace(/\[PLAN\][\s\S]*?(?:\[\/PLAN\]|$)/g, "[Plan semanal mostrado como tarjeta visual; no retomarlo salvo que el usuario lo pida explícitamente.]")
+    .trim();
+  return { ...message, content };
+}
+
 async function buildTaskPlanResponse(
   sb: SupabaseClient,
   messages: ChatBodyMessage[],
@@ -316,7 +324,7 @@ export const Route = createFileRoute("/api/ai")({
             });
           }
 
-          const uiMessages: UIMessage[] = body.messages.slice(-20).map((m, i) => ({
+          const uiMessages: UIMessage[] = body.messages.slice(-20).map(sanitizeHistoryMessage).map((m, i) => ({
             id: String(i),
             role: m.role,
             parts: [{ type: "text", text: m.content }],
