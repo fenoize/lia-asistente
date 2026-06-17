@@ -80,13 +80,8 @@ function parseStartTime(text: string) {
 }
 
 function parsePlanIntent(messages: ChatBodyMessage[], timezone: string) {
-  const userText = norm(
-    messages
-      .filter((m) => m.role === "user")
-      .slice(-4)
-      .map((m) => m.content)
-      .join("\n"),
-  );
+  const latestUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const userText = norm(latestUserText);
   const today = localDateString(timezone);
   const isWeekly = /semana|semanal|lunes\s+a\s+domingo/.test(userText);
   let startDate = today;
@@ -131,19 +126,15 @@ function planLabel(dateString: string) {
 }
 
 function isPlanRequest(messages: ChatBodyMessage[]) {
-  const text = norm(
-    messages
-      .filter((m) => m.role === "user")
-      .slice(-3)
-      .map((m) => m.content)
-      .join("\n"),
-  );
-  return (
-    /\bplan\b/.test(text) &&
-    /\b(planifica|organiza|ordenar|ordename|armame|arma|hazme|semana|tarea|pendiente|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(
-      text,
-    )
-  );
+  const latestUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  if (!latestUserText || latestUserText.startsWith("__ACTION_")) return false;
+
+  const text = norm(latestUserText);
+  const planWord = /\bplan(?:\s+semanal)?\b/.test(text);
+  const planningVerb = /\b(planifica|planificar|organiza|organizame|ordena|ordename|armame|armar|arma|hazme|prepara|preparame|estructura|reorganiza|distribuye|calendariza)\b/.test(text);
+  const planningScope = /\b(semana|semanal|tareas?|pendientes?|dia|hoy|manana|tarde|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
+
+  return (planningVerb && planningScope) || (planWord && planningVerb);
 }
 
 async function buildTaskPlanResponse(
