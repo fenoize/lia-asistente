@@ -131,7 +131,7 @@ function isPlanRequest(messages: ChatBodyMessage[]) {
 
   const text = norm(latestUserText);
   const planWord = /\bplan(?:\s+semanal)?\b/.test(text);
-  const planningVerb = /\b(planifica|planificar|organiza|organizame|ordena|ordename|armame|armar|arma|hazme|prepara|preparame|estructura|reorganiza|distribuye|calendariza)\b/.test(text);
+  const planningVerb = /\b(planifica|planificar|organiza|organizar|organizame|ordena|ordenar|ordename|armame|armar|arma|hazme|prepara|preparar|preparame|estructura|estructurar|reorganiza|reorganizar|distribuye|distribuir|calendariza|calendarizar)\b/.test(text);
   const planningScope = /\b(semana|semanal|tareas?|pendientes?|dia|hoy|manana|tarde|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
 
   return (planningVerb && planningScope) || (planWord && planningVerb);
