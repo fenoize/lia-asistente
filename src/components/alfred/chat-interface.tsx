@@ -156,6 +156,12 @@ function parseMessageParts(content: string): Array<{ type: "text" | "plan"; valu
   return parts.filter((p) => p.value);
 }
 
+function compactAssistantContentForAi(content: string): string {
+  if (!content.includes("[PLAN]")) return content;
+  const intro = content.split("[PLAN]")[0]?.trim();
+  return `${intro ? `${intro}\n` : ""}[Plan semanal mostrado como tarjeta visual; no es un modo activo y no debe retomarse salvo que el usuario pida explícitamente modificar o armar otro plan.]`;
+}
+
 // Repara un JSON de plan truncado: descarta la última tarea/objeto incompleto
 // y cierra los corchetes/llaves abiertos.
 export function tryRepairPlanJson(raw: string): string {
@@ -355,7 +361,10 @@ export function ChatInterface() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const payloadMessages = next.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+      const payloadMessages = next.slice(-20).map((m) => ({
+        role: m.role,
+        content: m.role === "assistant" ? compactAssistantContentForAi(m.content) : m.content,
+      }));
       if (opts.hiddenUserSignal) {
         payloadMessages.push({ role: "user", content: opts.hiddenUserSignal });
       }
@@ -1420,7 +1429,7 @@ function WeeklyPlanCard({ planJson }: { planJson: string }) {
     }
     setStatus("done");
 
-    const confirmText = `Listo. Las ${allTasks.length} tareas están en tu semana. ¿Ajustamos algo más?`;
+    const confirmText = `Listo. Plan aplicado y cerrado: las ${allTasks.length} tareas ya están en ejecución. ¿Qué necesitas ahora?`;
     const newMsg: Msg = {
       id: crypto.randomUUID(),
       role: "assistant",
