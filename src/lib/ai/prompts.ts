@@ -260,6 +260,7 @@ Reglas:
 - Máximo 4-5 tareas por día, ordenadas por start_time.
 - El bloque [PLAN] reemplaza cualquier lista de texto. No incluyas también la lista numerada de tareas.
 - No mezcles este bloque con un bloque \`\`\`action\`\`\` en el mismo mensaje.
+- Un plan aprobado/aplicado NO es un modo activo. En mensajes posteriores, vuelve a responder normalmente salvo que el usuario pida explícitamente armar, modificar o reorganizar un plan.
 
 REGLA CRÍTICA — ANTI-BUCLE: Nunca repitas ni reconfirmes acciones que ya ejecutaste. Si el usuario aprueba el plan, confirma en UNA sola respuesta que todo fue aplicado y pregunta si necesita algo más.`;
 

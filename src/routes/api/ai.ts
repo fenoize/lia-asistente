@@ -80,13 +80,8 @@ function parseStartTime(text: string) {
 }
 
 function parsePlanIntent(messages: ChatBodyMessage[], timezone: string) {
-  const userText = norm(
-    messages
-      .filter((m) => m.role === "user")
-      .slice(-4)
-      .map((m) => m.content)
-      .join("\n"),
-  );
+  const latestUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  const userText = norm(latestUserText);
   const today = localDateString(timezone);
   const isWeekly = /semana|semanal|lunes\s+a\s+domingo/.test(userText);
   let startDate = today;
@@ -131,19 +126,23 @@ function planLabel(dateString: string) {
 }
 
 function isPlanRequest(messages: ChatBodyMessage[]) {
-  const text = norm(
-    messages
-      .filter((m) => m.role === "user")
-      .slice(-3)
-      .map((m) => m.content)
-      .join("\n"),
-  );
-  return (
-    /\bplan\b/.test(text) &&
-    /\b(planifica|organiza|ordenar|ordename|armame|arma|hazme|semana|tarea|pendiente|dia|hoy|manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(
-      text,
-    )
-  );
+  const latestUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+  if (!latestUserText || latestUserText.startsWith("__ACTION_")) return false;
+
+  const text = norm(latestUserText);
+  const planWord = /\bplan(?:\s+semanal)?\b/.test(text);
+  const planningVerb = /\b(planifica|planificar|organiza|organizar|organizame|ordena|ordenar|ordename|armame|armar|arma|hazme|prepara|preparar|preparame|estructura|estructurar|reorganiza|reorganizar|distribuye|distribuir|calendariza|calendarizar)\b/.test(text);
+  const planningScope = /\b(semana|semanal|tareas?|pendientes?|dia|hoy|manana|tarde|lunes|martes|miercoles|jueves|viernes|sabado|domingo)\b/.test(text);
+
+  return (planningVerb && planningScope) || (planWord && planningVerb);
+}
+
+function sanitizeHistoryMessage(message: ChatBodyMessage): ChatBodyMessage {
+  if (message.role !== "assistant" || !message.content.includes("[PLAN]")) return message;
+  const content = message.content
+    .replace(/\[PLAN\][\s\S]*?(?:\[\/PLAN\]|$)/g, "[Plan semanal mostrado como tarjeta visual; no retomarlo salvo que el usuario lo pida explícitamente.]")
+    .trim();
+  return { ...message, content };
 }
 
 async function buildTaskPlanResponse(
@@ -325,7 +324,7 @@ export const Route = createFileRoute("/api/ai")({
             });
           }
 
-          const uiMessages: UIMessage[] = body.messages.slice(-20).map((m, i) => ({
+          const uiMessages: UIMessage[] = body.messages.slice(-20).map(sanitizeHistoryMessage).map((m, i) => ({
             id: String(i),
             role: m.role,
             parts: [{ type: "text", text: m.content }],
