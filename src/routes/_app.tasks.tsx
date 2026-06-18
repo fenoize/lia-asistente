@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,9 +8,13 @@ import {
   IconTrash,
   IconCheck,
   IconLayoutGrid,
+  IconLayoutKanban,
   IconTable,
   IconTimeline,
   IconChevronDown,
+  IconChevronRight,
+  IconArrowUp,
+  IconArrowDown,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
@@ -25,7 +29,7 @@ import {
 } from "date-fns";
 import { es } from "date-fns/locale";
 
-type ViewMode = "cards" | "table" | "gantt";
+type ViewMode = "cards" | "kanban" | "table" | "gantt";
 
 export const Route = createFileRoute("/_app/tasks")({
   validateSearch: (s: Record<string, unknown>) => ({
