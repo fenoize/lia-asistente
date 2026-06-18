@@ -614,12 +614,11 @@ function TaskRow({
 
   if (isMobile) {
     return (
-      <li
-        className="group cursor-pointer transition-colors"
-        style={{ padding: "10px 12px", borderRadius: 8 }}
-        onClick={onOpen}
+      <MobileSwipeRow
+        onTap={onOpen}
+        onDelete={onRemove}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3" style={{ padding: "7px 6px" }}>
           <div style={{ marginTop: 2 }}>{checkBtn}</div>
           <div className="flex-1 min-w-0">
             <div
@@ -649,16 +648,8 @@ function TaskRow({
               )}
             </div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
-            aria-label="Eliminar"
-            style={{ color: "#666", padding: 4 }}
-            className="hover:text-red-400"
-          >
-            <IconTrash size={14} />
-          </button>
         </div>
-      </li>
+      </MobileSwipeRow>
     );
   }
 
@@ -666,7 +657,7 @@ function TaskRow({
     <li
       className="group flex items-center gap-3 transition-colors cursor-pointer"
       style={{
-        padding: "10px 12px",
+        padding: "7px 10px",
         borderRadius: 8,
       }}
       onClick={onOpen}
@@ -714,6 +705,170 @@ function TaskRow({
         >
           <IconTrash size={14} />
         </button>
+      </div>
+    </li>
+  );
+}
+
+const SWIPE = 72;
+
+// Track which row is currently swiped open so opening another closes it.
+let __openSwipeSetter: ((open: boolean) => void) | null = null;
+
+function MobileSwipeRow({
+  children,
+  onTap,
+  onDelete,
+}: {
+  children: React.ReactNode;
+  onTap: () => void;
+  onDelete: () => void;
+}) {
+  const [tx, setTx] = useState(0);
+  const [open, setOpen] = useState(false);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    base: number;
+    dragging: boolean;
+    decided: "horiz" | "vert" | null;
+  } | null>(null);
+
+  // Register/unregister with the global "only one open" tracker.
+  useEffect(() => {
+    if (open) {
+      if (__openSwipeSetter && __openSwipeSetter !== setOpenWithReset) {
+        __openSwipeSetter(false);
+      }
+      __openSwipeSetter = setOpenWithReset;
+    } else if (__openSwipeSetter === setOpenWithReset) {
+      __openSwipeSetter = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function setOpenWithReset(v: boolean) {
+    setOpen(v);
+    setTx(v ? -SWIPE : 0);
+  }
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      base: open ? -SWIPE : 0,
+      dragging: false,
+      decided: null,
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      const s = dragRef.current;
+      if (!s) return;
+      const dx = ev.clientX - s.startX;
+      const dy = ev.clientY - s.startY;
+      if (!s.decided) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        s.decided = Math.abs(dx) > Math.abs(dy) ? "horiz" : "vert";
+        if (s.decided === "horiz") s.dragging = true;
+        else {
+          // Vertical scroll — let the page handle it.
+          cleanup();
+          return;
+        }
+      }
+      if (s.dragging) {
+        ev.preventDefault();
+        const next = Math.max(-SWIPE, Math.min(0, s.base + dx));
+        setTx(next);
+      }
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      const s = dragRef.current;
+      cleanup();
+      if (!s) return;
+      if (!s.dragging) {
+        // Tap — but if row is open, first tap closes it
+        const dx = ev.clientX - s.startX;
+        const dy = ev.clientY - s.startY;
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+          if (open) {
+            setOpenWithReset(false);
+          } else {
+            onTap();
+          }
+        }
+        return;
+      }
+      const dx = ev.clientX - s.startX;
+      const final = s.base + dx;
+      if (final < -SWIPE / 2) setOpenWithReset(true);
+      else setOpenWithReset(false);
+    };
+
+    function cleanup() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    }
+
+    document.addEventListener("pointermove", onMove, { passive: false });
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
+
+  return (
+    <li
+      style={{
+        position: "relative",
+        borderRadius: 8,
+        overflow: "hidden",
+        touchAction: "pan-y",
+      }}
+    >
+      {/* Back layer */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(239,68,68,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 16,
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          aria-label="Eliminar"
+          style={{
+            color: "#f87171",
+            padding: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 12,
+          }}
+        >
+          <IconTrash size={16} />
+        </button>
+      </div>
+      {/* Front layer */}
+      <div
+        onPointerDown={onPointerDown}
+        style={{
+          position: "relative",
+          background: "var(--bg-base, #08081a)",
+          transform: `translateX(${tx}px)`,
+          transition: dragRef.current?.dragging ? "none" : "transform 180ms ease",
+          willChange: "transform",
+        }}
+      >
+        {children}
       </div>
     </li>
   );
