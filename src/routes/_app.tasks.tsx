@@ -278,10 +278,16 @@ function TasksPage() {
         )}
 
         <div className="ml-auto flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
-          {(["cards", "table", "gantt"] as const).map((v) => {
+          {(["cards", "kanban", "table", "gantt"] as const).map((v) => {
             const active = view === v;
-            const Icon = v === "cards" ? IconLayoutGrid : v === "table" ? IconTable : IconTimeline;
-            const label = v === "cards" ? "Cards" : v === "table" ? "Tabla" : "Gantt";
+            const Icon =
+              v === "cards" ? IconLayoutGrid :
+              v === "kanban" ? IconLayoutKanban :
+              v === "table" ? IconTable : IconTimeline;
+            const label =
+              v === "cards" ? "Cards" :
+              v === "kanban" ? "Kanban" :
+              v === "table" ? "Tabla" : "Gantt";
             return (
               <button
                 key={v}
@@ -306,6 +312,25 @@ function TasksPage() {
           })}
         </div>
       </div>
+
+      {loading ? (
+        <SkeletonList />
+      ) : filteredTasks.length === 0 ? (
+        <Empty title="Cero tareas en esta lista." subtitle="Capturalas con ⌘K o el botón Nueva tarea." />
+      ) : view === "table" ? (
+        <TaskTable
+          tasks={filteredTasks}
+          projects={projects}
+          onOpen={(t) => setEditing(t)}
+          onPatch={patchInline}
+          onRemove={remove}
+        />
+      ) : view === "gantt" ? (
+        <GanttView tasks={filteredTasks} projectMap={projectMap} onOpen={(t) => setEditing(t)} onPatch={patchInline} />
+      ) : view === "kanban" ? (
+        <KanbanView tasks={filteredTasks} onOpen={(t) => setEditing(t)} onPatch={patchInline} />
+      ) : (
+        <div className="space-y-3">
 
       {loading ? (
         <SkeletonList />
