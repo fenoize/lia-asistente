@@ -1287,9 +1287,14 @@ const inlineSelect: React.CSSProperties = {
 
 /* -------------------- Gantt View -------------------- */
 
-const DAY_W = 36;
 const LEFT_W = 140;
-const GANTT_DAYS = 28;
+
+type GanttZoom = "week" | "month" | "quarter";
+const GANTT_PRESETS: Record<GanttZoom, { days: number; dayW: number; label: string }> = {
+  week: { days: 10, dayW: 46, label: "Semana" },
+  month: { days: 28, dayW: 32, label: "Mes" },
+  quarter: { days: 70, dayW: 13, label: "Trimestre" },
+};
 
 const GANTT_COLORS = {
   borrador: { bg: "rgba(148,163,184,0.15)", border: "rgba(148,163,184,0.3)", text: "#94a3b8" },
@@ -1302,16 +1307,33 @@ function GanttView({
   tasks,
   projectMap,
   onOpen,
+  onPatch,
 }: {
   tasks: Task[];
   projectMap: Map<string, string>;
   onOpen: (t: Task) => void;
+  onPatch: (id: string, patch: Partial<Task>) => void;
 }) {
-  const ganttStart = useMemo(() => subDays(startOfDay(new Date()), 5), []);
+  const [zoom, setZoom] = useState<GanttZoom>(() => {
+    if (typeof window === "undefined") return "month";
+    return (window.localStorage.getItem("tasks:ganttZoom") as GanttZoom) || "month";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") window.localStorage.setItem("tasks:ganttZoom", zoom);
+  }, [zoom]);
+
+  const preset = GANTT_PRESETS[zoom];
+  const DAY_W = preset.dayW;
+  const GANTT_DAYS = preset.days;
+
+  const ganttStart = useMemo(
+    () => subDays(startOfDay(new Date()), Math.floor(GANTT_DAYS / 5)),
+    [GANTT_DAYS],
+  );
   const today = useMemo(() => startOfDay(new Date()), []);
   const days = useMemo(
     () => Array.from({ length: GANTT_DAYS }, (_, i) => addDays(ganttStart, i)),
-    [ganttStart],
+    [ganttStart, GANTT_DAYS],
   );
 
   const { dated, undated } = useMemo(() => {
@@ -1324,6 +1346,28 @@ function GanttView({
     return { dated, undated };
   }, [tasks]);
 
+  // Group dated tasks by project
+  const groups = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; tasks: Task[] }>();
+    for (const t of dated) {
+      const pid = t.project_id ?? "__none__";
+      const name = t.project_id ? projectMap.get(t.project_id) ?? "Proyecto" : "Sin proyecto";
+      if (!map.has(pid)) map.set(pid, { id: pid, name, tasks: [] });
+      map.get(pid)!.tasks.push(t);
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [dated, projectMap]);
+
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleGroup = (gid: string) => {
+    setCollapsed((s) => {
+      const n = new Set(s);
+      if (n.has(gid)) n.delete(gid);
+      else n.add(gid);
+      return n;
+    });
+  };
+
   const totalWidth = LEFT_W + GANTT_DAYS * DAY_W;
 
   return (
@@ -1335,6 +1379,43 @@ function GanttView({
         overflow: "hidden",
       }}
     >
+      {/* Zoom toolbar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 12px",
+          borderBottom: "1px solid #1e1e1e",
+          fontSize: 12,
+          color: "#888",
+        }}
+      >
+        <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "#555" }}>
+          Zoom
+        </span>
+        <div style={{ display: "flex", background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
+          {(Object.keys(GANTT_PRESETS) as GanttZoom[]).map((z) => {
+            const active = zoom === z;
+            return (
+              <button
+                key={z}
+                onClick={() => setZoom(z)}
+                style={{
+                  fontSize: 11,
+                  padding: "4px 12px",
+                  borderRadius: 100,
+                  background: active ? "rgba(99,102,241,0.18)" : "transparent",
+                  color: active ? "#818cf8" : "#666",
+                }}
+              >
+                {GANTT_PRESETS[z].label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={{ overflowX: "auto" }}>
         <div style={{ minWidth: totalWidth, position: "relative" }}>
           {/* Header */}
@@ -1418,100 +1499,48 @@ function GanttView({
               </div>
             )}
 
-            {dated.map((t) => {
-              const startISO = t.start_date ?? t.due_date!;
-              const endISO = t.due_date ?? t.start_date!;
-              const taskStart = startOfDay(parseISO(startISO));
-              const taskEnd = startOfDay(parseISO(endISO));
-              const barStartOffset = differenceInDays(taskStart, ganttStart);
-              const barDays = Math.max(differenceInDays(taskEnd, taskStart) + 1, 1);
-              const barLeft = LEFT_W + barStartOffset * DAY_W;
-              const barWidth = barDays * DAY_W - 4;
-
-              const overdue = t.status !== "listo" && t.due_date && parseISO(t.due_date) < today;
-              const c = overdue
-                ? GANTT_COLORS.overdue
-                : GANTT_COLORS[(t.status as keyof typeof GANTT_COLORS)] ?? GANTT_COLORS.borrador;
-
-              const projName = t.project_id ? projectMap.get(t.project_id) : null;
-
+            {groups.map((g) => {
+              const isCollapsed = collapsed.has(g.id);
+              const accent = g.id === "__none__" ? "#555" : projectColor(g.name);
               return (
-                <div
-                  key={t.id}
-                  style={{
-                    position: "relative",
-                    height: 36,
-                    borderBottom: "1px solid #141414",
-                    display: "flex",
-                  }}
-                >
+                <div key={g.id}>
                   <div
+                    onClick={() => toggleGroup(g.id)}
                     style={{
-                      width: LEFT_W,
-                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      background: "#0c0c0c",
+                      borderBottom: "1px solid #1e1e1e",
+                      borderTop: "1px solid #1e1e1e",
+                      cursor: "pointer",
                       position: "sticky",
                       left: 0,
-                      background: "#0a0a0a",
-                      zIndex: 4,
-                      padding: "6px 12px",
-                      borderRight: "1px solid #1e1e1e",
-                      overflow: "hidden",
+                      fontSize: 12,
+                      color: "#bbb",
+                      minWidth: totalWidth,
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "#ccc",
-                        whiteSpace: "nowrap",
-                        textOverflow: "ellipsis",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {t.title}
-                    </div>
-                    {projName && (
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "#555",
-                          whiteSpace: "nowrap",
-                          textOverflow: "ellipsis",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {projName}
-                      </div>
-                    )}
+                    {isCollapsed ? <IconChevronRight size={14} /> : <IconChevronDown size={14} />}
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: accent }} />
+                    <span style={{ fontWeight: 500 }}>{g.name}</span>
+                    <span style={{ color: "#555", fontSize: 11 }}>· {g.tasks.length}</span>
                   </div>
-
-                  <button
-                    onClick={() => onOpen(t)}
-                    title={t.title}
-                    style={{
-                      position: "absolute",
-                      top: 7,
-                      left: Math.max(barLeft, LEFT_W + 2),
-                      width: Math.max(
-                        barWidth - Math.max(0, LEFT_W + 2 - barLeft),
-                        24,
-                      ),
-                      height: 22,
-                      borderRadius: 8,
-                      background: c.bg,
-                      border: `1px solid ${c.border}`,
-                      color: c.text,
-                      fontSize: 11,
-                      padding: "0 8px",
-                      textAlign: "left",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      cursor: "pointer",
-                      zIndex: 2,
-                    }}
-                  >
-                    {t.title}
-                  </button>
+                  {!isCollapsed &&
+                    g.tasks.map((t) => (
+                      <GanttRow
+                        key={t.id}
+                        task={t}
+                        ganttStart={ganttStart}
+                        today={today}
+                        dayW={DAY_W}
+                        ganttDays={GANTT_DAYS}
+                        projName={t.project_id ? projectMap.get(t.project_id) ?? null : null}
+                        onOpen={() => onOpen(t)}
+                        onPatch={onPatch}
+                      />
+                    ))}
                 </div>
               );
             })}
@@ -1579,6 +1608,221 @@ function GanttView({
   );
 }
 
+function GanttRow({
+  task,
+  ganttStart,
+  today,
+  dayW,
+  ganttDays,
+  projName,
+  onOpen,
+  onPatch,
+}: {
+  task: Task;
+  ganttStart: Date;
+  today: Date;
+  dayW: number;
+  ganttDays: number;
+  projName: string | null;
+  onOpen: () => void;
+  onPatch: (id: string, patch: Partial<Task>) => void;
+}) {
+  const [dragTx, setDragTx] = useState(0);
+  const [resizeDw, setResizeDw] = useState(0);
+  const interactionRef = useRef<{ kind: "move" | "resize" | null; startX: number; moved: boolean } | null>(null);
+
+  const startISO = task.start_date ?? task.due_date!;
+  const endISO = task.due_date ?? task.start_date!;
+  const taskStart = startOfDay(parseISO(startISO));
+  const taskEnd = startOfDay(parseISO(endISO));
+  const barStartOffset = differenceInDays(taskStart, ganttStart);
+  const barDays = Math.max(differenceInDays(taskEnd, taskStart) + 1, 1);
+  const barLeft = LEFT_W + barStartOffset * dayW;
+  const barWidth = barDays * dayW - 4;
+
+  const overdue = task.status !== "listo" && task.due_date && parseISO(task.due_date) < today;
+  const c = overdue
+    ? GANTT_COLORS.overdue
+    : GANTT_COLORS[(task.status as keyof typeof GANTT_COLORS)] ?? GANTT_COLORS.borrador;
+
+  const onMovePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    interactionRef.current = { kind: "move", startX: e.clientX, moved: false };
+
+    const onMove = (ev: PointerEvent) => {
+      const s = interactionRef.current;
+      if (!s) return;
+      const dx = ev.clientX - s.startX;
+      if (Math.abs(dx) > 4) s.moved = true;
+      const snapped = Math.round(dx / dayW) * dayW;
+      setDragTx(snapped);
+    };
+    const onUp = (ev: PointerEvent) => {
+      const s = interactionRef.current;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      interactionRef.current = null;
+      if (!s) return;
+      const dx = ev.clientX - s.startX;
+      if (!s.moved || Math.abs(dx) < dayW / 2) {
+        setDragTx(0);
+        if (!s.moved) onOpen();
+        return;
+      }
+      const deltaDays = Math.round(dx / dayW);
+      setDragTx(0);
+      if (deltaDays !== 0) {
+        const newStart = task.start_date
+          ? addDays(parseISO(task.start_date), deltaDays).toISOString()
+          : null;
+        const newDue = task.due_date
+          ? addDays(parseISO(task.due_date), deltaDays).toISOString()
+          : null;
+        onPatch(task.id, { start_date: newStart, due_date: newDue });
+      }
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
+
+  const onResizePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    interactionRef.current = { kind: "resize", startX: e.clientX, moved: false };
+
+    const onMove = (ev: PointerEvent) => {
+      const s = interactionRef.current;
+      if (!s) return;
+      const dx = ev.clientX - s.startX;
+      if (Math.abs(dx) > 4) s.moved = true;
+      const snapped = Math.round(dx / dayW) * dayW;
+      // Don't shrink below 1 day
+      const maxNeg = -((barDays - 1) * dayW);
+      setResizeDw(Math.max(maxNeg, snapped));
+    };
+    const onUp = (ev: PointerEvent) => {
+      const s = interactionRef.current;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      interactionRef.current = null;
+      if (!s) return;
+      const dx = ev.clientX - s.startX;
+      setResizeDw(0);
+      if (!s.moved) return;
+      const deltaDays = Math.round(dx / dayW);
+      const maxNegDays = -(barDays - 1);
+      const applied = Math.max(maxNegDays, deltaDays);
+      if (applied !== 0) {
+        const baseDue = task.due_date ?? task.start_date!;
+        const newDue = addDays(parseISO(baseDue), applied).toISOString();
+        onPatch(task.id, { due_date: newDue });
+      }
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
+
+  const clampedLeft = Math.max(barLeft, LEFT_W + 2);
+  const widthAdj = Math.max(barWidth - Math.max(0, LEFT_W + 2 - barLeft) + resizeDw, 24);
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 36,
+        borderBottom: "1px solid #141414",
+        display: "flex",
+      }}
+    >
+      <div
+        style={{
+          width: LEFT_W,
+          flexShrink: 0,
+          position: "sticky",
+          left: 0,
+          background: "#0a0a0a",
+          zIndex: 4,
+          padding: "6px 12px",
+          borderRight: "1px solid #1e1e1e",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            color: "#ccc",
+            whiteSpace: "nowrap",
+            textOverflow: "ellipsis",
+            overflow: "hidden",
+          }}
+        >
+          {task.title}
+        </div>
+        {projName && (
+          <div
+            style={{
+              fontSize: 10,
+              color: "#555",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+            }}
+          >
+            {projName}
+          </div>
+        )}
+      </div>
+
+      <div
+        onPointerDown={onMovePointerDown}
+        title={task.title}
+        style={{
+          position: "absolute",
+          top: 7,
+          left: clampedLeft,
+          width: widthAdj,
+          height: 22,
+          borderRadius: 8,
+          background: c.bg,
+          border: `1px solid ${c.border}`,
+          color: c.text,
+          fontSize: 11,
+          padding: "0 8px",
+          display: "flex",
+          alignItems: "center",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          cursor: "grab",
+          zIndex: 2,
+          transform: `translateX(${dragTx}px)`,
+          transition: interactionRef.current ? "none" : "transform 120ms ease",
+          userSelect: "none",
+          touchAction: "none",
+        }}
+      >
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{task.title}</span>
+        <span
+          onPointerDown={onResizePointerDown}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 8,
+            cursor: "ew-resize",
+            background: "transparent",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -1593,5 +1837,222 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       />
       {label}
     </span>
+  );
+}
+
+/* -------------------- Kanban View -------------------- */
+
+const KANBAN_STATUSES: { id: "borrador" | "en_curso" | "listo" }[] = [
+  { id: "borrador" },
+  { id: "en_curso" },
+  { id: "listo" },
+];
+
+function KanbanView({
+  tasks,
+  onOpen,
+  onPatch,
+}: {
+  tasks: Task[];
+  onOpen: (t: Task) => void;
+  onPatch: (id: string, patch: Partial<Task>) => void;
+}) {
+  const grouped = useMemo(() => {
+    const m: Record<string, Task[]> = { borrador: [], en_curso: [], listo: [] };
+    for (const t of tasks) {
+      const k = m[t.status] ? t.status : "borrador";
+      m[k].push(t);
+    }
+    return m;
+  }, [tasks]);
+
+  const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [overCol, setOverCol] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ task: Task; x: number; y: number; w: number } | null>(null);
+
+  const findCol = (x: number, y: number): string | null => {
+    for (const k of Object.keys(columnRefs.current)) {
+      const el = columnRefs.current[k];
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return k;
+    }
+    return null;
+  };
+
+  const startCardInteraction = (task: Task, e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const cardEl = e.currentTarget as HTMLElement;
+    const width = cardEl.getBoundingClientRect().width;
+    let dragging = false;
+    let armed = false;
+    const holdTimer = setTimeout(() => {
+      armed = true;
+      // visual cue applied via state below if user starts moving
+    }, 135);
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!dragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+        if (!armed) {
+          // moved before hold delay → treat as no-op (cancel)
+          cleanup();
+          return;
+        }
+        dragging = true;
+        setDrag({ task, x: ev.clientX, y: ev.clientY, w: width });
+      }
+      if (dragging) {
+        setDrag((d) => (d ? { ...d, x: ev.clientX, y: ev.clientY } : d));
+        setOverCol(findCol(ev.clientX, ev.clientY));
+      }
+    };
+    const onUp = (ev: PointerEvent) => {
+      clearTimeout(holdTimer);
+      cleanup();
+      if (!dragging) {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (Math.abs(dx) < 5 && Math.abs(dy) < 5) onOpen(task);
+        return;
+      }
+      const target = findCol(ev.clientX, ev.clientY);
+      setDrag(null);
+      setOverCol(null);
+      if (target && target !== task.status) {
+        onPatch(task.id, { status: target });
+      }
+    };
+    function cleanup() {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    }
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: 12,
+      }}
+    >
+      {KANBAN_STATUSES.map((col) => {
+        const meta = STATUS_META[col.id];
+        const list = grouped[col.id] ?? [];
+        const isOver = overCol === col.id;
+        return (
+          <div
+            key={col.id}
+            ref={(el) => {
+              columnRefs.current[col.id] = el;
+            }}
+            style={{
+              background: "#0a0a0a",
+              border: `1px solid ${isOver ? meta.border : "#1e1e1e"}`,
+              borderRadius: 12,
+              padding: 10,
+              minHeight: 200,
+              transition: "border-color 120ms ease, background 120ms ease",
+              outline: isOver ? `2px solid ${meta.color}55` : "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "4px 6px 10px",
+                borderBottom: "1px solid #141414",
+                marginBottom: 8,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.color }} />
+              <span style={{ fontSize: 12, color: meta.color, fontWeight: 500 }}>{meta.label}</span>
+              <span style={{ fontSize: 11, color: "#555", marginLeft: "auto" }}>{list.length}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {list.map((t) => {
+                const range = formatRange(t.start_date, t.due_date);
+                return (
+                  <div
+                    key={t.id}
+                    onPointerDown={(e) => startCardInteraction(t, e)}
+                    style={{
+                      background: "#0d0d0d",
+                      border: "1px solid #1e1e1e",
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      cursor: "pointer",
+                      userSelect: "none",
+                      touchAction: "none",
+                      opacity: drag?.task.id === t.id ? 0.4 : 1,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#ddd",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {t.title}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <PriorityBadge priority={t.priority} />
+                      {range && (
+                        <span style={{ fontSize: 11, color: "#666" }}>{range}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {list.length === 0 && (
+                <div style={{ fontSize: 12, color: "#444", padding: 12, textAlign: "center" }}>
+                  Sin tareas
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+
+      {drag && (
+        <div
+          style={{
+            position: "fixed",
+            top: drag.y - 20,
+            left: drag.x - drag.w / 2,
+            width: drag.w,
+            background: "#161616",
+            border: "1px solid #333",
+            borderRadius: 8,
+            padding: "8px 10px",
+            opacity: 0.92,
+            transform: "scale(1.03)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            pointerEvents: "none",
+            zIndex: 1000,
+            fontSize: 13,
+            color: "#ddd",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {drag.task.title}
+        </div>
+      )}
+    </div>
   );
 }
