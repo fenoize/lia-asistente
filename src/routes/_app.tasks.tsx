@@ -331,23 +331,6 @@ function TasksPage() {
         <KanbanView tasks={filteredTasks} onOpen={(t) => setEditing(t)} onPatch={patchInline} />
       ) : (
         <div className="space-y-3">
-
-      {loading ? (
-        <SkeletonList />
-      ) : filteredTasks.length === 0 ? (
-        <Empty title="Cero tareas en esta lista." subtitle="Capturalas con ⌘K o el botón Nueva tarea." />
-      ) : view === "table" ? (
-        <TaskTable
-          tasks={filteredTasks}
-          projects={projects}
-          onOpen={(t) => setEditing(t)}
-          onPatch={patchInline}
-          onRemove={remove}
-        />
-      ) : view === "gantt" ? (
-        <GanttView tasks={filteredTasks} projectMap={projectMap} onOpen={(t) => setEditing(t)} />
-      ) : (
-        <div className="space-y-6">
           {(["urgent", "week", "later"] as const).map((g) => {
             const list = groups[g];
             if (!list.length) return null;
