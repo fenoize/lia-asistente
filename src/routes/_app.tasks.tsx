@@ -968,6 +968,12 @@ export function Empty({ title, subtitle }: { title: string; subtitle?: string })
   );
 }
 
+type SortKey = "title" | "status" | "priority" | "due" | null;
+type SortDir = "asc" | "desc";
+
+const STATUS_RANK: Record<string, number> = { borrador: 0, en_curso: 1, listo: 2 };
+const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 0, medium: 1, low: 2 };
+
 function TaskTable({
   tasks,
   projects,
@@ -987,81 +993,282 @@ function TaskTable({
     return m;
   }, [projects]);
 
+  const [sortKey, setSortKey] = useState<SortKey>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const toggleSort = (k: Exclude<SortKey, null>) => {
+    if (sortKey !== k) {
+      setSortKey(k);
+      setSortDir("asc");
+    } else {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    }
+  };
+
+  const sortFn = useCallback(
+    (a: Task, b: Task) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "title") return a.title.localeCompare(b.title) * dir;
+      if (sortKey === "status")
+        return ((STATUS_RANK[a.status] ?? 99) - (STATUS_RANK[b.status] ?? 99)) * dir;
+      if (sortKey === "priority")
+        return ((PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99)) * dir;
+      if (sortKey === "due") {
+        const ad = a.due_date ? new Date(a.due_date).getTime() : null;
+        const bd = b.due_date ? new Date(b.due_date).getTime() : null;
+        if (ad === null && bd === null) return 0;
+        if (ad === null) return 1;
+        if (bd === null) return -1;
+        return (ad - bd) * dir;
+      }
+      return 0;
+    },
+    [sortKey, sortDir],
+  );
+
+  // Group by project
+  const groups = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; tasks: Task[] }>();
+    for (const t of tasks) {
+      const pid = t.project_id ?? "__none__";
+      const name = t.project_id ? projectMap.get(t.project_id) ?? "Proyecto" : "Sin proyecto";
+      if (!map.has(pid)) map.set(pid, { id: pid, name, tasks: [] });
+      map.get(pid)!.tasks.push(t);
+    }
+    const arr = Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    if (sortKey) for (const g of arr) g.tasks = [...g.tasks].sort(sortFn);
+    return arr;
+  }, [tasks, projectMap, sortKey, sortFn]);
+
+  const allVisibleIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+  const allSelected = selected.size > 0 && allVisibleIds.every((id) => selected.has(id));
+
+  const toggleSelect = (id: string) => {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  };
+  const toggleAll = () => {
+    setSelected((s) => {
+      if (allVisibleIds.every((id) => s.has(id))) return new Set();
+      return new Set(allVisibleIds);
+    });
+  };
+  const toggleGroup = (gid: string) => {
+    setCollapsed((s) => {
+      const n = new Set(s);
+      if (n.has(gid)) n.delete(gid);
+      else n.add(gid);
+      return n;
+    });
+  };
+
+  const bulkStatus = (status: string) => {
+    selected.forEach((id) => onPatch(id, { status }));
+  };
+  const bulkDelete = () => {
+    if (!confirm(`¿Eliminar ${selected.size} tarea(s)?`)) return;
+    selected.forEach((id) => onRemove(id));
+    setSelected(new Set());
+  };
+
+  const SortIndicator = ({ k }: { k: Exclude<SortKey, null> }) =>
+    sortKey === k ? (
+      sortDir === "asc" ? <IconArrowUp size={11} /> : <IconArrowDown size={11} />
+    ) : null;
+
+  const sortableTh = (k: Exclude<SortKey, null>, label: string) => (
+    <th style={{ ...thStyle, cursor: "pointer", userSelect: "none" }} onClick={() => toggleSort(k)}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        {label} <SortIndicator k={k} />
+      </span>
+    </th>
+  );
+
   return (
-    <div
-      className="overflow-x-auto"
-      style={{ border: "1px solid #1e1e1e", borderRadius: 12, background: "#0a0a0a" }}
-    >
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead>
-          <tr style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            <th style={thStyle}>Tarea</th>
-            <th style={thStyle}>Estado</th>
-            <th style={thStyle}>Prioridad</th>
-            <th style={thStyle}>Proyecto</th>
-            <th style={thStyle}>Término</th>
-            <th style={{ ...thStyle, width: 40 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((t) => {
-            const done = t.status === "listo";
-            const overdue = !!t.due_date && new Date(t.due_date) < new Date() && !done;
-            return (
-              <tr
-                key={t.id}
-                style={{ borderTop: "1px solid #141414", cursor: "pointer" }}
-                onClick={() => onOpen(t)}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#0f0f0f")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              >
-                <td style={{ ...tdStyle, color: done ? "#444" : "#ddd", textDecoration: done ? "line-through" : "none" }}>
-                  {t.title}
-                </td>
-                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={t.status}
-                    onChange={(e) => onPatch(t.id, { status: e.target.value })}
-                    style={inlineSelect}
+    <div>
+      {selected.size > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "8px 12px",
+            marginBottom: 8,
+            background: "rgba(99,102,241,0.1)",
+            border: "1px solid rgba(99,102,241,0.3)",
+            borderRadius: 10,
+            fontSize: 12,
+            color: "#a5b4fc",
+            flexWrap: "wrap",
+          }}
+        >
+          <span>{selected.size} seleccionada(s)</span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              if (e.target.value) {
+                bulkStatus(e.target.value);
+                e.target.value = "";
+              }
+            }}
+            style={inlineSelect}
+          >
+            <option value="" disabled>Cambiar estado…</option>
+            <option value="borrador">Borrador</option>
+            <option value="en_curso">En Curso</option>
+            <option value="listo">Listo</option>
+          </select>
+          <button
+            onClick={bulkDelete}
+            style={{
+              fontSize: 12,
+              color: "#f87171",
+              border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 6,
+              padding: "3px 10px",
+            }}
+          >
+            Eliminar
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{ fontSize: 12, color: "#888", padding: "3px 10px" }}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+      <div
+        className="overflow-x-auto"
+        style={{ border: "1px solid #1e1e1e", borderRadius: 12, background: "#0a0a0a" }}
+      >
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <th style={{ ...thStyle, width: 32 }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  style={{ accentColor: "#818cf8", cursor: "pointer" }}
+                />
+              </th>
+              {sortableTh("title", "Tarea")}
+              {sortableTh("status", "Estado")}
+              {sortableTh("priority", "Prioridad")}
+              {sortableTh("due", "Término")}
+              <th style={{ ...thStyle, width: 40 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.map((g) => {
+              const isCollapsed = collapsed.has(g.id);
+              const accent = g.id === "__none__" ? "#555" : projectColor(g.name);
+              return (
+                <>
+                  <tr
+                    key={`h-${g.id}`}
+                    style={{
+                      borderTop: "1px solid #1e1e1e",
+                      background: "#0c0c0c",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => toggleGroup(g.id)}
                   >
-                    <option value="borrador">Borrador</option>
-                    <option value="en_curso">En Curso</option>
-                    <option value="listo">Listo</option>
-                  </select>
-                </td>
-                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={t.priority}
-                    onChange={(e) => onPatch(t.id, { priority: e.target.value })}
-                    style={inlineSelect}
-                  >
-                    <option value="urgent">Urgente</option>
-                    <option value="high">Alta</option>
-                    <option value="medium">Media</option>
-                    <option value="low">Baja</option>
-                  </select>
-                </td>
-                <td style={{ ...tdStyle, color: "#888" }}>{t.project_id ? projectMap.get(t.project_id) ?? "—" : "—"}</td>
-                <td style={{ ...tdStyle, color: overdue ? "#f87171" : "#888" }}>
-                  {t.due_date
-                    ? new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" }).format(new Date(t.due_date))
-                    : "—"}
-                </td>
-                <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => onRemove(t.id)}
-                    aria-label="Eliminar"
-                    style={{ color: "#555", padding: 4 }}
-                    className="hover:text-red-400"
-                  >
-                    <IconTrash size={14} />
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    <td colSpan={6} style={{ padding: "8px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#bbb" }}>
+                        {isCollapsed ? <IconChevronRight size={14} /> : <IconChevronDown size={14} />}
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: accent }} />
+                        <span style={{ fontWeight: 500 }}>{g.name}</span>
+                        <span style={{ color: "#555", fontSize: 11 }}>· {g.tasks.length}</span>
+                      </div>
+                    </td>
+                  </tr>
+                  {!isCollapsed &&
+                    g.tasks.map((t) => {
+                      const done = t.status === "listo";
+                      const overdue = !!t.due_date && new Date(t.due_date) < new Date() && !done;
+                      const isSel = selected.has(t.id);
+                      return (
+                        <tr
+                          key={t.id}
+                          style={{
+                            borderTop: "1px solid #141414",
+                            cursor: "pointer",
+                            background: isSel ? "rgba(99,102,241,0.08)" : "transparent",
+                          }}
+                          onClick={() => onOpen(t)}
+                          onMouseEnter={(e) => {
+                            if (!isSel) e.currentTarget.style.background = "#0f0f0f";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSel) e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isSel}
+                              onChange={() => toggleSelect(t.id)}
+                              style={{ accentColor: "#818cf8", cursor: "pointer" }}
+                            />
+                          </td>
+                          <td style={{ ...tdStyle, color: done ? "#444" : "#ddd", textDecoration: done ? "line-through" : "none" }}>
+                            {t.title}
+                          </td>
+                          <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                            <select
+                              value={t.status}
+                              onChange={(e) => onPatch(t.id, { status: e.target.value })}
+                              style={inlineSelect}
+                            >
+                              <option value="borrador">Borrador</option>
+                              <option value="en_curso">En Curso</option>
+                              <option value="listo">Listo</option>
+                            </select>
+                          </td>
+                          <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                            <select
+                              value={t.priority}
+                              onChange={(e) => onPatch(t.id, { priority: e.target.value })}
+                              style={inlineSelect}
+                            >
+                              <option value="urgent">Urgente</option>
+                              <option value="high">Alta</option>
+                              <option value="medium">Media</option>
+                              <option value="low">Baja</option>
+                            </select>
+                          </td>
+                          <td style={{ ...tdStyle, color: overdue ? "#f87171" : "#888" }}>
+                            {t.due_date
+                              ? new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short" }).format(new Date(t.due_date))
+                              : "—"}
+                          </td>
+                          <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => onRemove(t.id)}
+                              aria-label="Eliminar"
+                              style={{ color: "#555", padding: 4 }}
+                              className="hover:text-red-400"
+                            >
+                              <IconTrash size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
