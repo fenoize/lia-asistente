@@ -3,13 +3,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface PwaUpdateState {
   hasUpdate: boolean;
   checking: boolean;
+  forcing: boolean;
   update: () => void;
   skipWaiting: () => void;
+  forceUpdate: () => Promise<void>;
 }
 
 export function usePwaUpdate(): PwaUpdateState {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [forcing, setForcing] = useState(false);
   const waitingRef = useRef<ServiceWorker | null>(null);
 
   useEffect(() => {
@@ -86,5 +89,33 @@ export function usePwaUpdate(): PwaUpdateState {
     }
   }, []);
 
-  return { hasUpdate, checking, update, skipWaiting };
+  const forceUpdate = useCallback(async () => {
+    if (typeof navigator === "undefined") return;
+    setForcing(true);
+    try {
+      // 1. Unregister all service workers
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      // 2. Delete all caches
+      if (typeof caches !== "undefined") {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      // 3. Clear storage caches (keep auth/localStorage intact)
+      try {
+        sessionStorage.clear();
+      } catch {}
+      // 4. Hard reload bypassing HTTP cache
+      const url = new URL(window.location.href);
+      url.searchParams.set("__v", Date.now().toString());
+      window.location.replace(url.toString());
+    } catch (e) {
+      console.error("Error forcing update:", e);
+      setForcing(false);
+    }
+  }, []);
+
+  return { hasUpdate, checking, forcing, update, skipWaiting, forceUpdate };
 }
