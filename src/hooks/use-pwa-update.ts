@@ -12,6 +12,7 @@ interface PwaUpdateState {
 export function usePwaUpdate(): PwaUpdateState {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [forcing, setForcing] = useState(false);
   const waitingRef = useRef<ServiceWorker | null>(null);
 
   useEffect(() => {
