@@ -88,7 +88,7 @@ type SheetKey =
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { hasUpdate, checking, update, skipWaiting } = usePwaUpdate();
+  const { hasUpdate, checking, forcing, update, skipWaiting, forceUpdate } = usePwaUpdate();
   const [checkedOnce, setCheckedOnce] = useState(false);
   const { hidden: hideAmounts, set: setHideAmounts } = useHideAmounts();
   const [loading, setLoading] = useState(true);
