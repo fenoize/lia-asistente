@@ -3,8 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface PwaUpdateState {
   hasUpdate: boolean;
   checking: boolean;
+  forcing: boolean;
   update: () => void;
   skipWaiting: () => void;
+  forceUpdate: () => Promise<void>;
 }
 
 export function usePwaUpdate(): PwaUpdateState {
