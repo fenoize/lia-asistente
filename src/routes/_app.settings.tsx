@@ -321,13 +321,27 @@ function SettingsPage() {
             Reiniciar y actualizar
           </button>
         ) : (
-          <button
-            onClick={async () => { await update(); setCheckedOnce(true); }}
-            disabled={checking}
-            style={{ background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: "9px 22px", fontSize: 13, opacity: checking ? 0.5 : 1 }}
-          >
-            {checking ? "Buscando…" : "Buscar actualizaciones"}
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              onClick={async () => { await update(); setCheckedOnce(true); }}
+              disabled={checking || forcing}
+              style={{ background: "transparent", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: "9px 22px", fontSize: 13, opacity: checking || forcing ? 0.5 : 1 }}
+            >
+              {checking ? "Buscando…" : "Buscar actualizaciones"}
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm("Esto borrará la caché y recargará la app desde cero. ¿Continuar?")) {
+                  forceUpdate();
+                }
+              }}
+              disabled={checking || forcing}
+              title="Borra caché y service workers, y recarga la app"
+              style={{ background: "transparent", color: "var(--text-secondary)", border: "1px dashed var(--border)", borderRadius: "var(--radius-pill)", padding: "9px 22px", fontSize: 13, opacity: checking || forcing ? 0.5 : 1 }}
+            >
+              {forcing ? "Forzando…" : "Forzar actualización"}
+            </button>
+          </div>
         )}
       </section>
 
