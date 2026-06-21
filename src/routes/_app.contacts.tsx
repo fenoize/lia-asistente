@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconSearch,
   IconPlus,
@@ -12,11 +12,17 @@ import {
   IconCake,
   IconLink,
   IconMapPin,
+  IconArrowsSort,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Tracker so only one ContactCard swipe stays open at a time (mobile).
+const swipeOpenTracker: { current: null | (() => void) } = { current: null };
 
 export const Route = createFileRoute("/_app/contacts")({
   component: ContactsPage,
@@ -196,6 +202,28 @@ function ContactsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [sortField, setSortField] = useState<"name" | "activity" | "birthday">("name");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!sortMenuRef.current?.contains(e.target as Node)) setSortMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [sortMenuOpen]);
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const reload = async () => {
     if (!user) return;
@@ -232,34 +260,63 @@ function ContactsPage() {
     );
   }, [projects, projectFilter]);
 
-  const filtered = useMemo(
-    () =>
-      contacts
-        .filter((c) => {
-          const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
-          if (tab === "client") return rt === "client";
-          if (tab === "collaborator")
-            return rt !== "client";
-          return true;
-        })
-        .filter((c) =>
-          search.trim()
-            ? (c.name + " " + (c.company ?? "") + " " + (c.email ?? ""))
-                .toLowerCase()
-                .includes(search.toLowerCase())
-            : true,
-        )
-        .filter((c) => {
-          if (tagFilters.length === 0) return true;
-          const ctags = c.tags ?? [];
-          return tagFilters.some((t) => ctags.includes(t));
-        })
-        .filter((c) => {
-          if (!clientIdsInProject) return true;
-          return clientIdsInProject.has(c.id);
-        }),
-    [contacts, tab, search, tagFilters, clientIdsInProject],
-  );
+  const filtered = useMemo(() => {
+    const arr = contacts
+      .filter((c) => {
+        const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
+        if (tab === "client") return rt === "client";
+        if (tab === "collaborator") return rt !== "client";
+        return true;
+      })
+      .filter((c) =>
+        search.trim()
+          ? (c.name + " " + (c.company ?? "") + " " + (c.email ?? ""))
+              .toLowerCase()
+              .includes(search.toLowerCase())
+          : true,
+      )
+      .filter((c) => {
+        if (tagFilters.length === 0) return true;
+        const ctags = c.tags ?? [];
+        return tagFilters.some((t) => ctags.includes(t));
+      })
+      .filter((c) => {
+        if (!clientIdsInProject) return true;
+        return clientIdsInProject.has(c.id);
+      });
+
+    const sorted = [...arr];
+    if (sortField === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortField === "activity") {
+      sorted.sort((a, b) => {
+        const av = a.last_activity_at ? new Date(a.last_activity_at).getTime() : null;
+        const bv = b.last_activity_at ? new Date(b.last_activity_at).getTime() : null;
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return bv - av;
+      });
+    } else if (sortField === "birthday") {
+      sorted.sort((a, b) => {
+        const ad = daysUntilBirthday(a.birthday);
+        const bd = daysUntilBirthday(b.birthday);
+        if (ad === null && bd === null) return 0;
+        if (ad === null) return 1;
+        if (bd === null) return -1;
+        return ad - bd;
+      });
+    }
+    return sorted;
+  }, [contacts, tab, search, tagFilters, clientIdsInProject, sortField]);
+
+  const upcomingBirthdays = useMemo(() => {
+    return contacts
+      .map((c) => ({ c, d: daysUntilBirthday(c.birthday) }))
+      .filter((x) => x.d !== null && (x.d as number) <= 7)
+      .sort((a, b) => (a.d as number) - (b.d as number))
+      .map((x) => ({ contact: x.c, days: x.d as number }));
+  }, [contacts]);
 
   const projectsForClient = (id: string) => projects.filter((p) => p.client_id === id);
   const tasksForClient = (id: string) => {
@@ -425,7 +482,274 @@ function ContactsPage() {
             <IconX size={11} /> Limpiar
           </button>
         )}
+
+        {/* Sort dropdown */}
+        <div ref={sortMenuRef} style={{ position: "relative", marginLeft: "auto" }}>
+          <button
+            onClick={() => setSortMenuOpen((v) => !v)}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#888",
+              border: "1px solid #222",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              cursor: "pointer",
+            }}
+          >
+            <IconArrowsSort size={12} />
+            Ordenar: {sortField === "name" ? "Nombre" : sortField === "activity" ? "Actividad" : "Cumpleaños"}
+            <IconChevronDown size={12} />
+          </button>
+          {sortMenuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                background: "#111",
+                border: "1px solid #1e1e1e",
+                borderRadius: 10,
+                padding: 4,
+                minWidth: 180,
+                zIndex: 50,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              }}
+            >
+              {([
+                ["name", "Nombre"],
+                ["activity", "Actividad reciente"],
+                ["birthday", "Cumpleaños próximo"],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => { setSortField(id); setSortMenuOpen(false); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: sortField === id ? "#818cf8" : "#bbb",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  {label}
+                  {sortField === id && <IconCheck size={12} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Select mode toggle */}
+        <button
+          onClick={() => {
+            setSelectMode((v) => {
+              if (v) setSelected(new Set());
+              return !v;
+            });
+          }}
+          style={{
+            fontSize: 11,
+            padding: "4px 12px",
+            borderRadius: 100,
+            background: selectMode ? "rgba(99,102,241,0.15)" : "transparent",
+            color: selectMode ? "#818cf8" : "#888",
+            border: `1px solid ${selectMode ? "rgba(99,102,241,0.3)" : "#222"}`,
+            cursor: "pointer",
+          }}
+        >
+          {selectMode ? "Cancelar selección" : "Seleccionar"}
+        </button>
       </div>
+
+      {/* Bulk actions bar */}
+      {selectMode && selected.size > 0 && (
+        <div
+          className="flex items-center gap-3 flex-wrap"
+          style={{
+            background: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            borderRadius: 12,
+            padding: "10px 14px",
+            marginBottom: 16,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "#818cf8", fontWeight: 500 }}>
+            {selected.size} seleccionado{selected.size === 1 ? "" : "s"}
+          </span>
+          <select
+            value=""
+            onChange={async (e) => {
+              const tag = e.target.value;
+              if (!tag) return;
+              const ids = Array.from(selected);
+              const updates: { id: string; tags: string[] }[] = [];
+              const prevSnapshot = contacts;
+              const nextContacts = contacts.map((c) => {
+                if (!selected.has(c.id)) return c;
+                const ctags = c.tags ?? [];
+                if (ctags.includes(tag)) return c;
+                const newTags = [...ctags, tag];
+                updates.push({ id: c.id, tags: newTags });
+                return { ...c, tags: newTags };
+              });
+              setContacts(nextContacts);
+              e.target.value = "";
+              try {
+                for (const u of updates) {
+                  const { error } = await supabase.from("contacts").update({ tags: u.tags }).eq("id", u.id);
+                  if (error) throw error;
+                }
+                if (updates.length > 0) toast.success(`Etiqueta agregada a ${updates.length}.`);
+              } catch {
+                toast.error("No pude actualizar etiquetas.");
+                setContacts(prevSnapshot);
+                reload();
+              }
+            }}
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#bbb",
+              border: "1px solid #222",
+              cursor: "pointer",
+            }}
+          >
+            <option value="">Agregar etiqueta…</option>
+            {TAG_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <button
+            onClick={async () => {
+              if (!confirm(`¿Borrar ${selected.size} contactos?`)) return;
+              const ids = Array.from(selected);
+              setContacts((prev) => prev.filter((c) => !selected.has(c.id)));
+              setSelected(new Set());
+              try {
+                for (const id of ids) {
+                  const { error } = await supabase.from("contacts").delete().eq("id", id);
+                  if (error) throw error;
+                }
+                toast.success(`${ids.length} eliminado${ids.length === 1 ? "" : "s"}.`);
+              } catch {
+                toast.error("No pude borrar todos.");
+                reload();
+              }
+            }}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "rgba(239,68,68,0.12)",
+              color: "#f87171",
+              border: "1px solid rgba(239,68,68,0.3)",
+              cursor: "pointer",
+            }}
+          >
+            Eliminar
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#888",
+              border: "1px solid #222",
+              cursor: "pointer",
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* Cumpleaños esta semana */}
+      {upcomingBirthdays.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11,
+              color: "#fbbf24",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 600,
+              marginBottom: 8,
+            }}
+          >
+            <IconCake size={13} /> Cumpleaños esta semana
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "nowrap",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 4,
+            }}
+          >
+            {upcomingBirthdays.map(({ contact, days }) => {
+              const label = days === 0 ? "hoy" : days === 1 ? "mañana" : `en ${days} días`;
+              return (
+                <button
+                  key={contact.id}
+                  onClick={() => setOpenId(contact.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.25)",
+                    borderRadius: 100,
+                    padding: "5px 12px 5px 5px",
+                    color: "#fbbf24",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "rgba(245,158,11,0.15)",
+                      color: "#fbbf24",
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {initials(contact.name)}
+                  </span>
+                  <span style={{ color: "#f2f2f2" }}>{contact.name}</span>
+                  <span style={{ color: "#fbbf24" }}>· {label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
 
       {loading ? (
@@ -466,6 +790,9 @@ function ContactsPage() {
                     reload();
                   } else toast.success("Borrado.");
                 }}
+                selectMode={selectMode}
+                selected={selected.has(c.id)}
+                onToggleSelect={() => toggleSelect(c.id)}
               />
             );
           })}
@@ -524,6 +851,9 @@ function ContactCard({
   onOpen,
   onEdit,
   onDelete,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   contact: Contact;
   projectCount: number;
@@ -531,26 +861,144 @@ function ContactCard({
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const isMobile = useIsMobile();
   const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const isClient = rt === "client";
 
-  return (
-    <div
-      onClick={onOpen}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        background: "#111111",
-        border: `1px solid ${hover ? "rgba(99,102,241,0.3)" : "#1e1e1e"}`,
-        borderRadius: 12,
-        padding: "16px 20px",
-        cursor: "pointer",
-        transition: "border-color 0.15s",
-      }}
-    >
+  // Mobile swipe state
+  const SWIPE = 72;
+  const [offset, setOffset] = useState(0);
+  const [transitioning, setTransitioning] = useState(true);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    base: number;
+    isSwipe: boolean | null;
+    moved: boolean;
+    moveHandler: (e: PointerEvent) => void;
+    upHandler: (e: PointerEvent) => void;
+  } | null>(null);
+
+  const closeSwipe = () => {
+    setTransitioning(true);
+    setOffset(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile) return;
+    // ignore touches starting on interactive child elements (checkbox handles its own click)
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-swipe-ignore]")) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const base = offset;
+    const moveHandler = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (dragRef.current && dragRef.current.isSwipe === null) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          dragRef.current.isSwipe = true;
+        } else {
+          dragRef.current.isSwipe = false;
+          cleanup();
+          return;
+        }
+      }
+      if (dragRef.current?.isSwipe) {
+        dragRef.current.moved = true;
+        const next = Math.max(-SWIPE, Math.min(0, base + dx));
+        setTransitioning(false);
+        setOffset(next);
+      }
+    };
+    const upHandler = () => {
+      if (dragRef.current?.isSwipe) {
+        setTransitioning(true);
+        setOffset((cur) => {
+          const open = cur < -SWIPE / 2;
+          if (open) {
+            if (swipeOpenTracker.current && swipeOpenTracker.current !== closeSwipe) {
+              swipeOpenTracker.current();
+            }
+            swipeOpenTracker.current = closeSwipe;
+            return -SWIPE;
+          }
+          if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+          return 0;
+        });
+      }
+      cleanup();
+    };
+    const cleanup = () => {
+      document.removeEventListener("pointermove", moveHandler);
+      document.removeEventListener("pointerup", upHandler);
+      document.removeEventListener("pointercancel", upHandler);
+      dragRef.current = null;
+    };
+    dragRef.current = {
+      startX, startY, base, isSwipe: null, moved: false,
+      moveHandler, upHandler,
+    };
+    document.addEventListener("pointermove", moveHandler);
+    document.addEventListener("pointerup", upHandler);
+    document.addEventListener("pointercancel", upHandler);
+  };
+
+  const handleClick = () => {
+    // suppress tap if a swipe drag occurred or card is open
+    if (offset !== 0) {
+      closeSwipe();
+      if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+      return;
+    }
+    onOpen();
+  };
+
+  const renderCheckbox = () =>
+    selectMode ? (
+      <button
+        data-swipe-ignore
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleSelect();
+        }}
+        aria-label={selected ? "Deseleccionar" : "Seleccionar"}
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 6,
+          border: `1px solid ${selected ? "rgba(99,102,241,0.5)" : "#333"}`,
+          background: selected ? "rgba(99,102,241,0.2)" : "transparent",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#818cf8",
+          padding: 0,
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
+      >
+        {selected && <IconCheck size={12} stroke={2.5} />}
+      </button>
+    ) : null;
+
+  const cardInner = (
+    <>
       <div className="flex items-center gap-3 mb-2">
+        {renderCheckbox()}
         <div
           className="flex items-center justify-center rounded-full shrink-0"
           style={{
@@ -624,35 +1072,114 @@ function ContactCard({
               ? `${taskCount} tarea${taskCount === 1 ? "" : "s"} asignada${taskCount === 1 ? "" : "s"}`
               : ""}
         </div>
-        <div
-          className="flex items-center gap-2"
-          style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s", pointerEvents: hover ? "auto" : "none" }}
+        {!isMobile && (
+          <div
+            className="flex items-center gap-2"
+            style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s", pointerEvents: hover ? "auto" : "none" }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              aria-label="Editar"
+              style={{ color: "#555", padding: 4 }}
+            >
+              <IconPencil size={14} stroke={1.75} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Borrar"
+              style={{ color: "#555", padding: 4 }}
+            >
+              <IconTrash size={14} stroke={1.75} />
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  if (!isMobile) {
+    return (
+      <div
+        onClick={handleClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          background: "#111111",
+          border: `1px solid ${hover ? "rgba(99,102,241,0.3)" : "#1e1e1e"}`,
+          borderRadius: 12,
+          padding: "16px 20px",
+          cursor: "pointer",
+          transition: "border-color 0.15s",
+        }}
+      >
+        {cardInner}
+      </div>
+    );
+  }
+
+  // Mobile: swipe-to-delete
+  return (
+    <div style={{ position: "relative", borderRadius: 12, overflow: "hidden" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(239,68,68,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 16,
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            closeSwipe();
+            if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+            onDelete();
+          }}
+          aria-label="Eliminar"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#f87171",
+            background: "transparent",
+            border: "none",
+            fontSize: 12,
+            cursor: "pointer",
+          }}
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            aria-label="Editar"
-            style={{ color: "#555", padding: 4 }}
-          >
-            <IconPencil size={14} stroke={1.75} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Borrar"
-            style={{ color: "#555", padding: 4 }}
-          >
-            <IconTrash size={14} stroke={1.75} />
-          </button>
-        </div>
+          <IconTrash size={16} stroke={1.75} /> Eliminar
+        </button>
+      </div>
+      <div
+        onClick={handleClick}
+        onPointerDown={onPointerDown}
+        style={{
+          background: "#111111",
+          border: "1px solid #1e1e1e",
+          borderRadius: 12,
+          padding: "16px 20px",
+          cursor: "pointer",
+          position: "relative",
+          transform: `translateX(${offset}px)`,
+          transition: transitioning ? "transform 200ms ease" : "none",
+          touchAction: "pan-y",
+        }}
+      >
+        {cardInner}
       </div>
     </div>
   );
 }
+
 
 function EmptyState({
   type,
