@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconSearch,
   IconPlus,
@@ -12,11 +12,17 @@ import {
   IconCake,
   IconLink,
   IconMapPin,
+  IconArrowsSort,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Tracker so only one ContactCard swipe stays open at a time (mobile).
+const swipeOpenTracker: { current: null | (() => void) } = { current: null };
 
 export const Route = createFileRoute("/_app/contacts")({
   component: ContactsPage,
