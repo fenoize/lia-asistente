@@ -790,6 +790,9 @@ function ContactsPage() {
                     reload();
                   } else toast.success("Borrado.");
                 }}
+                selectMode={selectMode}
+                selected={selected.has(c.id)}
+                onToggleSelect={() => toggleSelect(c.id)}
               />
             );
           })}
