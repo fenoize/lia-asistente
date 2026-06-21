@@ -851,6 +851,9 @@ function ContactCard({
   onOpen,
   onEdit,
   onDelete,
+  selectMode,
+  selected,
+  onToggleSelect,
 }: {
   contact: Contact;
   projectCount: number;
@@ -858,26 +861,144 @@ function ContactCard({
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  const isMobile = useIsMobile();
   const rt = relTypeFromTags(contact.tags, contact.relationship_type ?? contact.type);
   const isClient = rt === "client";
 
-  return (
-    <div
-      onClick={onOpen}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        background: "#111111",
-        border: `1px solid ${hover ? "rgba(99,102,241,0.3)" : "#1e1e1e"}`,
-        borderRadius: 12,
-        padding: "16px 20px",
-        cursor: "pointer",
-        transition: "border-color 0.15s",
-      }}
-    >
+  // Mobile swipe state
+  const SWIPE = 72;
+  const [offset, setOffset] = useState(0);
+  const [transitioning, setTransitioning] = useState(true);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    base: number;
+    isSwipe: boolean | null;
+    moved: boolean;
+    moveHandler: (e: PointerEvent) => void;
+    upHandler: (e: PointerEvent) => void;
+  } | null>(null);
+
+  const closeSwipe = () => {
+    setTransitioning(true);
+    setOffset(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!isMobile) return;
+    // ignore touches starting on interactive child elements (checkbox handles its own click)
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-swipe-ignore]")) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const base = offset;
+    const moveHandler = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (dragRef.current && dragRef.current.isSwipe === null) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          dragRef.current.isSwipe = true;
+        } else {
+          dragRef.current.isSwipe = false;
+          cleanup();
+          return;
+        }
+      }
+      if (dragRef.current?.isSwipe) {
+        dragRef.current.moved = true;
+        const next = Math.max(-SWIPE, Math.min(0, base + dx));
+        setTransitioning(false);
+        setOffset(next);
+      }
+    };
+    const upHandler = () => {
+      if (dragRef.current?.isSwipe) {
+        setTransitioning(true);
+        setOffset((cur) => {
+          const open = cur < -SWIPE / 2;
+          if (open) {
+            if (swipeOpenTracker.current && swipeOpenTracker.current !== closeSwipe) {
+              swipeOpenTracker.current();
+            }
+            swipeOpenTracker.current = closeSwipe;
+            return -SWIPE;
+          }
+          if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+          return 0;
+        });
+      }
+      cleanup();
+    };
+    const cleanup = () => {
+      document.removeEventListener("pointermove", moveHandler);
+      document.removeEventListener("pointerup", upHandler);
+      document.removeEventListener("pointercancel", upHandler);
+      dragRef.current = null;
+    };
+    dragRef.current = {
+      startX, startY, base, isSwipe: null, moved: false,
+      moveHandler, upHandler,
+    };
+    document.addEventListener("pointermove", moveHandler);
+    document.addEventListener("pointerup", upHandler);
+    document.addEventListener("pointercancel", upHandler);
+  };
+
+  const handleClick = () => {
+    // suppress tap if a swipe drag occurred or card is open
+    if (offset !== 0) {
+      closeSwipe();
+      if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+      return;
+    }
+    onOpen();
+  };
+
+  const renderCheckbox = () =>
+    selectMode ? (
+      <button
+        data-swipe-ignore
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleSelect();
+        }}
+        aria-label={selected ? "Deseleccionar" : "Seleccionar"}
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 6,
+          border: `1px solid ${selected ? "rgba(99,102,241,0.5)" : "#333"}`,
+          background: selected ? "rgba(99,102,241,0.2)" : "transparent",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#818cf8",
+          padding: 0,
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
+      >
+        {selected && <IconCheck size={12} stroke={2.5} />}
+      </button>
+    ) : null;
+
+  const cardInner = (
+    <>
       <div className="flex items-center gap-3 mb-2">
+        {renderCheckbox()}
         <div
           className="flex items-center justify-center rounded-full shrink-0"
           style={{
@@ -951,35 +1072,114 @@ function ContactCard({
               ? `${taskCount} tarea${taskCount === 1 ? "" : "s"} asignada${taskCount === 1 ? "" : "s"}`
               : ""}
         </div>
-        <div
-          className="flex items-center gap-2"
-          style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s", pointerEvents: hover ? "auto" : "none" }}
+        {!isMobile && (
+          <div
+            className="flex items-center gap-2"
+            style={{ opacity: hover ? 1 : 0, transition: "opacity 0.15s", pointerEvents: hover ? "auto" : "none" }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              aria-label="Editar"
+              style={{ color: "#555", padding: 4 }}
+            >
+              <IconPencil size={14} stroke={1.75} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              aria-label="Borrar"
+              style={{ color: "#555", padding: 4 }}
+            >
+              <IconTrash size={14} stroke={1.75} />
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  if (!isMobile) {
+    return (
+      <div
+        onClick={handleClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          background: "#111111",
+          border: `1px solid ${hover ? "rgba(99,102,241,0.3)" : "#1e1e1e"}`,
+          borderRadius: 12,
+          padding: "16px 20px",
+          cursor: "pointer",
+          transition: "border-color 0.15s",
+        }}
+      >
+        {cardInner}
+      </div>
+    );
+  }
+
+  // Mobile: swipe-to-delete
+  return (
+    <div style={{ position: "relative", borderRadius: 12, overflow: "hidden" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(239,68,68,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          paddingRight: 16,
+        }}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            closeSwipe();
+            if (swipeOpenTracker.current === closeSwipe) swipeOpenTracker.current = null;
+            onDelete();
+          }}
+          aria-label="Eliminar"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            color: "#f87171",
+            background: "transparent",
+            border: "none",
+            fontSize: 12,
+            cursor: "pointer",
+          }}
         >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            aria-label="Editar"
-            style={{ color: "#555", padding: 4 }}
-          >
-            <IconPencil size={14} stroke={1.75} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            aria-label="Borrar"
-            style={{ color: "#555", padding: 4 }}
-          >
-            <IconTrash size={14} stroke={1.75} />
-          </button>
-        </div>
+          <IconTrash size={16} stroke={1.75} /> Eliminar
+        </button>
+      </div>
+      <div
+        onClick={handleClick}
+        onPointerDown={onPointerDown}
+        style={{
+          background: "#111111",
+          border: "1px solid #1e1e1e",
+          borderRadius: 12,
+          padding: "16px 20px",
+          cursor: "pointer",
+          position: "relative",
+          transform: `translateX(${offset}px)`,
+          transition: transitioning ? "transform 200ms ease" : "none",
+          touchAction: "pan-y",
+        }}
+      >
+        {cardInner}
       </div>
     </div>
   );
 }
+
 
 function EmptyState({
   type,
