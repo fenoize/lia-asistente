@@ -202,6 +202,28 @@ function ContactsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [sortField, setSortField] = useState<"name" | "activity" | "birthday">("name");
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!sortMenuRef.current?.contains(e.target as Node)) setSortMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [sortMenuOpen]);
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const reload = async () => {
     if (!user) return;
