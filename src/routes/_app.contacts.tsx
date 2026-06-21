@@ -260,34 +260,63 @@ function ContactsPage() {
     );
   }, [projects, projectFilter]);
 
-  const filtered = useMemo(
-    () =>
-      contacts
-        .filter((c) => {
-          const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
-          if (tab === "client") return rt === "client";
-          if (tab === "collaborator")
-            return rt !== "client";
-          return true;
-        })
-        .filter((c) =>
-          search.trim()
-            ? (c.name + " " + (c.company ?? "") + " " + (c.email ?? ""))
-                .toLowerCase()
-                .includes(search.toLowerCase())
-            : true,
-        )
-        .filter((c) => {
-          if (tagFilters.length === 0) return true;
-          const ctags = c.tags ?? [];
-          return tagFilters.some((t) => ctags.includes(t));
-        })
-        .filter((c) => {
-          if (!clientIdsInProject) return true;
-          return clientIdsInProject.has(c.id);
-        }),
-    [contacts, tab, search, tagFilters, clientIdsInProject],
-  );
+  const filtered = useMemo(() => {
+    const arr = contacts
+      .filter((c) => {
+        const rt = relTypeFromTags(c.tags, c.relationship_type ?? c.type);
+        if (tab === "client") return rt === "client";
+        if (tab === "collaborator") return rt !== "client";
+        return true;
+      })
+      .filter((c) =>
+        search.trim()
+          ? (c.name + " " + (c.company ?? "") + " " + (c.email ?? ""))
+              .toLowerCase()
+              .includes(search.toLowerCase())
+          : true,
+      )
+      .filter((c) => {
+        if (tagFilters.length === 0) return true;
+        const ctags = c.tags ?? [];
+        return tagFilters.some((t) => ctags.includes(t));
+      })
+      .filter((c) => {
+        if (!clientIdsInProject) return true;
+        return clientIdsInProject.has(c.id);
+      });
+
+    const sorted = [...arr];
+    if (sortField === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortField === "activity") {
+      sorted.sort((a, b) => {
+        const av = a.last_activity_at ? new Date(a.last_activity_at).getTime() : null;
+        const bv = b.last_activity_at ? new Date(b.last_activity_at).getTime() : null;
+        if (av === null && bv === null) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return bv - av;
+      });
+    } else if (sortField === "birthday") {
+      sorted.sort((a, b) => {
+        const ad = daysUntilBirthday(a.birthday);
+        const bd = daysUntilBirthday(b.birthday);
+        if (ad === null && bd === null) return 0;
+        if (ad === null) return 1;
+        if (bd === null) return -1;
+        return ad - bd;
+      });
+    }
+    return sorted;
+  }, [contacts, tab, search, tagFilters, clientIdsInProject, sortField]);
+
+  const upcomingBirthdays = useMemo(() => {
+    return contacts
+      .map((c) => ({ c, d: daysUntilBirthday(c.birthday) }))
+      .filter((x) => x.d !== null && (x.d as number) <= 7)
+      .sort((a, b) => (a.d as number) - (b.d as number))
+      .map((x) => ({ contact: x.c, days: x.d as number }));
+  }, [contacts]);
 
   const projectsForClient = (id: string) => projects.filter((p) => p.client_id === id);
   const tasksForClient = (id: string) => {
