@@ -482,7 +482,274 @@ function ContactsPage() {
             <IconX size={11} /> Limpiar
           </button>
         )}
+
+        {/* Sort dropdown */}
+        <div ref={sortMenuRef} style={{ position: "relative", marginLeft: "auto" }}>
+          <button
+            onClick={() => setSortMenuOpen((v) => !v)}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#888",
+              border: "1px solid #222",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              cursor: "pointer",
+            }}
+          >
+            <IconArrowsSort size={12} />
+            Ordenar: {sortField === "name" ? "Nombre" : sortField === "activity" ? "Actividad" : "Cumpleaños"}
+            <IconChevronDown size={12} />
+          </button>
+          {sortMenuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                background: "#111",
+                border: "1px solid #1e1e1e",
+                borderRadius: 10,
+                padding: 4,
+                minWidth: 180,
+                zIndex: 50,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              }}
+            >
+              {([
+                ["name", "Nombre"],
+                ["activity", "Actividad reciente"],
+                ["birthday", "Cumpleaños próximo"],
+              ] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => { setSortField(id); setSortMenuOpen(false); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: sortField === id ? "#818cf8" : "#bbb",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#1a1a1a")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  {label}
+                  {sortField === id && <IconCheck size={12} />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Select mode toggle */}
+        <button
+          onClick={() => {
+            setSelectMode((v) => {
+              if (v) setSelected(new Set());
+              return !v;
+            });
+          }}
+          style={{
+            fontSize: 11,
+            padding: "4px 12px",
+            borderRadius: 100,
+            background: selectMode ? "rgba(99,102,241,0.15)" : "transparent",
+            color: selectMode ? "#818cf8" : "#888",
+            border: `1px solid ${selectMode ? "rgba(99,102,241,0.3)" : "#222"}`,
+            cursor: "pointer",
+          }}
+        >
+          {selectMode ? "Cancelar selección" : "Seleccionar"}
+        </button>
       </div>
+
+      {/* Bulk actions bar */}
+      {selectMode && selected.size > 0 && (
+        <div
+          className="flex items-center gap-3 flex-wrap"
+          style={{
+            background: "rgba(99,102,241,0.08)",
+            border: "1px solid rgba(99,102,241,0.25)",
+            borderRadius: 12,
+            padding: "10px 14px",
+            marginBottom: 16,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "#818cf8", fontWeight: 500 }}>
+            {selected.size} seleccionado{selected.size === 1 ? "" : "s"}
+          </span>
+          <select
+            value=""
+            onChange={async (e) => {
+              const tag = e.target.value;
+              if (!tag) return;
+              const ids = Array.from(selected);
+              const updates: { id: string; tags: string[] }[] = [];
+              const prevSnapshot = contacts;
+              const nextContacts = contacts.map((c) => {
+                if (!selected.has(c.id)) return c;
+                const ctags = c.tags ?? [];
+                if (ctags.includes(tag)) return c;
+                const newTags = [...ctags, tag];
+                updates.push({ id: c.id, tags: newTags });
+                return { ...c, tags: newTags };
+              });
+              setContacts(nextContacts);
+              e.target.value = "";
+              try {
+                for (const u of updates) {
+                  const { error } = await supabase.from("contacts").update({ tags: u.tags }).eq("id", u.id);
+                  if (error) throw error;
+                }
+                if (updates.length > 0) toast.success(`Etiqueta agregada a ${updates.length}.`);
+              } catch {
+                toast.error("No pude actualizar etiquetas.");
+                setContacts(prevSnapshot);
+                reload();
+              }
+            }}
+            style={{
+              fontSize: 11,
+              padding: "4px 10px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#bbb",
+              border: "1px solid #222",
+              cursor: "pointer",
+            }}
+          >
+            <option value="">Agregar etiqueta…</option>
+            {TAG_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <button
+            onClick={async () => {
+              if (!confirm(`¿Borrar ${selected.size} contactos?`)) return;
+              const ids = Array.from(selected);
+              setContacts((prev) => prev.filter((c) => !selected.has(c.id)));
+              setSelected(new Set());
+              try {
+                for (const id of ids) {
+                  const { error } = await supabase.from("contacts").delete().eq("id", id);
+                  if (error) throw error;
+                }
+                toast.success(`${ids.length} eliminado${ids.length === 1 ? "" : "s"}.`);
+              } catch {
+                toast.error("No pude borrar todos.");
+                reload();
+              }
+            }}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "rgba(239,68,68,0.12)",
+              color: "#f87171",
+              border: "1px solid rgba(239,68,68,0.3)",
+              cursor: "pointer",
+            }}
+          >
+            Eliminar
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{
+              fontSize: 11,
+              padding: "4px 12px",
+              borderRadius: 100,
+              background: "transparent",
+              color: "#888",
+              border: "1px solid #222",
+              cursor: "pointer",
+            }}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* Cumpleaños esta semana */}
+      {upcomingBirthdays.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11,
+              color: "#fbbf24",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontWeight: 600,
+              marginBottom: 8,
+            }}
+          >
+            <IconCake size={13} /> Cumpleaños esta semana
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "nowrap",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 4,
+            }}
+          >
+            {upcomingBirthdays.map(({ contact, days }) => {
+              const label = days === 0 ? "hoy" : days === 1 ? "mañana" : `en ${days} días`;
+              return (
+                <button
+                  key={contact.id}
+                  onClick={() => setOpenId(contact.id)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "rgba(245,158,11,0.08)",
+                    border: "1px solid rgba(245,158,11,0.25)",
+                    borderRadius: 100,
+                    padding: "5px 12px 5px 5px",
+                    color: "#fbbf24",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      background: "rgba(245,158,11,0.15)",
+                      color: "#fbbf24",
+                      fontSize: 10,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {initials(contact.name)}
+                  </span>
+                  <span style={{ color: "#f2f2f2" }}>{contact.name}</span>
+                  <span style={{ color: "#fbbf24" }}>· {label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
 
       {loading ? (
