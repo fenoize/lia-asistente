@@ -950,6 +950,18 @@ function GoogleCalendarSection() {
 
 const CHANGELOG: Array<{ version: string; date: string; items: string[] }> = [
   {
+    version: "v0.5.0",
+    date: "Junio 2026",
+    items: [
+      "Modal de aviso cuando hay una nueva versión disponible",
+      "Forzar actualización desde Configuración",
+      "Kanban por estado en Tareas y Gantt con drag horizontal",
+      "Contactos: cumpleaños próximos, orden, selección múltiple y swipe en mobile",
+      "Splash de LIA con mensajes rotativos y barra de carga",
+      "Chat: corrección del modo plan colgado tras aprobar",
+    ],
+  },
+  {
 
     version: "v0.4.0",
     date: "Mayo 2026",
