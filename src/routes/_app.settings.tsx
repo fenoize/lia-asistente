@@ -311,7 +311,7 @@ function SettingsPage() {
               {hasUpdate ? "¡Hay una nueva versión disponible!" : checkedOnce && !checking ? "Estás en la última versión" : "Versión actual"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-              {hasUpdate ? "Reinicia para aplicar la actualización." : checking ? "Buscando actualizaciones…" : "v0.4.0"}
+              {hasUpdate ? "Reinicia para aplicar la actualización." : checking ? "Buscando actualizaciones…" : "v0.5.0"}
             </div>
           </div>
         </div>
@@ -950,6 +950,18 @@ function GoogleCalendarSection() {
 
 const CHANGELOG: Array<{ version: string; date: string; items: string[] }> = [
   {
+    version: "v0.5.0",
+    date: "Junio 2026",
+    items: [
+      "Modal de aviso cuando hay una nueva versión disponible",
+      "Forzar actualización desde Configuración",
+      "Kanban por estado en Tareas y Gantt con drag horizontal",
+      "Contactos: cumpleaños próximos, orden, selección múltiple y swipe en mobile",
+      "Splash de LIA con mensajes rotativos y barra de carga",
+      "Chat: corrección del modo plan colgado tras aprobar",
+    ],
+  },
+  {
 
     version: "v0.4.0",
     date: "Mayo 2026",
@@ -1017,7 +1029,7 @@ function AboutSection() {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
         <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Versión</span>
         <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-          v0.4.0
+          v0.5.0
         </span>
       </div>
 
