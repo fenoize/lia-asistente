@@ -11,6 +11,7 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { PushConsentModal } from "@/components/push-consent-modal";
+import { UpdateAvailableModal } from "@/components/update-available-modal";
 
 function NotFoundComponent() {
   return (
@@ -125,6 +126,7 @@ function RootComponent() {
       <AuthProvider>
         <Outlet />
         <PushConsentModal />
+        <UpdateAvailableModal />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
