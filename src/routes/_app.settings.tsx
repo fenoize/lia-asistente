@@ -311,7 +311,7 @@ function SettingsPage() {
               {hasUpdate ? "¡Hay una nueva versión disponible!" : checkedOnce && !checking ? "Estás en la última versión" : "Versión actual"}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
-              {hasUpdate ? "Reinicia para aplicar la actualización." : checking ? "Buscando actualizaciones…" : "v0.4.0"}
+              {hasUpdate ? "Reinicia para aplicar la actualización." : checking ? "Buscando actualizaciones…" : "v0.5.0"}
             </div>
           </div>
         </div>
