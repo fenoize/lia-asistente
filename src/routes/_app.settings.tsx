@@ -1017,7 +1017,7 @@ function AboutSection() {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
         <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Versión</span>
         <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>
-          v0.4.0
+          v0.5.0
         </span>
       </div>
 
