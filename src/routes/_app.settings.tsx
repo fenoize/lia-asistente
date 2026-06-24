@@ -921,6 +921,61 @@ function GoogleCalendarSection() {
         </div>
       </div>
 
+      {revoked && (
+        <div
+          style={{
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.25)",
+            borderRadius: 10,
+            padding: 14,
+            marginBottom: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#fca5a5" }}>
+            Se revocó el acceso a tu Google Calendar
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
+            Google invalidó el permiso que diste a la app. Esto suele pasar cuando:
+            <ul style={{ margin: "6px 0 0 18px", padding: 0, listStyle: "disc" }}>
+              <li>Quitaste el acceso desde tu cuenta de Google (Seguridad → Apps con acceso).</li>
+              <li>Cambiaste tu contraseña de Google.</li>
+              <li>El token estuvo sin uso por mucho tiempo o tu cuenta tiene verificación reforzada.</li>
+            </ul>
+            <div style={{ marginTop: 8 }}>
+              Para volver a sincronizar reuniones, reconectá tu cuenta y aceptá los permisos nuevamente.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={reconnect}
+              disabled={busy}
+              style={{
+                background: "var(--accent-color)", color: "white",
+                borderRadius: "var(--radius-pill)", padding: "8px 18px",
+                fontSize: 12, fontWeight: 500, opacity: busy ? 0.5 : 1,
+              }}
+            >
+              {busy ? "Conectando…" : "Reconectar Google Calendar"}
+            </button>
+            <button
+              onClick={() => setRevoked(false)}
+              style={{
+                background: "transparent", color: "var(--text-tertiary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-pill)", padding: "8px 18px",
+                fontSize: 12,
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+
       {connected ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
