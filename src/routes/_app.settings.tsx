@@ -804,6 +804,7 @@ function GoogleCalendarSection() {
   const [connectedAt, setConnectedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [revoked, setRevoked] = useState(false);
 
   useEffect(() => {
     fetchStatus().then((r) => {
@@ -853,21 +854,29 @@ function GoogleCalendarSection() {
     setSyncing(true);
     try {
       const r = await pull();
-      if (r.ok) toast.success(`Sincronización: ${r.count} eventos`);
-      else toast.error("No se pudo sincronizar");
+      if (r.ok) {
+        setRevoked(false);
+        toast.success(`Sincronización: ${r.count} eventos`);
+      } else toast.error("No se pudo sincronizar");
     } catch (err: any) {
       const msg = String(err?.message ?? "");
       if (/reconnect|invalid_grant|expired or revoked|GoogleReconnectRequired/i.test(msg)) {
-        toast.error("Tu conexión con Google expiró. Vuelve a conectarla.");
+        setRevoked(true);
         const r = await fetchStatus().catch(() => ({ connected: false, info: null as any }));
         setConnected(r.connected);
         setConnectedAt(r.info?.connected_at ?? null);
+        toast.error("Se revocó el acceso a Google Calendar");
       } else {
         toast.error(msg || "Error sincronizando");
       }
     } finally {
       setSyncing(false);
     }
+  };
+
+  const reconnect = async () => {
+    setRevoked(false);
+    await connect();
   };
 
   return (
@@ -911,6 +920,61 @@ function GoogleCalendarSection() {
           </div>
         </div>
       </div>
+
+      {revoked && (
+        <div
+          style={{
+            background: "rgba(239,68,68,0.08)",
+            border: "1px solid rgba(239,68,68,0.25)",
+            borderRadius: 10,
+            padding: 14,
+            marginBottom: 16,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#fca5a5" }}>
+            Se revocó el acceso a tu Google Calendar
+          </div>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
+            Google invalidó el permiso que diste a la app. Esto suele pasar cuando:
+            <ul style={{ margin: "6px 0 0 18px", padding: 0, listStyle: "disc" }}>
+              <li>Quitaste el acceso desde tu cuenta de Google (Seguridad → Apps con acceso).</li>
+              <li>Cambiaste tu contraseña de Google.</li>
+              <li>El token estuvo sin uso por mucho tiempo o tu cuenta tiene verificación reforzada.</li>
+            </ul>
+            <div style={{ marginTop: 8 }}>
+              Para volver a sincronizar reuniones, reconectá tu cuenta y aceptá los permisos nuevamente.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={reconnect}
+              disabled={busy}
+              style={{
+                background: "var(--accent-color)", color: "white",
+                borderRadius: "var(--radius-pill)", padding: "8px 18px",
+                fontSize: 12, fontWeight: 500, opacity: busy ? 0.5 : 1,
+              }}
+            >
+              {busy ? "Conectando…" : "Reconectar Google Calendar"}
+            </button>
+            <button
+              onClick={() => setRevoked(false)}
+              style={{
+                background: "transparent", color: "var(--text-tertiary)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-pill)", padding: "8px 18px",
+                fontSize: 12,
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {connected ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
