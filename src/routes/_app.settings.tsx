@@ -804,6 +804,7 @@ function GoogleCalendarSection() {
   const [connectedAt, setConnectedAt] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [revoked, setRevoked] = useState(false);
 
   useEffect(() => {
     fetchStatus().then((r) => {
