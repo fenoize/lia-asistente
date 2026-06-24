@@ -854,21 +854,29 @@ function GoogleCalendarSection() {
     setSyncing(true);
     try {
       const r = await pull();
-      if (r.ok) toast.success(`Sincronización: ${r.count} eventos`);
-      else toast.error("No se pudo sincronizar");
+      if (r.ok) {
+        setRevoked(false);
+        toast.success(`Sincronización: ${r.count} eventos`);
+      } else toast.error("No se pudo sincronizar");
     } catch (err: any) {
       const msg = String(err?.message ?? "");
       if (/reconnect|invalid_grant|expired or revoked|GoogleReconnectRequired/i.test(msg)) {
-        toast.error("Tu conexión con Google expiró. Vuelve a conectarla.");
+        setRevoked(true);
         const r = await fetchStatus().catch(() => ({ connected: false, info: null as any }));
         setConnected(r.connected);
         setConnectedAt(r.info?.connected_at ?? null);
+        toast.error("Se revocó el acceso a Google Calendar");
       } else {
         toast.error(msg || "Error sincronizando");
       }
     } finally {
       setSyncing(false);
     }
+  };
+
+  const reconnect = async () => {
+    setRevoked(false);
+    await connect();
   };
 
   return (
