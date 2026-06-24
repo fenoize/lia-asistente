@@ -81,6 +81,13 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string) {
   }>;
 }
 
+export class GoogleReconnectRequiredError extends Error {
+  constructor(message = "Tu conexión con Google expiró. Vuelve a conectar tu cuenta.") {
+    super(message);
+    this.name = "GoogleReconnectRequiredError";
+  }
+}
+
 export async function refreshAccessToken(refreshToken: string) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -93,7 +100,13 @@ export async function refreshAccessToken(refreshToken: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
-  if (!res.ok) throw new Error(`Google token refresh failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 400 && /invalid_grant/i.test(body)) {
+      throw new GoogleReconnectRequiredError();
+    }
+    throw new Error(`Google token refresh failed: ${res.status} ${body}`);
+  }
   return res.json() as Promise<{ access_token: string; expires_in: number; scope: string; token_type: string }>;
 }
 
@@ -105,14 +118,25 @@ export async function getValidAccessToken(
   const now = Date.now();
   const exp = conn.expires_at ? new Date(conn.expires_at).getTime() : 0;
   if (conn.access_token && exp - 60_000 > now) return conn.access_token;
-  if (!conn.refresh_token) throw new Error("Google connection has no refresh_token; reconnect required");
-  const refreshed = await refreshAccessToken(conn.refresh_token);
-  const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
-  await supabaseAdmin
-    .from("user_integrations")
-    .update({ access_token: refreshed.access_token, expires_at: newExpiresAt })
-    .eq("id", conn.id);
-  return refreshed.access_token;
+  if (!conn.refresh_token) {
+    await supabaseAdmin.from("user_integrations").delete().eq("id", conn.id);
+    throw new GoogleReconnectRequiredError();
+  }
+  try {
+    const refreshed = await refreshAccessToken(conn.refresh_token);
+    const newExpiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
+    await supabaseAdmin
+      .from("user_integrations")
+      .update({ access_token: refreshed.access_token, expires_at: newExpiresAt })
+      .eq("id", conn.id);
+    return refreshed.access_token;
+  } catch (err) {
+    if (err instanceof GoogleReconnectRequiredError) {
+      // Remove the dead integration so the UI prompts a fresh OAuth flow.
+      await supabaseAdmin.from("user_integrations").delete().eq("id", conn.id);
+    }
+    throw err;
+  }
 }
 
 // ---------- Google Calendar API ----------
