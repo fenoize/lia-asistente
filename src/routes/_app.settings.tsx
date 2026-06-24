@@ -856,7 +856,15 @@ function GoogleCalendarSection() {
       if (r.ok) toast.success(`Sincronización: ${r.count} eventos`);
       else toast.error("No se pudo sincronizar");
     } catch (err: any) {
-      toast.error(err?.message ?? "Error sincronizando");
+      const msg = String(err?.message ?? "");
+      if (/reconnect|invalid_grant|expired or revoked|GoogleReconnectRequired/i.test(msg)) {
+        toast.error("Tu conexión con Google expiró. Vuelve a conectarla.");
+        const r = await fetchStatus().catch(() => ({ connected: false, info: null as any }));
+        setConnected(r.connected);
+        setConnectedAt(r.info?.connected_at ?? null);
+      } else {
+        toast.error(msg || "Error sincronizando");
+      }
     } finally {
       setSyncing(false);
     }
