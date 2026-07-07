@@ -56,7 +56,7 @@ export function EditTaskModal({
   );
   const [projectId, setProjectId] = useState<string>(task.project_id ?? "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const firstRender = useRef(true);
+  const dirty = useRef(false);
   const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -67,12 +67,9 @@ export function EditTaskModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Auto-save debounced
+  // Auto-save debounced — only fires after the user actually edits a field.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
+    if (!dirty.current) return;
     if (!title.trim()) return;
     setSaveStatus("saving");
     const handle = setTimeout(async () => {
@@ -99,6 +96,10 @@ export function EditTaskModal({
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, description, priority, status, startDate, dueDate, projectId]);
+
+  const markDirty = () => {
+    dirty.current = true;
+  };
 
   const remove = async () => {
     if (!confirm("¿Eliminar esta tarea?")) return;
