@@ -248,7 +248,7 @@ export function EditTaskModal({
                 <input
                   type="date"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onChange={(e) => { markDirty(); setDueDate(e.target.value); }}
                   className="w-full focus:outline-none"
                   style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
                 />
