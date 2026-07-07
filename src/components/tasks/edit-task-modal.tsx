@@ -56,7 +56,7 @@ export function EditTaskModal({
   );
   const [projectId, setProjectId] = useState<string>(task.project_id ?? "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const firstRender = useRef(true);
+  const dirty = useRef(false);
   const savedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -67,12 +67,9 @@ export function EditTaskModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Auto-save debounced
+  // Auto-save debounced — only fires after the user actually edits a field.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
+    if (!dirty.current) return;
     if (!title.trim()) return;
     setSaveStatus("saving");
     const handle = setTimeout(async () => {
@@ -99,6 +96,10 @@ export function EditTaskModal({
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, description, priority, status, startDate, dueDate, projectId]);
+
+  const markDirty = () => {
+    dirty.current = true;
+  };
 
   const remove = async () => {
     if (!confirm("¿Eliminar esta tarea?")) return;
@@ -153,7 +154,7 @@ export function EditTaskModal({
             <input
               autoFocus
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { markDirty(); setTitle(e.target.value); }}
               placeholder="Título de la tarea"
               className="w-full bg-transparent focus:outline-none"
               style={{
@@ -174,7 +175,7 @@ export function EditTaskModal({
                   return (
                     <button
                       key={s.id}
-                      onClick={() => setStatus(s.id)}
+                      onClick={() => { markDirty(); setStatus(s.id); }}
                       style={{
                         fontSize: 12,
                         padding: "6px 14px",
@@ -199,7 +200,7 @@ export function EditTaskModal({
                   return (
                     <button
                       key={p.id}
-                      onClick={() => setPriority(p.id)}
+                      onClick={() => { markDirty(); setPriority(p.id); }}
                       style={{
                         fontSize: 12,
                         padding: "6px 14px",
@@ -220,7 +221,7 @@ export function EditTaskModal({
             <Field label="Proyecto">
               <select
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+                onChange={(e) => { markDirty(); setProjectId(e.target.value); }}
                 className="w-full focus:outline-none"
                 style={fieldStyle(!!projectId)}
               >
@@ -238,7 +239,7 @@ export function EditTaskModal({
                 <input
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => { markDirty(); setStartDate(e.target.value); }}
                   className="w-full focus:outline-none"
                   style={{ ...fieldStyle(!!startDate), colorScheme: "dark" }}
                 />
@@ -247,7 +248,7 @@ export function EditTaskModal({
                 <input
                   type="date"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  onChange={(e) => { markDirty(); setDueDate(e.target.value); }}
                   className="w-full focus:outline-none"
                   style={{ ...fieldStyle(!!dueDate), colorScheme: "dark" }}
                 />
@@ -257,7 +258,7 @@ export function EditTaskModal({
             <Field label="Descripción">
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { markDirty(); setDescription(e.target.value); }}
                 placeholder="Notas, contexto, enlaces…"
                 rows={8}
                 className="w-full focus:outline-none resize-none"
