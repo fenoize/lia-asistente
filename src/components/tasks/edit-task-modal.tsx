@@ -221,7 +221,7 @@ export function EditTaskModal({
             <Field label="Proyecto">
               <select
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+                onChange={(e) => { markDirty(); setProjectId(e.target.value); }}
                 className="w-full focus:outline-none"
                 style={fieldStyle(!!projectId)}
               >
