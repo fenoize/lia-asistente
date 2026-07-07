@@ -154,7 +154,7 @@ export function EditTaskModal({
             <input
               autoFocus
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => { markDirty(); setTitle(e.target.value); }}
               placeholder="Título de la tarea"
               className="w-full bg-transparent focus:outline-none"
               style={{
