@@ -69,6 +69,7 @@ export function EditTaskModal({
 
   // Auto-save debounced — only fires after the user actually edits a field.
   useEffect(() => {
+    console.log("[EditTaskModal] autosave effect fired, dirty=", dirty.current, "title=", title);
     if (!dirty.current) return;
     if (!title.trim()) return;
     setSaveStatus("saving");
