@@ -258,7 +258,7 @@ export function EditTaskModal({
             <Field label="Descripción">
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { markDirty(); setDescription(e.target.value); }}
                 placeholder="Notas, contexto, enlaces…"
                 rows={8}
                 className="w-full focus:outline-none resize-none"
