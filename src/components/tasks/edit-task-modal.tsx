@@ -200,7 +200,7 @@ export function EditTaskModal({
                   return (
                     <button
                       key={p.id}
-                      onClick={() => setPriority(p.id)}
+                      onClick={() => { markDirty(); setPriority(p.id); }}
                       style={{
                         fontSize: 12,
                         padding: "6px 14px",
