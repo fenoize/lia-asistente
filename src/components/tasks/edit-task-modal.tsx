@@ -175,7 +175,7 @@ export function EditTaskModal({
                   return (
                     <button
                       key={s.id}
-                      onClick={() => setStatus(s.id)}
+                      onClick={() => { markDirty(); setStatus(s.id); }}
                       style={{
                         fontSize: 12,
                         padding: "6px 14px",
