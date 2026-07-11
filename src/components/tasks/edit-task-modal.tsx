@@ -114,11 +114,23 @@ export function EditTaskModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 animate-fade-in"
-      style={{ background: "var(--bg-base, #08081a)" }}
-    >
-      <div className="flex flex-col h-full">
+    <div className="fixed inset-0 z-50 animate-fade-in">
+      {/* Backdrop visible through the top margin */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.45)" }}
+        onClick={onClose}
+      />
+      <div
+        className="absolute left-0 right-0 bottom-0 flex flex-col sm:inset-0"
+        style={{
+          top: "20px",
+          background: "var(--bg-base, #08081a)",
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          boxShadow: "0 -4px 30px rgba(0,0,0,0.35)",
+        }}
+      >
         {/* Top bar */}
         <header
           className="flex items-center justify-between flex-shrink-0"
