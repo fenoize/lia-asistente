@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { IconX, IconCheck, IconTrash, IconLoader2 } from "@tabler/icons-react";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 
 export type EditableTask = {
   id: string;
@@ -44,8 +45,8 @@ export function EditTaskModal({
   onSaved: (updated: EditableTask) => void;
   onDeleted: (id: string) => void;
 }) {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description ?? "");
+  const [title, setTitle] = useState(stripMentionSyntaxLoose(task.title));
+  const [description, setDescription] = useState(stripMentionSyntaxLoose(task.description ?? ""));
   const [priority, setPriority] = useState(task.priority || "medium");
   const [status, setStatus] = useState(task.status || "borrador");
   const [startDate, setStartDate] = useState(
