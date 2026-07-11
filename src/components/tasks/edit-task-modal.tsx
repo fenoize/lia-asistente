@@ -114,11 +114,39 @@ export function EditTaskModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 animate-fade-in"
-      style={{ background: "var(--bg-base, #08081a)" }}
-    >
-      <div className="flex flex-col h-full">
+    <div className="fixed inset-0 z-50 animate-fade-in">
+      {/* Backdrop visible through the top margin */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "rgba(0,0,0,0.28)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+        onClick={onClose}
+      />
+      <div
+        className="absolute left-0 right-0 bottom-0 flex flex-col sm:inset-0"
+        style={{
+          top: "20px",
+          background: "var(--bg-base, #08081a)",
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.55)",
+        }}
+      >
+        {/* Sheet handle */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.15)",
+            }}
+          />
+        </div>
         {/* Top bar */}
         <header
           className="flex items-center justify-between flex-shrink-0"
