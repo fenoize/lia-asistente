@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -1574,7 +1575,7 @@ function WeeklyPlanCard({ planJson }: { planJson: string }) {
                     {task.project_name && (
                       <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", flexShrink: 0, display: "inline-block" }} />
                     )}
-                    <span style={{ fontSize: 11, color: "#b0b0c0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.title}</span>
+                    <span style={{ fontSize: 11, color: "#b0b0c0", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{stripMentionSyntaxLoose(task.title)}</span>
                     {task.start_time && <span style={{ fontSize: 10, color: "#666", flexShrink: 0 }}>{task.start_time}</span>}
                     <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 100, background: pill.bg, color: pill.color, flexShrink: 0 }}>{task.priority}</span>
                     {task.action === "create" && (
@@ -1628,7 +1629,7 @@ function WeeklyPlanCard({ planJson }: { planJson: string }) {
           borderRadius: 8, padding: "7px 10px", fontSize: 11, color: "#c0c0c0",
           whiteSpace: "nowrap", maxWidth: 230, overflow: "hidden", textOverflow: "ellipsis",
           boxShadow: "0 8px 28px rgba(0,0,0,0.7)", transform: "rotate(-1.5deg) scale(1.04)",
-        }}>⠿ {drag.title}</div>
+        }}>⠿ {stripMentionSyntaxLoose(drag.title)}</div>
       )}
 
       {editing !== null && (

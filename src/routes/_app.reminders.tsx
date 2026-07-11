@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -232,7 +233,7 @@ function ReminderRow({
             textDecoration: r.done ? "line-through" : "none",
           }}
         >
-          {r.title}
+          {stripMentionSyntaxLoose(r.title)}
         </div>
         <div
           style={{

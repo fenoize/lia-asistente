@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useNavigate } from "@tanstack/react-router";
 import { IconBell, IconUser, IconX, IconCalendarEvent, IconChecklist, IconUsers } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -334,7 +335,7 @@ export function MobileTopBar() {
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 14, color: "#e0e0e0", fontWeight: unread ? 600 : 500, wordBreak: "break-word" }}>
-                                  {n.title}
+                                  {stripMentionSyntaxLoose(n.title)}
                                 </div>
                                 {n.body && (
                                   <div style={{ fontSize: 12, color: "#888", marginTop: 2, wordBreak: "break-word" }}>

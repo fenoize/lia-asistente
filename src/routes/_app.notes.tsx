@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -365,7 +366,7 @@ function NoteCard({
                 lineHeight: 1.3,
               }}
             >
-              {note.title}
+              {stripMentionSyntaxLoose(note.title)}
             </h3>
           )}
           <p

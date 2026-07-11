@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
@@ -737,7 +738,7 @@ function MeetingRow({ meeting, onClick, isPastNeedsNotes }: { meeting: Meeting; 
         className="flex-1 truncate"
         style={{ fontSize: 14, color: isPastNeedsNotes ? "#f3f4f6" : "#e0e0e0" }}
       >
-        {meeting.title}
+        {stripMentionSyntaxLoose(meeting.title)}
       </span>
       {isPastNeedsNotes ? (
         <span
@@ -848,7 +849,7 @@ function TaskRow({
             display: "block",
           }}
         >
-          {task.title}
+          {stripMentionSyntaxLoose(task.title)}
         </button>
         <div className="flex items-center gap-2 mt-1">
           {done && (
@@ -995,7 +996,7 @@ function ReminderPill({ reminder, onClick, onComplete }: { reminder: Reminder; o
           className="flex-1 truncate"
           style={{ color: overdue ? "#f87171" : "var(--text-primary)", fontSize: 12 }}
         >
-          {reminder.title}
+          {stripMentionSyntaxLoose(reminder.title)}
         </span>
         {overdue && (
           <span
