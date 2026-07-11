@@ -119,9 +119,9 @@ export function EditTaskModal({
       <div
         className="absolute inset-0"
         style={{
-          background: "rgba(0,0,0,0.55)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
+          background: "rgba(0,0,0,0.28)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
         }}
         onClick={onClose}
       />
@@ -136,6 +136,17 @@ export function EditTaskModal({
           boxShadow: "0 -8px 40px rgba(0,0,0,0.55)",
         }}
       >
+        {/* Sheet handle */}
+        <div className="flex justify-center pt-2 pb-1">
+          <div
+            style={{
+              width: 40,
+              height: 4,
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.15)",
+            }}
+          />
+        </div>
         {/* Top bar */}
         <header
           className="flex items-center justify-between flex-shrink-0"
