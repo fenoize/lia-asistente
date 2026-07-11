@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { Link } from "@tanstack/react-router";
 import {
   IconTarget,
@@ -197,7 +198,7 @@ export function PriorityActionsWidget(props: PriorityInput) {
                     {KIND_ICON[a.kind]}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="truncate" style={{ fontSize: 13, color: "#e0e0e0" }}>{a.title}</div>
+                    <div className="truncate" style={{ fontSize: 13, color: "#e0e0e0" }}>{stripMentionSyntaxLoose(a.title)}</div>
                     <div style={{ fontSize: 11, color: tone.color, marginTop: 1 }}>{a.reason}</div>
                   </div>
                   <IconChevronRight size={14} stroke={1.5} style={{ color: "#444" }} />
@@ -397,7 +398,7 @@ export function ActiveProjectsWidget({ userId }: { userId: string }) {
               {p.nextMeeting && (
                 <div className="flex items-center gap-1.5" style={{ marginTop: 8, fontSize: 11, color: "#666" }}>
                   <IconCalendarTime size={11} stroke={1.5} />
-                  <span className="truncate">{p.nextMeeting.title}</span>
+                  <span className="truncate">{stripMentionSyntaxLoose(p.nextMeeting.title)}</span>
                   <span style={{ marginLeft: "auto", color: "#818cf8", whiteSpace: "nowrap" }}>
                     {relativeDate(p.nextMeeting.datetime)}
                   </span>

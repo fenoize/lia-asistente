@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -321,7 +322,7 @@ function MeetingCard({ meeting: m, onClick }: { meeting: Meeting; onClick: () =>
         </span>
         <span style={{ flex: 1, fontSize: 15, fontWeight: 500, color: "#e0e0e0",
           textDecoration: isCancelled ? "line-through" : "none" }}>
-          {m.title}
+          {stripMentionSyntaxLoose(m.title)}
         </span>
         {m.google_event_id && (
           <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100,

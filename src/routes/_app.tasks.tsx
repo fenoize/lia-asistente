@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -630,7 +631,7 @@ function TaskRow({
                 lineHeight: 1.35,
               }}
             >
-              {task.title}
+              {stripMentionSyntaxLoose(task.title)}
             </div>
             <div className="flex flex-wrap items-center gap-1.5" style={{ marginTop: 6 }}>
               <StatusBadge status={task.status} />
@@ -678,7 +679,7 @@ function TaskRow({
           textDecoration: done ? "line-through" : "none",
         }}
       >
-        {task.title}
+        {stripMentionSyntaxLoose(task.title)}
       </span>
 
       <StatusBadge status={task.status} />
@@ -1220,7 +1221,7 @@ function TaskTable({
                             />
                           </td>
                           <td style={{ ...tdStyle, color: done ? "#444" : "#ddd", textDecoration: done ? "line-through" : "none" }}>
-                            {t.title}
+                            {stripMentionSyntaxLoose(t.title)}
                           </td>
                           <td style={tdStyle} onClick={(e) => e.stopPropagation()}>
                             <select
@@ -1579,7 +1580,7 @@ function GanttView({
                   cursor: "pointer",
                 }}
               >
-                {t.title}
+                {stripMentionSyntaxLoose(t.title)}
                 <StatusBadge status={t.status} />
               </button>
             ))}
@@ -1760,7 +1761,7 @@ function GanttRow({
             overflow: "hidden",
           }}
         >
-          {task.title}
+          {stripMentionSyntaxLoose(task.title)}
         </div>
         {projName && (
           <div
@@ -1779,7 +1780,7 @@ function GanttRow({
 
       <div
         onPointerDown={onMovePointerDown}
-        title={task.title}
+        title={stripMentionSyntaxLoose(task.title)}
         style={{
           position: "absolute",
           top: 7,
@@ -1805,7 +1806,7 @@ function GanttRow({
           touchAction: "none",
         }}
       >
-        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{task.title}</span>
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{stripMentionSyntaxLoose(task.title)}</span>
         <span
           onPointerDown={onResizePointerDown}
           style={{
@@ -2006,7 +2007,7 @@ function KanbanView({
                         marginBottom: 6,
                       }}
                     >
-                      {t.title}
+                      {stripMentionSyntaxLoose(t.title)}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <PriorityBadge priority={t.priority} />
@@ -2050,7 +2051,7 @@ function KanbanView({
             textOverflow: "ellipsis",
           }}
         >
-          {drag.task.title}
+          {stripMentionSyntaxLoose(drag.task.title)}
         </div>
       )}
     </div>

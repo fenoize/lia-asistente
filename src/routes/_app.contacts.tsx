@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconSearch,
@@ -1953,7 +1954,7 @@ function ContactPanel({
                       padding: 12,
                     }}
                   >
-                    <div style={{ fontSize: 13, color: "#e0e0e0" }}>{m.title}</div>
+                    <div style={{ fontSize: 13, color: "#e0e0e0" }}>{stripMentionSyntaxLoose(m.title)}</div>
                     <div style={{ fontSize: 11, color: "#555", marginTop: 4 }}>
                       {new Intl.DateTimeFormat("es-CL", {
                         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Santiago",
