@@ -118,7 +118,11 @@ export function EditTaskModal({
       {/* Backdrop visible through the top margin */}
       <div
         className="absolute inset-0"
-        style={{ background: "rgba(0,0,0,0.45)" }}
+        style={{
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+        }}
         onClick={onClose}
       />
       <div
@@ -126,9 +130,10 @@ export function EditTaskModal({
         style={{
           top: "20px",
           background: "var(--bg-base, #08081a)",
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          boxShadow: "0 -4px 30px rgba(0,0,0,0.35)",
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 -8px 40px rgba(0,0,0,0.55)",
         }}
       >
         {/* Top bar */}
