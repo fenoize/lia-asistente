@@ -282,7 +282,6 @@ export function EditTaskModal({
         </div>
       </div>
     </div>
-  </div>
   );
 }
 
