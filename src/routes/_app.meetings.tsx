@@ -34,6 +34,7 @@ type Meeting = {
 
 type ProjectOption = { id: string; name: string; client_id: string | null };
 type ContactOption = { id: string; name: string; email: string | null };
+type ViewMode = "day" | "week" | "month";
 
 const STATUS_FILTERS = [
   { value: "all", label: "Todas" },
@@ -41,12 +42,26 @@ const STATUS_FILTERS = [
   { value: "done", label: "Finalizadas" },
 ];
 
+const VIEW_MODES: { value: ViewMode; label: string }[] = [
+  { value: "day", label: "Día" },
+  { value: "week", label: "Semana" },
+  { value: "month", label: "Mes" },
+];
+
 const DAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
   const day = (x.getDay() + 6) % 7;
   x.setDate(x.getDate() - day);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function startOfMonth(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth(), 1);
   x.setHours(0, 0, 0, 0);
   return x;
 }
@@ -57,11 +72,14 @@ function sameDay(a: Date, b: Date) {
 
 function weekLabel(start: Date): string {
   const end = new Date(start); end.setDate(end.getDate() + 6);
-  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   if (start.getMonth() === end.getMonth()) {
-    return `${start.getDate()}–${end.getDate()} ${months[start.getMonth()]}`;
+    return `${start.getDate()}–${end.getDate()} ${MONTHS_SHORT[start.getMonth()]}`;
   }
-  return `${start.getDate()} ${months[start.getMonth()]} – ${end.getDate()} ${months[end.getMonth()]}`;
+  return `${start.getDate()} ${MONTHS_SHORT[start.getMonth()]} – ${end.getDate()} ${MONTHS_SHORT[end.getMonth()]}`;
+}
+
+function dayLabel(d: Date): string {
+  return `${DAYS[(d.getDay() + 6) % 7]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
 function openCapture() {
@@ -77,36 +95,61 @@ function MeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Meeting | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [view, setView] = useState<ViewMode>("week");
   const [selected, setSelected] = useState<Date>(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
 
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
-  const goToPrevWeek = () => setWeekStart(prev => {
-    const d = new Date(prev); d.setDate(d.getDate() - 7); return d;
-  });
-  const goToNextWeek = () => setWeekStart(prev => {
-    const d = new Date(prev); d.setDate(d.getDate() + 7); return d;
-  });
-  const goToToday = () => {
-    const today = new Date(); today.setHours(0,0,0,0);
-    setWeekStart(startOfWeek(today));
-    setSelected(today);
-  };
-  const isCurrentWeek = sameDay(weekStart, startOfWeek(new Date()));
+  // Range computed from view + selected
+  const { rangeStart, rangeEnd, rangeLabel, isCurrentRange } = useMemo(() => {
+    if (view === "day") {
+      const s = new Date(selected); s.setHours(0,0,0,0);
+      const e = new Date(s); e.setDate(e.getDate() + 1);
+      const today = new Date(); today.setHours(0,0,0,0);
+      return { rangeStart: s, rangeEnd: e, rangeLabel: dayLabel(s), isCurrentRange: sameDay(s, today) };
+    }
+    if (view === "month") {
+      const s = startOfMonth(selected);
+      const e = new Date(s.getFullYear(), s.getMonth() + 1, 1);
+      const today = new Date();
+      return {
+        rangeStart: s, rangeEnd: e,
+        rangeLabel: `${MONTHS[s.getMonth()]} ${s.getFullYear()}`,
+        isCurrentRange: s.getMonth() === today.getMonth() && s.getFullYear() === today.getFullYear(),
+      };
+    }
+    const s = startOfWeek(selected);
+    const e = new Date(s); e.setDate(e.getDate() + 7);
+    return { rangeStart: s, rangeEnd: e, rangeLabel: weekLabel(s), isCurrentRange: sameDay(s, startOfWeek(new Date())) };
+  }, [view, selected]);
 
-  const days = useMemo(
-    () => Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
-    }),
-    [weekStart],
-  );
+  const goPrev = () => setSelected(prev => {
+    const d = new Date(prev);
+    if (view === "day") d.setDate(d.getDate() - 1);
+    else if (view === "week") d.setDate(d.getDate() - 7);
+    else d.setMonth(d.getMonth() - 1);
+    return d;
+  });
+  const goNext = () => setSelected(prev => {
+    const d = new Date(prev);
+    if (view === "day") d.setDate(d.getDate() + 1);
+    else if (view === "week") d.setDate(d.getDate() + 7);
+    else d.setMonth(d.getMonth() + 1);
+    return d;
+  });
+  const goToday = () => {
+    const t = new Date(); t.setHours(0,0,0,0);
+    setSelected(t);
+  };
 
   const load = async () => {
     if (!user) return;
-    const startDayOffset = Math.round((weekStart.getTime() - startOfWeek(new Date()).getTime()) / 86_400_000);
-    const startRange = getDayRangeUTC(userTimeZone, startDayOffset);
-    const endRange = getDayRangeUTC(userTimeZone, startDayOffset + 7);
+    // Compute UTC ISO range from the local rangeStart/rangeEnd in the user's TZ
+    const todayLocal = new Date(); todayLocal.setHours(0,0,0,0);
+    const startOffset = Math.round((rangeStart.getTime() - todayLocal.getTime()) / 86_400_000);
+    const endOffset = Math.round((rangeEnd.getTime() - todayLocal.getTime()) / 86_400_000);
+    const startRange = getDayRangeUTC(userTimeZone, startOffset);
+    const endRange = getDayRangeUTC(userTimeZone, endOffset);
     const [m, p, c] = await Promise.all([
       supabase
         .from("meetings")
@@ -123,7 +166,7 @@ function MeetingsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, weekStart, userTimeZone]);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user, rangeStart.getTime(), rangeEnd.getTime(), userTimeZone]);
 
   const navigate = useNavigate();
   const { open: openId } = Route.useSearch();
@@ -136,11 +179,9 @@ function MeetingsPage() {
     })();
   }, [openId, user, navigate]);
 
-  const dayMeetings = useMemo(
-    () => meetings
-      .filter((m) => sameDay(new Date(m.datetime), selected))
-      .filter((m) => statusFilter === "all" || (m.status ?? "scheduled") === statusFilter),
-    [meetings, selected, statusFilter],
+  const filtered = useMemo(
+    () => meetings.filter((m) => statusFilter === "all" || (m.status ?? "scheduled") === statusFilter),
+    [meetings, statusFilter],
   );
 
   return (
@@ -152,11 +193,31 @@ function MeetingsPage() {
         </button>
       </header>
 
+      {/* View switcher */}
+      <div className="flex gap-1.5" style={{ marginBottom: 14 }}>
+        {VIEW_MODES.map((v) => {
+          const active = view === v.value;
+          return (
+            <button key={v.value} onClick={() => setView(v.value)}
+              style={{
+                fontSize: 12, padding: "6px 14px", borderRadius: 100,
+                background: active ? "rgba(99,102,241,0.15)" : "transparent",
+                border: `1px solid ${active ? "rgba(99,102,241,0.4)" : "#1e1e1e"}`,
+                color: active ? "#a5b4fc" : "#888",
+                fontWeight: active ? 600 : 400,
+              }}>
+              {v.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Navigation */}
       <div className="flex items-center justify-between" style={{ marginBottom: 14 }}>
         <div className="flex items-center" style={{ gap: 4 }}>
           <button
-            onClick={goToPrevWeek}
-            aria-label="Semana anterior"
+            onClick={goPrev}
+            aria-label="Anterior"
             style={{
               width: 30, height: 30, display: "grid", placeItems: "center",
               borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
@@ -164,12 +225,12 @@ function MeetingsPage() {
           >
             <IconChevronLeft size={16} />
           </button>
-          <span style={{ fontSize: 13, color: "#bbb", fontWeight: 500, padding: "0 10px", fontVariantNumeric: "tabular-nums" }}>
-            {weekLabel(weekStart)}
+          <span style={{ fontSize: 13, color: "#bbb", fontWeight: 500, padding: "0 10px", fontVariantNumeric: "tabular-nums", textTransform: view === "month" ? "capitalize" : "none" }}>
+            {rangeLabel}
           </span>
           <button
-            onClick={goToNextWeek}
-            aria-label="Semana siguiente"
+            onClick={goNext}
+            aria-label="Siguiente"
             style={{
               width: 30, height: 30, display: "grid", placeItems: "center",
               borderRadius: 8, background: "#111", border: "1px solid #1e1e1e", color: "#888",
@@ -178,9 +239,9 @@ function MeetingsPage() {
             <IconChevronRight size={16} />
           </button>
         </div>
-        {!isCurrentWeek && (
+        {!isCurrentRange && (
           <button
-            onClick={goToToday}
+            onClick={goToday}
             style={{
               fontSize: 11, padding: "5px 12px", borderRadius: 100,
               background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.4)",
@@ -192,88 +253,38 @@ function MeetingsPage() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 32 }}>
-        {days.map((d, i) => {
-          const isSel = sameDay(d, selected);
-          const hasMeeting = meetings.some(m => sameDay(new Date(m.datetime), d));
-          return (
-            <button
-              key={i}
-              onClick={() => setSelected(d)}
-              className="flex-1 flex flex-col items-center"
-              style={{
-                gap: 4,
-                padding: "10px 16px",
-                borderRadius: 10,
-                background: isSel ? "transparent" : "#111",
-                border: isSel
-                  ? "1px solid rgba(99,102,241,0.5)"
-                  : "1px solid #1a1a1a",
-                transition: "border-color 0.15s",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.05em",
-                  textTransform: "uppercase",
-                  color: isSel ? "#818cf8" : "#555",
-                }}
-              >
-                {DAYS[i]}
-              </span>
-              <span
-                style={{
-                  fontSize: 18,
-                  fontWeight: isSel ? 600 : 500,
-                  color: isSel ? "#f2f2f2" : "#888",
-                }}
-              >
-                {d.getDate()}
-              </span>
-              {hasMeeting ? (
-                <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? "#a5b4fc" : "#6366f1" }} />
-              ) : (
-                <span style={{ width: 4, height: 4 }} />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {view === "day" && (
+        <DayView
+          selected={selected}
+          meetings={filtered}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          loading={loading}
+          onOpen={setEditing}
+        />
+      )}
 
+      {view === "week" && (
+        <WeekView
+          weekStart={startOfWeek(selected)}
+          meetings={filtered}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          loading={loading}
+          selected={selected}
+          setSelected={setSelected}
+          onOpen={setEditing}
+        />
+      )}
 
-      <div className="flex gap-1.5" style={{ marginBottom: 16 }}>
-        {STATUS_FILTERS.map((f) => {
-          const active = statusFilter === f.value;
-          return (
-            <button key={f.value} onClick={() => setStatusFilter(f.value)}
-              style={{
-                fontSize: 11, padding: "4px 10px", borderRadius: 100,
-                background: active ? "rgba(99,102,241,0.15)" : "transparent",
-                border: `1px solid ${active ? "rgba(99,102,241,0.4)" : "#1e1e1e"}`,
-                color: active ? "#a5b4fc" : "#666",
-              }}>
-              {f.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {loading ? (
-        <Skeletons />
-      ) : dayMeetings.length === 0 ? (
-        <div className="text-center" style={{ padding: "80px 0" }}>
-          <p style={{ fontSize: 14, color: "#333" }}>Sin reuniones este día.</p>
-          <p style={{ fontSize: 13, color: "#2a2a2a", marginTop: 6 }}>
-            Buen momento para ejecutar.
-          </p>
-        </div>
-      ) : (
-        <ul style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {dayMeetings.map((m) => (
-            <MeetingCard key={m.id} meeting={m} onClick={() => setEditing(m)} />
-          ))}
-        </ul>
+      {view === "month" && (
+        <MonthView
+          monthStart={startOfMonth(selected)}
+          meetings={meetings}
+          loading={loading}
+          selected={selected}
+          onSelectDay={(d) => { setSelected(d); setView("day"); }}
+        />
       )}
 
       {editing && (
@@ -286,6 +297,180 @@ function MeetingsPage() {
         />
       )}
     </div>
+  );
+}
+
+function StatusPills({ statusFilter, setStatusFilter }: { statusFilter: string; setStatusFilter: (v: string) => void }) {
+  return (
+    <div className="flex gap-1.5" style={{ marginBottom: 16 }}>
+      {STATUS_FILTERS.map((f) => {
+        const active = statusFilter === f.value;
+        return (
+          <button key={f.value} onClick={() => setStatusFilter(f.value)}
+            style={{
+              fontSize: 11, padding: "4px 10px", borderRadius: 100,
+              background: active ? "rgba(99,102,241,0.15)" : "transparent",
+              border: `1px solid ${active ? "rgba(99,102,241,0.4)" : "#1e1e1e"}`,
+              color: active ? "#a5b4fc" : "#666",
+            }}>
+            {f.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DayView({ selected, meetings, statusFilter, setStatusFilter, loading, onOpen }: {
+  selected: Date; meetings: Meeting[]; statusFilter: string; setStatusFilter: (v: string) => void;
+  loading: boolean; onOpen: (m: Meeting) => void;
+}) {
+  const dayMeetings = meetings.filter((m) => sameDay(new Date(m.datetime), selected));
+  return (
+    <>
+      <StatusPills statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+      {loading ? <Skeletons /> : dayMeetings.length === 0 ? (
+        <div className="text-center" style={{ padding: "80px 0" }}>
+          <p style={{ fontSize: 14, color: "#333" }}>Sin reuniones este día.</p>
+          <p style={{ fontSize: 13, color: "#2a2a2a", marginTop: 6 }}>Buen momento para ejecutar.</p>
+        </div>
+      ) : (
+        <ul style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {dayMeetings.map((m) => <MeetingCard key={m.id} meeting={m} onClick={() => onOpen(m)} />)}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function WeekView({ weekStart, meetings, statusFilter, setStatusFilter, loading, selected, setSelected, onOpen }: {
+  weekStart: Date; meetings: Meeting[]; statusFilter: string; setStatusFilter: (v: string) => void;
+  loading: boolean; selected: Date; setSelected: (d: Date) => void; onOpen: (m: Meeting) => void;
+}) {
+  const days = useMemo(
+    () => Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
+    }),
+    [weekStart],
+  );
+  const dayMeetings = meetings.filter((m) => sameDay(new Date(m.datetime), selected));
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+        {days.map((d, i) => {
+          const isSel = sameDay(d, selected);
+          const hasMeeting = meetings.some(m => sameDay(new Date(m.datetime), d));
+          return (
+            <button
+              key={i}
+              onClick={() => setSelected(d)}
+              className="flex-1 flex flex-col items-center"
+              style={{
+                gap: 4, padding: "10px 8px", borderRadius: 10,
+                background: isSel ? "transparent" : "#111",
+                border: isSel ? "1px solid rgba(99,102,241,0.5)" : "1px solid #1a1a1a",
+                transition: "border-color 0.15s",
+              }}
+            >
+              <span style={{ fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", color: isSel ? "#818cf8" : "#555" }}>
+                {DAYS[i]}
+              </span>
+              <span style={{ fontSize: 18, fontWeight: isSel ? 600 : 500, color: isSel ? "#f2f2f2" : "#888" }}>
+                {d.getDate()}
+              </span>
+              {hasMeeting ? (
+                <span style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? "#a5b4fc" : "#6366f1" }} />
+              ) : (
+                <span style={{ width: 4, height: 4 }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <StatusPills statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
+
+      {loading ? <Skeletons /> : dayMeetings.length === 0 ? (
+        <div className="text-center" style={{ padding: "60px 0" }}>
+          <p style={{ fontSize: 14, color: "#333" }}>Sin reuniones este día.</p>
+        </div>
+      ) : (
+        <ul style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {dayMeetings.map((m) => <MeetingCard key={m.id} meeting={m} onClick={() => onOpen(m)} />)}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function MonthView({ monthStart, meetings, loading, selected, onSelectDay }: {
+  monthStart: Date; meetings: Meeting[]; loading: boolean; selected: Date;
+  onSelectDay: (d: Date) => void;
+}) {
+  const cells = useMemo(() => {
+    const gridStart = startOfWeek(monthStart);
+    const arr: Date[] = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(gridStart); d.setDate(d.getDate() + i);
+      arr.push(d);
+    }
+    return arr;
+  }, [monthStart]);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const monthIdx = monthStart.getMonth();
+
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 4 }}>
+        {DAYS.map((d) => (
+          <div key={d} style={{ fontSize: 10, letterSpacing: "0.05em", textTransform: "uppercase", color: "#555", textAlign: "center", padding: "4px 0" }}>
+            {d}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+        {cells.map((d, i) => {
+          const inMonth = d.getMonth() === monthIdx;
+          const isToday = sameDay(d, today);
+          const isSel = sameDay(d, selected);
+          const dayItems = meetings.filter((m) => sameDay(new Date(m.datetime), d));
+          const count = dayItems.length;
+          return (
+            <button
+              key={i}
+              onClick={() => onSelectDay(d)}
+              style={{
+                aspectRatio: "1 / 1",
+                minHeight: 44,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 3,
+                padding: 4,
+                borderRadius: 8,
+                background: isSel ? "rgba(99,102,241,0.12)" : isToday ? "#141420" : inMonth ? "#0f0f0f" : "transparent",
+                border: `1px solid ${isSel ? "rgba(99,102,241,0.5)" : isToday ? "rgba(99,102,241,0.25)" : "#1a1a1a"}`,
+                color: inMonth ? (isSel ? "#f2f2f2" : "#ccc") : "#333",
+                fontSize: 13,
+                fontWeight: isToday ? 600 : 400,
+                transition: "border-color 0.15s",
+              }}
+            >
+              <span>{d.getDate()}</span>
+              {count > 0 ? (
+                <div style={{ display: "flex", gap: 2 }}>
+                  {Array.from({ length: Math.min(count, 3) }).map((_, k) => (
+                    <span key={k} style={{ width: 4, height: 4, borderRadius: 999, background: isSel ? "#a5b4fc" : "#6366f1" }} />
+                  ))}
+                </div>
+              ) : (
+                <span style={{ width: 4, height: 4 }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {loading && <div style={{ marginTop: 16 }}><Skeletons /></div>}
+    </>
   );
 }
 
