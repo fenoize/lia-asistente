@@ -128,7 +128,7 @@ export function EditTaskModal({
       <div
         className="absolute left-0 right-0 bottom-0 flex flex-col sm:inset-0"
         style={{
-          top: "20px",
+          top: "44px",
           background: "var(--bg-base, #08081a)",
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
