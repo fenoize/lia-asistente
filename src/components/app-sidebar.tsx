@@ -12,6 +12,7 @@ import {
   IconAddressBook,
   IconBriefcase,
   IconCurrencyDollar,
+  IconShield,
 } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
@@ -29,6 +30,10 @@ const items = [
   { to: "/finanzas", label: "Finanzas", icon: IconCurrencyDollar },
   { to: "/contacts", label: "Contactos", icon: IconAddressBook },
 ] as const;
+
+const ADMIN_EMAIL = "diego@kbum.cl";
+const adminItem = { to: "/admin", label: "Admin", icon: IconShield } as const;
+
 
 function openQuickCapture() {
   window.dispatchEvent(new CustomEvent("alfred:quick-capture"));
