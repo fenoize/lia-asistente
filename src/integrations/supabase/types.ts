@@ -618,6 +618,44 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_events: {
+        Row: {
+          admin_email: string
+          created_at: string
+          id: string
+          new_plan: string
+          notes: string | null
+          old_plan: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_email: string
+          created_at?: string
+          id?: string
+          new_plan: string
+          notes?: string | null
+          old_plan?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_email?: string
+          created_at?: string
+          id?: string
+          new_plan?: string
+          notes?: string | null
+          old_plan?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           assistant_gender: string | null
