@@ -91,10 +91,11 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
         </div>
 
         <div className="space-y-0.5">
-          {items.map((item) => {
+          {[...items, ...(user?.email === ADMIN_EMAIL ? [adminItem] : [])].map((item) => {
             const active =
               pathname === item.to || pathname.startsWith(item.to + "/");
             const Icon = item.icon;
+
             return (
               <Link
                 key={item.to}
