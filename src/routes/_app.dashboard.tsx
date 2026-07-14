@@ -686,7 +686,7 @@ function Block({
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section style={{ marginBottom: 24 }}>
       <div className="alfred-section-label">{label}</div>
       {children}
     </section>
