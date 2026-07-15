@@ -320,6 +320,42 @@ export const Route = createFileRoute("/api/ai")({
         const { data: userRes, error: userErr } = await sb.auth.getUser();
         if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
 
+        // ---- Token quota check ----
+        const { data: profile } = await sb
+          .from("profiles")
+          .select("plan, bonus_tokens, created_at")
+          .eq("id", userRes.user.id)
+          .maybeSingle();
+
+        const cycleStart = getCycleStart(profile?.created_at ?? userRes.user.created_at);
+        const { data: usageData } = await sb
+          .from("token_usage")
+          .select("total_tokens")
+          .eq("user_id", userRes.user.id)
+          .gte("created_at", cycleStart);
+
+        const tokensUsedThisCycle = (usageData ?? []).reduce(
+          (sum: number, row: any) => sum + (row.total_tokens ?? 0),
+          0,
+        );
+        const planLimit = getPlanLimit(profile?.plan);
+        const bonusTokens = profile?.bonus_tokens ?? 0;
+        const totalAllowed = planLimit + bonusTokens;
+
+        if (tokensUsedThisCycle >= totalAllowed) {
+          return new Response(
+            JSON.stringify({
+              code: "QUOTA_EXCEEDED",
+              used: tokensUsedThisCycle,
+              limit: totalAllowed,
+              plan: profile?.plan ?? "free",
+            }),
+            { status: 402, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        const authedUserId = userRes.user.id;
+
+
         let body: { messages: { role: "user" | "assistant"; content: string }[]; timezone?: string };
         try {
           body = await request.json();
