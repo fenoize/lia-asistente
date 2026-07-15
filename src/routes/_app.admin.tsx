@@ -259,6 +259,7 @@ function AdminPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "users", label: "Usuarios" },
     { id: "subs", label: "Suscripciones" },
+    { id: "usage", label: "Uso IA" },
     { id: "history", label: "Historial" },
   ];
 
