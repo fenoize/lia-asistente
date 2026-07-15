@@ -20,6 +20,7 @@ type Profile = {
   plan: string | null;
   onboarding_completed: boolean | null;
   created_at: string | null;
+  bonus_tokens: number;
 };
 
 type PlanEvent = {
@@ -32,7 +33,16 @@ type PlanEvent = {
   created_at: string;
 };
 
-type Tab = "users" | "subs" | "history";
+type Tab = "users" | "subs" | "history" | "usage";
+
+const PLAN_LIMITS: Record<string, number> = {
+  free: 50_000,
+  beta: 300_000,
+  pro: 1_000_000,
+};
+function planLimitOf(plan: string | null | undefined): number {
+  return PLAN_LIMITS[plan ?? "free"] ?? 50_000;
+}
 
 function normalizePlan(p: string | null | undefined): Plan {
   if (p === "beta" || p === "pro") return p;
