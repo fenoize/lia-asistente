@@ -17,6 +17,26 @@ const PRIORITY_TO_PLAN: Record<string, "urgente" | "alta" | "media" | "baja"> = 
 const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 type ChatBodyMessage = { role: "user" | "assistant"; content: string };
+
+const PLAN_LIMITS: Record<string, number> = {
+  free: 50_000,
+  beta: 300_000,
+  pro: 1_000_000,
+};
+const DEFAULT_PLAN_LIMIT = 50_000;
+
+function getPlanLimit(plan: string | null | undefined): number {
+  return PLAN_LIMITS[plan ?? "free"] ?? DEFAULT_PLAN_LIMIT;
+}
+
+function getCycleStart(createdAt: string): string {
+  const registered = new Date(createdAt).getTime();
+  const now = Date.now();
+  const dayMs = 86_400_000;
+  const daysElapsed = Math.floor((now - registered) / dayMs);
+  const cycleStartDay = Math.floor(daysElapsed / 30) * 30;
+  return new Date(registered + cycleStartDay * dayMs).toISOString();
+}
 type TaskPlanRow = {
   id: string;
   title: string;
