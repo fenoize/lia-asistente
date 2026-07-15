@@ -660,6 +660,7 @@ export type Database = {
         Row: {
           assistant_gender: string | null
           assistant_name: string | null
+          bonus_tokens: number
           created_at: string | null
           dashboard_block_order: string[]
           dashboard_blocks: Json
@@ -681,6 +682,7 @@ export type Database = {
         Insert: {
           assistant_gender?: string | null
           assistant_name?: string | null
+          bonus_tokens?: number
           created_at?: string | null
           dashboard_block_order?: string[]
           dashboard_blocks?: Json
@@ -702,6 +704,7 @@ export type Database = {
         Update: {
           assistant_gender?: string | null
           assistant_name?: string | null
+          bonus_tokens?: number
           created_at?: string | null
           dashboard_block_order?: string[]
           dashboard_blocks?: Json
@@ -879,6 +882,44 @@ export type Database = {
           },
           {
             foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      token_usage: {
+        Row: {
+          completion_tokens: number
+          created_at: string
+          id: string
+          model: string
+          prompt_tokens: number
+          total_tokens: number
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          created_at?: string
+          id?: string
+          model?: string
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          created_at?: string
+          id?: string
+          model?: string
+          prompt_tokens?: number
+          total_tokens?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_usage_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"

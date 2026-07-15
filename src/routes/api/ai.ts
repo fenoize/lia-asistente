@@ -17,6 +17,26 @@ const PRIORITY_TO_PLAN: Record<string, "urgente" | "alta" | "media" | "baja"> = 
 const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 type ChatBodyMessage = { role: "user" | "assistant"; content: string };
+
+const PLAN_LIMITS: Record<string, number> = {
+  free: 50_000,
+  beta: 300_000,
+  pro: 1_000_000,
+};
+const DEFAULT_PLAN_LIMIT = 50_000;
+
+function getPlanLimit(plan: string | null | undefined): number {
+  return PLAN_LIMITS[plan ?? "free"] ?? DEFAULT_PLAN_LIMIT;
+}
+
+function getCycleStart(createdAt: string): string {
+  const registered = new Date(createdAt).getTime();
+  const now = Date.now();
+  const dayMs = 86_400_000;
+  const daysElapsed = Math.floor((now - registered) / dayMs);
+  const cycleStartDay = Math.floor(daysElapsed / 30) * 30;
+  return new Date(registered + cycleStartDay * dayMs).toISOString();
+}
 type TaskPlanRow = {
   id: string;
   title: string;
@@ -300,6 +320,42 @@ export const Route = createFileRoute("/api/ai")({
         const { data: userRes, error: userErr } = await sb.auth.getUser();
         if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
 
+        // ---- Token quota check ----
+        const { data: profile } = await sb
+          .from("profiles")
+          .select("plan, bonus_tokens, created_at")
+          .eq("id", userRes.user.id)
+          .maybeSingle();
+
+        const cycleStart = getCycleStart(profile?.created_at ?? userRes.user.created_at);
+        const { data: usageData } = await sb
+          .from("token_usage")
+          .select("total_tokens")
+          .eq("user_id", userRes.user.id)
+          .gte("created_at", cycleStart);
+
+        const tokensUsedThisCycle = (usageData ?? []).reduce(
+          (sum: number, row: any) => sum + (row.total_tokens ?? 0),
+          0,
+        );
+        const planLimit = getPlanLimit(profile?.plan);
+        const bonusTokens = profile?.bonus_tokens ?? 0;
+        const totalAllowed = planLimit + bonusTokens;
+
+        if (tokensUsedThisCycle >= totalAllowed) {
+          return new Response(
+            JSON.stringify({
+              code: "QUOTA_EXCEEDED",
+              used: tokensUsedThisCycle,
+              limit: totalAllowed,
+              plan: profile?.plan ?? "free",
+            }),
+            { status: 402, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        const authedUserId = userRes.user.id;
+
+
         let body: { messages: { role: "user" | "assistant"; content: string }[]; timezone?: string };
         try {
           body = await request.json();
@@ -336,6 +392,23 @@ export const Route = createFileRoute("/api/ai")({
             system,
             messages: await convertToModelMessages(uiMessages),
             maxOutputTokens: 4000,
+            onFinish: async ({ usage }: any) => {
+              try {
+                if (!usage) return;
+                const prompt = usage.promptTokens ?? usage.inputTokens ?? 0;
+                const completion = usage.completionTokens ?? usage.outputTokens ?? 0;
+                const total = usage.totalTokens ?? prompt + completion;
+                await sb.from("token_usage").insert({
+                  user_id: authedUserId,
+                  prompt_tokens: prompt,
+                  completion_tokens: completion,
+                  total_tokens: total,
+                  model: DEFAULT_MODEL,
+                });
+              } catch (err) {
+                console.error("token_usage insert failed", err);
+              }
+            },
           });
           return result.toTextStreamResponse();
         } catch (e: any) {

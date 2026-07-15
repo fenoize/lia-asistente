@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
-import { IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil } from "@tabler/icons-react";
+import { IconAlertCircle, IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -218,6 +218,7 @@ export function ChatInterface() {
   const [streaming, setStreaming] = useState(false);
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [quotaError, setQuotaError] = useState<{ plan: string; limit: number; used: number } | null>(null);
   const [initialLoading, setInitialLoading] = useState(
     () => !!user && loadedForUser.current !== user.id,
   );
@@ -379,6 +380,21 @@ export function ChatInterface() {
       });
       if (!res.ok || !res.body) {
         const errText = await res.text().catch(() => "");
+        if (res.status === 402) {
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.code === "QUOTA_EXCEEDED") {
+              setQuotaError({
+                plan: parsed.plan ?? "free",
+                limit: parsed.limit ?? 0,
+                used: parsed.used ?? 0,
+              });
+              setMessages((m) => m.filter((msg) => msg.id !== assistantId));
+              setStreaming(false);
+              return;
+            }
+          } catch {}
+        }
         let msg = "AI error";
         try { msg = JSON.parse(errText).error ?? msg; } catch {}
         throw new Error(msg);
@@ -646,6 +662,30 @@ export function ChatInterface() {
           )}
 
           <div className="space-y-4">
+            {quotaError && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  padding: 16,
+                  borderRadius: 14,
+                  background: "rgba(239,68,68,0.08)",
+                  border: "1px solid rgba(239,68,68,0.28)",
+                  color: "#fecaca",
+                }}
+              >
+                <IconAlertCircle size={20} stroke={1.75} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div style={{ fontSize: 13, lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4, color: "#fca5a5" }}>
+                    Llegaste al límite de tokens de este mes
+                  </div>
+                  <div>
+                    Tu plan <b>{quotaError.plan}</b> incluye {quotaError.limit.toLocaleString("es-CL")} tokens por ciclo y ya los utilizaste todos. Puedes continuar usando el resto de LIA con normalidad. Para seguir usando el chat con IA, contacta al administrador para agregar tokens o espera el inicio de tu próximo ciclo.
+                  </div>
+                </div>
+              </div>
+            )}
             {hasMore && messages.length > 0 && (
               <div className="flex justify-center pb-2">
                 <button

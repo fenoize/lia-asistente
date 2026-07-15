@@ -20,6 +20,7 @@ type Profile = {
   plan: string | null;
   onboarding_completed: boolean | null;
   created_at: string | null;
+  bonus_tokens: number;
 };
 
 type PlanEvent = {
@@ -32,7 +33,16 @@ type PlanEvent = {
   created_at: string;
 };
 
-type Tab = "users" | "subs" | "history";
+type Tab = "users" | "subs" | "history" | "usage";
+
+const PLAN_LIMITS: Record<string, number> = {
+  free: 50_000,
+  beta: 300_000,
+  pro: 1_000_000,
+};
+function planLimitOf(plan: string | null | undefined): number {
+  return PLAN_LIMITS[plan ?? "free"] ?? 50_000;
+}
 
 function normalizePlan(p: string | null | undefined): Plan {
   if (p === "beta" || p === "pro") return p;
@@ -104,6 +114,7 @@ function AdminPage() {
   const [search, setSearch] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [usageByUser, setUsageByUser] = useState<Map<string, number>>(new Map());
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -112,21 +123,35 @@ function AdminPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [p, e] = await Promise.all([
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const [p, e, u] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,name,email,plan,onboarding_completed,created_at")
+          .select("id,name,email,plan,onboarding_completed,created_at,bonus_tokens")
           .order("created_at", { ascending: false }),
         supabase
           .from("plan_events")
           .select("*")
           .order("created_at", { ascending: false }),
+        supabase
+          .from("token_usage")
+          .select("user_id, total_tokens")
+          .gte("created_at", startOfMonth.toISOString()),
       ]);
       if (cancelled) return;
       if (p.error) toast.error("Error cargando perfiles");
       else setProfiles((p.data ?? []) as Profile[]);
       if (e.error) toast.error("Error cargando historial");
       else setEvents((e.data ?? []) as PlanEvent[]);
+      if (!u.error) {
+        const usageMap = new Map<string, number>();
+        for (const row of (u.data ?? []) as { user_id: string; total_tokens: number | null }[]) {
+          usageMap.set(row.user_id, (usageMap.get(row.user_id) ?? 0) + (row.total_tokens ?? 0));
+        }
+        setUsageByUser(usageMap);
+      }
       setLoading(false);
     })();
     return () => {
@@ -209,6 +234,14 @@ function AdminPage() {
     setSavingId(null);
   }
 
+  async function saveBonus(profileId: string, bonus: number) {
+    const safe = Math.max(0, Math.floor(bonus || 0));
+    setProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, bonus_tokens: safe } : p)));
+    const { error } = await supabase.from("profiles").update({ bonus_tokens: safe }).eq("id", profileId);
+    if (error) toast.error("No se pudo actualizar los tokens bonus");
+    else toast.success("Tokens bonus actualizados");
+  }
+
   if (!isAdmin) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -226,6 +259,7 @@ function AdminPage() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "users", label: "Usuarios" },
     { id: "subs", label: "Suscripciones" },
+    { id: "usage", label: "Uso IA" },
     { id: "history", label: "Historial" },
   ];
 
@@ -276,9 +310,13 @@ function AdminPage() {
           setSearch={setSearch}
           onChangePlan={changePlan}
           savingId={savingId}
+          usageByUser={usageByUser}
+          onSaveBonus={saveBonus}
         />
       ) : tab === "subs" ? (
         <SubsTab counts={counts} total={profiles.length} profiles={profiles} />
+      ) : tab === "usage" ? (
+        <UsageTab profiles={profiles} usageByUser={usageByUser} />
       ) : (
         <HistoryTab
           events={filteredEvents}
@@ -349,6 +387,8 @@ function UsersTab({
   setSearch,
   onChangePlan,
   savingId,
+  usageByUser,
+  onSaveBonus,
 }: {
   profiles: Profile[];
   total: number;
@@ -356,6 +396,8 @@ function UsersTab({
   setSearch: (v: string) => void;
   onChangePlan: (p: Profile, plan: Plan) => void;
   savingId: string | null;
+  usageByUser: Map<string, number>;
+  onSaveBonus: (profileId: string, bonus: number) => void;
 }) {
   return (
     <div>
@@ -375,12 +417,14 @@ function UsersTab({
         }}
       >
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 860 }}>
             <thead>
               <tr>
                 <th style={th}>Nombre</th>
                 <th style={th}>Email</th>
                 <th style={th}>Plan</th>
+                <th style={th}>Uso IA (mes)</th>
+                <th style={th}>Bonus</th>
                 <th style={th}>Onboarding</th>
                 <th style={th}>Registro</th>
               </tr>
@@ -389,6 +433,10 @@ function UsersTab({
               {profiles.map((p) => {
                 const current = normalizePlan(p.plan);
                 const saving = savingId === p.id;
+                const used = usageByUser.get(p.id) ?? 0;
+                const limit = planLimitOf(current) + (p.bonus_tokens ?? 0);
+                const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+                const barColor = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#34d399";
                 return (
                   <tr key={p.id}>
                     <td style={td}>{p.name ?? "—"}</td>
@@ -415,6 +463,20 @@ function UsersTab({
                       </select>
                     </td>
                     <td style={td}>
+                      <div style={{ fontSize: 11, color: "#aaa", marginBottom: 4 }}>
+                        {used.toLocaleString("es-CL")} / {limit.toLocaleString("es-CL")}
+                      </div>
+                      <div style={{ height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden", minWidth: 120 }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: barColor }} />
+                      </div>
+                    </td>
+                    <td style={td}>
+                      <BonusInput
+                        initial={p.bonus_tokens ?? 0}
+                        onSave={(v) => onSaveBonus(p.id, v)}
+                      />
+                    </td>
+                    <td style={td}>
                       {p.onboarding_completed ? (
                         <span style={{ color: "#34d399", fontSize: 12 }}>✓ Completo</span>
                       ) : (
@@ -427,9 +489,111 @@ function UsersTab({
               })}
               {profiles.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ ...td, textAlign: "center", color: "#555" }}>
+                  <td colSpan={7} style={{ ...td, textAlign: "center", color: "#555" }}>
                     Sin resultados
                   </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BonusInput({ initial, onSave }: { initial: number; onSave: (v: number) => void }) {
+  const [value, setValue] = useState(String(initial));
+  useEffect(() => setValue(String(initial)), [initial]);
+  const commit = () => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n === initial) return;
+    onSave(n);
+  };
+  return (
+    <input
+      type="number"
+      min={0}
+      step={1000}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+      style={{
+        width: 90,
+        background: "#141414",
+        color: "#ccc",
+        border: "1px solid #262626",
+        borderRadius: 6,
+        padding: "4px 8px",
+        fontSize: 12,
+      }}
+    />
+  );
+}
+
+function UsageTab({
+  profiles,
+  usageByUser,
+}: {
+  profiles: Profile[];
+  usageByUser: Map<string, number>;
+}) {
+  const rows = useMemo(() => {
+    return profiles
+      .map((p) => {
+        const used = usageByUser.get(p.id) ?? 0;
+        const plan = normalizePlan(p.plan);
+        const limit = planLimitOf(plan) + (p.bonus_tokens ?? 0);
+        const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+        return { p, used, plan, limit, pct };
+      })
+      .sort((a, b) => b.used - a.used);
+  }, [profiles, usageByUser]);
+
+  const totalUsed = rows.reduce((s, r) => s + r.used, 0);
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: "#666", marginBottom: 12 }}>
+        Uso total este mes: <b style={{ color: "#ccc" }}>{totalUsed.toLocaleString("es-CL")}</b> tokens
+      </div>
+      <div style={{ background: "#0b0b0b", border: "1px solid #1a1a1a", borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <thead>
+              <tr>
+                <th style={th}>Usuario</th>
+                <th style={th}>Plan</th>
+                <th style={th}>Tokens usados</th>
+                <th style={th}>Límite</th>
+                <th style={th}>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ p, used, plan, limit, pct }) => {
+                const barColor = pct >= 90 ? "#ef4444" : pct >= 70 ? "#f59e0b" : "#34d399";
+                return (
+                  <tr key={p.id}>
+                    <td style={td}>
+                      <div>{p.name ?? "—"}</div>
+                      <div style={{ fontSize: 11, color: "#666" }}>{p.email}</div>
+                    </td>
+                    <td style={td}>{plan}</td>
+                    <td style={td}>{used.toLocaleString("es-CL")}</td>
+                    <td style={td}>{limit.toLocaleString("es-CL")}</td>
+                    <td style={td}>
+                      <div style={{ fontSize: 11, color: barColor, marginBottom: 4 }}>{pct}%</div>
+                      <div style={{ height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden", minWidth: 100 }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: barColor }} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ ...td, textAlign: "center", color: "#555" }}>Sin datos</td>
                 </tr>
               )}
             </tbody>
