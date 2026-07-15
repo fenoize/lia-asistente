@@ -379,6 +379,21 @@ export function ChatInterface() {
       });
       if (!res.ok || !res.body) {
         const errText = await res.text().catch(() => "");
+        if (res.status === 402) {
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.code === "QUOTA_EXCEEDED") {
+              setQuotaError({
+                plan: parsed.plan ?? "free",
+                limit: parsed.limit ?? 0,
+                used: parsed.used ?? 0,
+              });
+              setMessages((m) => m.filter((msg) => msg.id !== assistantId));
+              setStreaming(false);
+              return;
+            }
+          } catch {}
+        }
         let msg = "AI error";
         try { msg = JSON.parse(errText).error ?? msg; } catch {}
         throw new Error(msg);
