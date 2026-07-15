@@ -135,12 +135,23 @@ function AdminPage() {
           .from("plan_events")
           .select("*")
           .order("created_at", { ascending: false }),
+        supabase
+          .from("token_usage")
+          .select("user_id, total_tokens")
+          .gte("created_at", startOfMonth.toISOString()),
       ]);
       if (cancelled) return;
       if (p.error) toast.error("Error cargando perfiles");
       else setProfiles((p.data ?? []) as Profile[]);
       if (e.error) toast.error("Error cargando historial");
       else setEvents((e.data ?? []) as PlanEvent[]);
+      if (!u.error) {
+        const usageMap = new Map<string, number>();
+        for (const row of (u.data ?? []) as { user_id: string; total_tokens: number | null }[]) {
+          usageMap.set(row.user_id, (usageMap.get(row.user_id) ?? 0) + (row.total_tokens ?? 0));
+        }
+        setUsageByUser(usageMap);
+      }
       setLoading(false);
     })();
     return () => {
