@@ -234,6 +234,14 @@ function AdminPage() {
     setSavingId(null);
   }
 
+  async function saveBonus(profileId: string, bonus: number) {
+    const safe = Math.max(0, Math.floor(bonus || 0));
+    setProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, bonus_tokens: safe } : p)));
+    const { error } = await supabase.from("profiles").update({ bonus_tokens: safe }).eq("id", profileId);
+    if (error) toast.error("No se pudo actualizar los tokens bonus");
+    else toast.success("Tokens bonus actualizados");
+  }
+
   if (!isAdmin) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
