@@ -218,6 +218,7 @@ export function ChatInterface() {
   const [streaming, setStreaming] = useState(false);
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [quotaError, setQuotaError] = useState<{ plan: string; limit: number; used: number } | null>(null);
   const [initialLoading, setInitialLoading] = useState(
     () => !!user && loadedForUser.current !== user.id,
   );
