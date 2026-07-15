@@ -310,9 +310,13 @@ function AdminPage() {
           setSearch={setSearch}
           onChangePlan={changePlan}
           savingId={savingId}
+          usageByUser={usageByUser}
+          onSaveBonus={saveBonus}
         />
       ) : tab === "subs" ? (
         <SubsTab counts={counts} total={profiles.length} profiles={profiles} />
+      ) : tab === "usage" ? (
+        <UsageTab profiles={profiles} usageByUser={usageByUser} />
       ) : (
         <HistoryTab
           events={filteredEvents}
