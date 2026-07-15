@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_app/admin")({
   component: AdminPage,
 });
 
-const ADMIN_EMAIL = "diego@kbum.cl";
+const ADMIN_EMAIL = "diegoulloag@gmail.com";
 const PLANS = ["beta", "free", "pro"] as const;
 type Plan = (typeof PLANS)[number];
 
