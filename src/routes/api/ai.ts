@@ -392,6 +392,23 @@ export const Route = createFileRoute("/api/ai")({
             system,
             messages: await convertToModelMessages(uiMessages),
             maxOutputTokens: 4000,
+            onFinish: async ({ usage }: any) => {
+              try {
+                if (!usage) return;
+                const prompt = usage.promptTokens ?? usage.inputTokens ?? 0;
+                const completion = usage.completionTokens ?? usage.outputTokens ?? 0;
+                const total = usage.totalTokens ?? prompt + completion;
+                await sb.from("token_usage").insert({
+                  user_id: authedUserId,
+                  prompt_tokens: prompt,
+                  completion_tokens: completion,
+                  total_tokens: total,
+                  model: DEFAULT_MODEL,
+                });
+              } catch (err) {
+                console.error("token_usage insert failed", err);
+              }
+            },
           });
           return result.toTextStreamResponse();
         } catch (e: any) {
