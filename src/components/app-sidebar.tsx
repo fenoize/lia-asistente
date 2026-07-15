@@ -31,7 +31,7 @@ const items = [
   { to: "/contacts", label: "Contactos", icon: IconAddressBook },
 ] as const;
 
-const ADMIN_EMAIL = "diego@kbum.cl";
+const ADMIN_EMAIL = "diegoulloag@gmail.com";
 const adminItem = { to: "/admin", label: "Admin", icon: IconShield } as const;
 
 
