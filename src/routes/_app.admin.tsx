@@ -114,6 +114,7 @@ function AdminPage() {
   const [search, setSearch] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [usageByUser, setUsageByUser] = useState<Map<string, number>>(new Map());
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -122,10 +123,13 @@ function AdminPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [p, e] = await Promise.all([
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+      const [p, e, u] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,name,email,plan,onboarding_completed,created_at")
+          .select("id,name,email,plan,onboarding_completed,created_at,bonus_tokens")
           .order("created_at", { ascending: false }),
         supabase
           .from("plan_events")
