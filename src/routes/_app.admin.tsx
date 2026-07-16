@@ -274,6 +274,41 @@ function AdminPage() {
     else toast.success("Tokens bonus actualizados");
   }
 
+  async function handleInvite(email: string, name: string) {
+    try {
+      await callAdminFn("invite", { email, name });
+      toast.success("Invitación enviada");
+      setInviteOpen(false);
+      // reload profiles
+      const { data } = await supabase
+        .from("profiles")
+        .select("id,name,email,plan,onboarding_completed,created_at,bonus_tokens,last_seen_at")
+        .order("created_at", { ascending: false });
+      if (data) setProfiles(data as Profile[]);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleUpdateName(profileId: string, name: string) {
+    setProfiles((prev) => prev.map((p) => (p.id === profileId ? { ...p, name } : p)));
+    const { error } = await supabase.from("profiles").update({ name }).eq("id", profileId);
+    if (error) toast.error("No se pudo actualizar el nombre");
+    else toast.success("Nombre actualizado");
+    setEditProfile(null);
+  }
+
+  async function handleDelete(profileId: string) {
+    try {
+      await callAdminFn("delete", { user_id: profileId });
+      setProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      toast.success("Usuario eliminado");
+      setDeleteProfile(null);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   if (!isAdmin) {
     return (
       <div style={{ padding: 40, textAlign: "center" }}>
@@ -292,8 +327,10 @@ function AdminPage() {
     { id: "users", label: "Usuarios" },
     { id: "subs", label: "Suscripciones" },
     { id: "usage", label: "Uso IA" },
+    { id: "alerts", label: "Alertas" },
     { id: "history", label: "Historial" },
   ];
+
 
   return (
     <div>
