@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -92,6 +92,17 @@ function AppLayout() {
 
 function AppContent({ pathname, isLoading, userId }: { pathname: string; isLoading: boolean; userId: string }) {
   const [showLoader, setShowLoader] = useState(() => !prefetchedUserIds.has(userId));
+  const didUpdateSeen = useRef(false);
+
+  useEffect(() => {
+    if (!userId || didUpdateSeen.current) return;
+    didUpdateSeen.current = true;
+    supabase
+      .from("profiles")
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq("id", userId)
+      .then(() => {});
+  }, [userId]);
 
   if (showLoader) {
     return (
