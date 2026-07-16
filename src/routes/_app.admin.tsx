@@ -834,6 +834,7 @@ function SubsTab({
                     <th style={th}>Nombre</th>
                     <th style={th}>Email</th>
                     <th style={th}>Registro</th>
+                    <th style={th}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -842,11 +843,22 @@ function SubsTab({
                       <td style={td}>{p.name ?? "—"}</td>
                       <td style={td}>{p.email ?? "—"}</td>
                       <td style={td}>{formatDate(p.created_at)}</td>
+                      <td style={td}>
+                        <button
+                          onClick={() => onEditPlan(p)}
+                          style={{
+                            background: "transparent", border: "1px solid #262626",
+                            color: "#888", borderRadius: 6, padding: "3px 10px", fontSize: 11,
+                          }}
+                        >
+                          Cambiar plan
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {grouped[plan].length === 0 && (
                     <tr>
-                      <td colSpan={3} style={{ ...td, textAlign: "center", color: "#555" }}>
+                      <td colSpan={4} style={{ ...td, textAlign: "center", color: "#555" }}>
                         Sin usuarios en este plan
                       </td>
                     </tr>
