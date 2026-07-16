@@ -952,3 +952,255 @@ function HistoryTab({
     </div>
   );
 }
+
+// ============ Alerts Tab ============
+
+type AlertItem = { profile: Profile; detail: string };
+
+function AlertsTab({
+  profiles,
+  usageRows,
+  usageByUser,
+}: {
+  profiles: Profile[];
+  usageRows: UsageRow[];
+  usageByUser: Map<string, number>;
+}) {
+  const now = Date.now();
+  const dayMs = 86_400_000;
+
+  // Nunca activos: sin last_seen_at, o < 1 día desde registro y sin actividad
+  const nuncaActivos: AlertItem[] = [];
+  const inactivos7d: AlertItem[] = [];
+  const inactivos30d: AlertItem[] = [];
+  const cercaLimite: AlertItem[] = [];
+  const excedido: AlertItem[] = [];
+  const nuevos24h: AlertItem[] = [];
+  const sinOnboarding: AlertItem[] = [];
+
+  // Per-user activity: latest usage log
+  const lastUsageByUser = new Map<string, number>();
+  for (const r of usageRows) {
+    const t = new Date(r.created_at).getTime();
+    const prev = lastUsageByUser.get(r.user_id) ?? 0;
+    if (t > prev) lastUsageByUser.set(r.user_id, t);
+  }
+
+  for (const p of profiles) {
+    const seen = p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0;
+    const lastUsage = lastUsageByUser.get(p.id) ?? 0;
+    const lastActivity = Math.max(seen, lastUsage);
+    const created = p.created_at ? new Date(p.created_at).getTime() : 0;
+
+    if (created && now - created < dayMs) {
+      nuevos24h.push({ profile: p, detail: `Registrado ${formatRelative(created, now)}` });
+    }
+    if (!p.onboarding_completed) {
+      sinOnboarding.push({ profile: p, detail: "Onboarding pendiente" });
+    }
+    if (!lastActivity) {
+      nuncaActivos.push({ profile: p, detail: "Nunca ha entrado" });
+    } else {
+      const days = Math.floor((now - lastActivity) / dayMs);
+      if (days >= 30) inactivos30d.push({ profile: p, detail: `Últ. actividad hace ${days}d` });
+      else if (days >= 7) inactivos7d.push({ profile: p, detail: `Últ. actividad hace ${days}d` });
+    }
+
+    const used = usageByUser.get(p.id) ?? 0;
+    const limit = planLimitOf(normalizePlan(p.plan)) + (p.bonus_tokens ?? 0);
+    if (limit > 0) {
+      const pct = (used / limit) * 100;
+      if (used > limit) excedido.push({ profile: p, detail: `${used.toLocaleString("es-CL")} / ${limit.toLocaleString("es-CL")} (${Math.round(pct)}%)` });
+      else if (pct >= 80) cercaLimite.push({ profile: p, detail: `${Math.round(pct)}% del límite` });
+    }
+  }
+
+  const sections: { title: string; color: string; items: AlertItem[] }[] = [
+    { title: "Cuota excedida", color: "#ef4444", items: excedido },
+    { title: "Cerca del límite (≥80%)", color: "#f59e0b", items: cercaLimite },
+    { title: "Nuevos (24h)", color: "#34d399", items: nuevos24h },
+    { title: "Sin onboarding", color: "#818cf8", items: sinOnboarding },
+    { title: "Nunca activos", color: "#666", items: nuncaActivos },
+    { title: "Inactivos ≥7 días", color: "#666", items: inactivos7d },
+    { title: "Inactivos ≥30 días", color: "#666", items: inactivos30d },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      {sections.map((s) => (
+        <AlertSection key={s.title} title={s.title} color={s.color} items={s.items} />
+      ))}
+    </div>
+  );
+}
+
+function AlertSection({ title, color, items }: { title: string; color: string; items: AlertItem[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ background: "#0b0b0b", border: "1px solid #1a1a1a", borderRadius: 12, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between"
+        style={{ padding: "12px 16px", background: "transparent", border: "none", color: "#ccc" }}
+      >
+        <div className="flex items-center gap-3">
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: color }} />
+          <span style={{ fontSize: 13 }}>{title}</span>
+          <span style={{ fontSize: 11, color: "#666" }}>({items.length})</span>
+        </div>
+        <span style={{ color: "#555", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div style={{ borderTop: "1px solid #1a1a1a" }}>
+          {items.length === 0 ? (
+            <div style={{ padding: "12px 16px", fontSize: 12, color: "#555" }}>Sin registros</div>
+          ) : (
+            items.map(({ profile, detail }) => (
+              <div key={profile.id} className="flex items-center justify-between" style={{ padding: "10px 16px", borderTop: "1px solid #141414" }}>
+                <div>
+                  <div style={{ fontSize: 13, color: "#ccc" }}>{profile.name ?? "—"}</div>
+                  <div style={{ fontSize: 11, color: "#666" }}>{profile.email}</div>
+                </div>
+                <div style={{ fontSize: 11, color: "#888" }}>{detail}</div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatRelative(from: number, now: number): string {
+  const diff = Math.max(0, now - from);
+  const h = Math.floor(diff / 3_600_000);
+  if (h < 1) return "hace <1h";
+  if (h < 24) return `hace ${h}h`;
+  const d = Math.floor(h / 24);
+  return `hace ${d}d`;
+}
+
+// ============ Modals ============
+
+function ModalShell({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#0b0b0b", border: "1px solid #1e1e1e", borderRadius: 14,
+          padding: 20, width: "100%", maxWidth: 420,
+        }}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div style={{ fontSize: 14, color: "#eee", fontWeight: 500 }}>{title}</div>
+          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#666" }}>
+            <IconX size={16} stroke={1.75} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", background: "#141414", color: "#ccc",
+  border: "1px solid #262626", borderRadius: 8, padding: "8px 12px",
+  fontSize: 13, marginTop: 4,
+};
+
+const primaryBtn: React.CSSProperties = {
+  background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
+  color: "#818cf8", borderRadius: 100, padding: "8px 18px", fontSize: 12,
+};
+
+const dangerBtn: React.CSSProperties = {
+  background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
+  color: "#ef4444", borderRadius: 100, padding: "8px 18px", fontSize: 12,
+};
+
+const ghostBtn: React.CSSProperties = {
+  background: "transparent", border: "1px solid #262626",
+  color: "#888", borderRadius: 100, padding: "8px 18px", fontSize: 12,
+};
+
+function InviteModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (email: string, name: string) => void | Promise<void> }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [sending, setSending] = useState(false);
+  return (
+    <ModalShell onClose={onClose} title="Invitar usuario">
+      <label style={{ fontSize: 11, color: "#888" }}>Email
+        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" style={inputStyle} placeholder="usuario@ejemplo.com" />
+      </label>
+      <label style={{ fontSize: 11, color: "#888", marginTop: 12, display: "block" }}>Nombre (opcional)
+        <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+      </label>
+      <div className="flex items-center justify-end gap-2 mt-5">
+        <button style={ghostBtn} onClick={onClose}>Cancelar</button>
+        <button
+          style={primaryBtn}
+          disabled={!email || sending}
+          onClick={async () => { setSending(true); await onSubmit(email, name); setSending(false); }}
+        >
+          {sending ? "Enviando…" : "Enviar invitación"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function EditNameModal({ profile, onClose, onSubmit }: { profile: Profile; onClose: () => void; onSubmit: (name: string) => void | Promise<void> }) {
+  const [name, setName] = useState(profile.name ?? "");
+  return (
+    <ModalShell onClose={onClose} title="Editar nombre">
+      <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{profile.email}</div>
+      <input value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} autoFocus />
+      <div className="flex items-center justify-end gap-2 mt-5">
+        <button style={ghostBtn} onClick={onClose}>Cancelar</button>
+        <button style={primaryBtn} onClick={() => onSubmit(name)}>Guardar</button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function DeleteUserModal({ profile, onClose, onConfirm }: { profile: Profile; onClose: () => void; onConfirm: () => void | Promise<void> }) {
+  return (
+    <ModalShell onClose={onClose} title="Eliminar usuario">
+      <div style={{ fontSize: 13, color: "#ccc" }}>
+        ¿Confirmas eliminar a <b>{profile.name ?? profile.email}</b>?
+      </div>
+      <div style={{ fontSize: 11, color: "#666", marginTop: 8 }}>
+        Se eliminarán todos sus datos. Esta acción no se puede deshacer.
+      </div>
+      <div className="flex items-center justify-end gap-2 mt-5">
+        <button style={ghostBtn} onClick={onClose}>Cancelar</button>
+        <button style={dangerBtn} onClick={onConfirm}>Eliminar</button>
+      </div>
+    </ModalShell>
+  );
+}
+
+function PlanEditModal({ profile, onClose, onSubmit }: { profile: Profile; onClose: () => void; onSubmit: (plan: Plan) => void }) {
+  const [plan, setPlan] = useState<Plan>(normalizePlan(profile.plan));
+  return (
+    <ModalShell onClose={onClose} title="Cambiar plan">
+      <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{profile.email}</div>
+      <select value={plan} onChange={(e) => setPlan(e.target.value as Plan)} style={inputStyle}>
+        {PLANS.map((pl) => <option key={pl} value={pl}>{pl}</option>)}
+      </select>
+      <div className="flex items-center justify-end gap-2 mt-5">
+        <button style={ghostBtn} onClick={onClose}>Cancelar</button>
+        <button style={primaryBtn} onClick={() => onSubmit(plan)}>Aplicar</button>
+      </div>
+    </ModalShell>
+  );
+}
+
