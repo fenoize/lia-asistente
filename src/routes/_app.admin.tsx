@@ -758,10 +758,12 @@ function SubsTab({
   counts,
   total,
   profiles,
+  onEditPlan,
 }: {
   counts: Record<Plan, number>;
   total: number;
   profiles: Profile[];
+  onEditPlan: (p: Profile) => void;
 }) {
   const grouped = useMemo(() => {
     const g: Record<Plan, Profile[]> = { beta: [], free: [], pro: [] };
