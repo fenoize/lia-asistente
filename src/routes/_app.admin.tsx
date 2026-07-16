@@ -556,6 +556,8 @@ function UsersTab({
                 <th style={th}>Bonus</th>
                 <th style={th}>Onboarding</th>
                 <th style={th}>Registro</th>
+                <th style={th}>Últ. activ.</th>
+                <th style={th}></th>
               </tr>
             </thead>
             <tbody>
