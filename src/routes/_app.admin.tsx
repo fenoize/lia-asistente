@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { IconSearch, IconShield } from "@tabler/icons-react";
+import { IconSearch, IconShield, IconPencil, IconTrash, IconX, IconUserPlus } from "@tabler/icons-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ type Profile = {
   onboarding_completed: boolean | null;
   created_at: string | null;
   bonus_tokens: number;
+  last_seen_at: string | null;
 };
 
 type PlanEvent = {
@@ -33,7 +34,9 @@ type PlanEvent = {
   created_at: string;
 };
 
-type Tab = "users" | "subs" | "history" | "usage";
+type UsageRow = { user_id: string; total_tokens: number; created_at: string };
+
+type Tab = "users" | "subs" | "usage" | "alerts" | "history";
 
 const PLAN_LIMITS: Record<string, number> = {
   free: 50_000,
@@ -48,6 +51,32 @@ function normalizePlan(p: string | null | undefined): Plan {
   if (p === "beta" || p === "pro") return p;
   return "free";
 }
+
+function getCycleStartAdmin(createdAt: string): string {
+  const registered = new Date(createdAt).getTime();
+  const now = Date.now();
+  const dayMs = 86_400_000;
+  const daysElapsed = Math.floor((now - registered) / dayMs);
+  const cycleStartDay = Math.floor(daysElapsed / 30) * 30;
+  return new Date(registered + cycleStartDay * dayMs).toISOString();
+}
+
+async function callAdminFn(action: string, body: object) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const url = `${(supabase as any).supabaseUrl}/functions/v1/admin-user-management?action=${action}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session?.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? "Error desconocido");
+  return json;
+}
+
 
 function formatDate(d: string | null | undefined) {
   if (!d) return "—";
