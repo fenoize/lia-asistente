@@ -496,6 +496,9 @@ function UsersTab({
   savingId,
   usageByUser,
   onSaveBonus,
+  onInvite,
+  onEdit,
+  onDelete,
 }: {
   profiles: Profile[];
   total: number;
@@ -505,6 +508,9 @@ function UsersTab({
   savingId: string | null;
   usageByUser: Map<string, number>;
   onSaveBonus: (profileId: string, bonus: number) => void;
+  onInvite: () => void;
+  onEdit: (p: Profile) => void;
+  onDelete: (p: Profile) => void;
 }) {
   return (
     <div>
@@ -512,8 +518,24 @@ function UsersTab({
         <div style={{ fontSize: 12, color: "#666" }}>
           {total} usuario{total === 1 ? "" : "s"} en total
         </div>
-        <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre o email…" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onInvite}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "rgba(99,102,241,0.15)",
+              border: "1px solid rgba(99,102,241,0.3)",
+              color: "#818cf8",
+              borderRadius: 100, padding: "6px 14px", fontSize: 12,
+            }}
+          >
+            <IconUserPlus size={14} stroke={1.75} />
+            Invitar usuario
+          </button>
+          <SearchBox value={search} onChange={setSearch} placeholder="Buscar por nombre o email…" />
+        </div>
       </div>
+
 
       <div
         style={{
