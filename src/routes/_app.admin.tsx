@@ -143,7 +143,11 @@ function AdminPage() {
   const [search, setSearch] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [usageByUser, setUsageByUser] = useState<Map<string, number>>(new Map());
+  const [usageRows, setUsageRows] = useState<UsageRow[]>([]);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [editProfile, setEditProfile] = useState<Profile | null>(null);
+  const [deleteProfile, setDeleteProfile] = useState<Profile | null>(null);
+  const [planEditProfile, setPlanEditProfile] = useState<Profile | null>(null);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -152,13 +156,11 @@ function AdminPage() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString();
       const [p, e, u] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id,name,email,plan,onboarding_completed,created_at,bonus_tokens")
+          .select("id,name,email,plan,onboarding_completed,created_at,bonus_tokens,last_seen_at")
           .order("created_at", { ascending: false }),
         supabase
           .from("plan_events")
@@ -166,27 +168,28 @@ function AdminPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("token_usage")
-          .select("user_id, total_tokens")
-          .gte("created_at", startOfMonth.toISOString()),
+          .select("user_id, total_tokens, created_at")
+          .gte("created_at", thirtyDaysAgo),
       ]);
       if (cancelled) return;
       if (p.error) toast.error("Error cargando perfiles");
       else setProfiles((p.data ?? []) as Profile[]);
       if (e.error) toast.error("Error cargando historial");
       else setEvents((e.data ?? []) as PlanEvent[]);
-      if (!u.error) {
-        const usageMap = new Map<string, number>();
-        for (const row of (u.data ?? []) as { user_id: string; total_tokens: number | null }[]) {
-          usageMap.set(row.user_id, (usageMap.get(row.user_id) ?? 0) + (row.total_tokens ?? 0));
-        }
-        setUsageByUser(usageMap);
-      }
+      if (!u.error) setUsageRows((u.data ?? []) as UsageRow[]);
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [isAdmin]);
+
+  const usageByUser = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of usageRows) m.set(r.user_id, (m.get(r.user_id) ?? 0) + (r.total_tokens ?? 0));
+    return m;
+  }, [usageRows]);
+
 
   const filteredProfiles = useMemo(() => {
     const q = search.trim().toLowerCase();
