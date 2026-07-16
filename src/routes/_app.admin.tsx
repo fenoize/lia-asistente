@@ -639,7 +639,7 @@ function UsersTab({
               })}
               {profiles.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ ...td, textAlign: "center", color: "#555" }}>
+                  <td colSpan={9} style={{ ...td, textAlign: "center", color: "#555" }}>
                     Sin resultados
                   </td>
                 </tr>
