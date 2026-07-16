@@ -381,17 +381,55 @@ function AdminPage() {
           savingId={savingId}
           usageByUser={usageByUser}
           onSaveBonus={saveBonus}
+          onInvite={() => setInviteOpen(true)}
+          onEdit={setEditProfile}
+          onDelete={setDeleteProfile}
         />
       ) : tab === "subs" ? (
-        <SubsTab counts={counts} total={profiles.length} profiles={profiles} />
+        <SubsTab
+          counts={counts}
+          total={profiles.length}
+          profiles={profiles}
+          onEditPlan={setPlanEditProfile}
+        />
       ) : tab === "usage" ? (
         <UsageTab profiles={profiles} usageByUser={usageByUser} />
+      ) : tab === "alerts" ? (
+        <AlertsTab profiles={profiles} usageRows={usageRows} usageByUser={usageByUser} />
       ) : (
         <HistoryTab
           events={filteredEvents}
           profileById={profileById}
           search={historySearch}
           setSearch={setHistorySearch}
+        />
+      )}
+
+      {inviteOpen && (
+        <InviteModal onClose={() => setInviteOpen(false)} onSubmit={handleInvite} />
+      )}
+      {editProfile && (
+        <EditNameModal
+          profile={editProfile}
+          onClose={() => setEditProfile(null)}
+          onSubmit={(name) => handleUpdateName(editProfile.id, name)}
+        />
+      )}
+      {deleteProfile && (
+        <DeleteUserModal
+          profile={deleteProfile}
+          onClose={() => setDeleteProfile(null)}
+          onConfirm={() => handleDelete(deleteProfile.id)}
+        />
+      )}
+      {planEditProfile && (
+        <PlanEditModal
+          profile={planEditProfile}
+          onClose={() => setPlanEditProfile(null)}
+          onSubmit={(newPlan) => {
+            changePlan(planEditProfile, newPlan);
+            setPlanEditProfile(null);
+          }}
         />
       )}
     </div>
