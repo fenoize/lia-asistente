@@ -615,6 +615,25 @@ function UsersTab({
                       )}
                     </td>
                     <td style={td}>{formatDate(p.created_at)}</td>
+                    <td style={td}>{p.last_seen_at ? formatDate(p.last_seen_at) : "—"}</td>
+                    <td style={td}>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEdit(p)}
+                          title="Editar nombre"
+                          style={{ padding: 4, color: "#888", background: "transparent", border: "none" }}
+                        >
+                          <IconPencil size={14} stroke={1.75} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(p)}
+                          title="Eliminar"
+                          style={{ padding: 4, color: "#ef4444", background: "transparent", border: "none" }}
+                        >
+                          <IconTrash size={14} stroke={1.75} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
