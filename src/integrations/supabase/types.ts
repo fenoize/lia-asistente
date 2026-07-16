@@ -667,6 +667,7 @@ export type Database = {
           email: string | null
           goals: string | null
           id: string
+          last_seen_at: string | null
           lia_tone: string | null
           name: string | null
           onboarding_completed: boolean | null
@@ -689,6 +690,7 @@ export type Database = {
           email?: string | null
           goals?: string | null
           id: string
+          last_seen_at?: string | null
           lia_tone?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
@@ -711,6 +713,7 @@ export type Database = {
           email?: string | null
           goals?: string | null
           id?: string
+          last_seen_at?: string | null
           lia_tone?: string | null
           name?: string | null
           onboarding_completed?: boolean | null
