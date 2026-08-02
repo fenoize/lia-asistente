@@ -309,6 +309,35 @@ function TasksPage() {
           />
         )}
 
+        <div style={{ position: "relative", flexShrink: 1, minWidth: 140, maxWidth: 260 }}>
+          <IconSearch
+            size={14}
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#555",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar tarea…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              background: "#0d0d0d",
+              border: "1px solid #1e1e1e",
+              borderRadius: 8,
+              color: "#ccc",
+              fontSize: 12,
+              padding: "6px 10px 6px 30px",
+            }}
+          />
+        </div>
+
         <div className="ml-auto flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
           {(["cards", "kanban", "table", "gantt"] as const).map((v) => {
             const active = view === v;
