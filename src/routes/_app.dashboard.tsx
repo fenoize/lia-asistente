@@ -97,7 +97,7 @@ function Dashboard() {
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
   const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
-  const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
+  const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; changeCount: number }>({ hasBrief: false, changeCount: 0 });
   const fetchedBriefRef = useRef(false);
 
   const reloadMeetings = async () => {
