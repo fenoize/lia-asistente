@@ -411,7 +411,7 @@ function Dashboard() {
               {assistant.name.toUpperCase()}
             </span>
           </div>
-          {(briefStaleness.hasChanges || !briefStaleness.hasBrief || briefLoading) && (
+          {(briefStaleness.changeCount > 0 || !briefStaleness.hasBrief || briefLoading) && (
             <button
               onClick={generateBrief}
               disabled={briefLoading}
@@ -431,7 +431,7 @@ function Dashboard() {
                 opacity: briefLoading ? 0.7 : 1,
               }}
             >
-              {briefLoading ? "…" : "Actualizar"}
+              {briefLoading ? "…" : briefStaleness.changeCount > 0 ? `Actualizar (${briefStaleness.changeCount})` : "Actualizar"}
               <IconRefresh
                 size={11}
                 stroke={2}
