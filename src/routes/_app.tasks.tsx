@@ -163,21 +163,36 @@ function TasksPage() {
   }, [tasks, filterStatus, filterProject, filterDate, searchQuery]);
 
   const groups = useMemo(() => {
-    const endOfWeek = addDays(startOfDay(new Date()), 7);
-    const urgent: Task[] = [], week: Task[] = [], later: Task[] = [];
+    const today = startOfDay(new Date());
+    const endOfWeek = addDays(today, 7);
+    const overdue: Task[] = [];
+    const urgent: Task[] = [];
+    const week: Task[] = [];
+    const adelante: Task[] = [];
+    const sinFecha: Task[] = [];
+    const listas: Task[] = [];
+
     for (const t of filteredTasks) {
-      if (t.status === "listo" && filterStatus === "all") {
-        later.push(t);
+      if (t.status === "listo") {
+        listas.push(t);
         continue;
       }
-      if (t.priority === "high" || t.priority === "urgent") { urgent.push(t); continue; }
-      if (!t.due_date) { later.push(t); continue; }
+      if (t.due_date && new Date(t.due_date) < today) {
+        overdue.push(t);
+        continue;
+      }
+      if (!t.due_date) {
+        if (t.priority === "urgent" || t.priority === "high") urgent.push(t);
+        else sinFecha.push(t);
+        continue;
+      }
       const d = new Date(t.due_date);
+      if (t.priority === "urgent" || t.priority === "high") { urgent.push(t); continue; }
       if (d <= endOfWeek) week.push(t);
-      else later.push(t);
+      else adelante.push(t);
     }
-    return { urgent, week, later };
-  }, [filteredTasks, filterStatus]);
+    return { overdue, urgent, week, adelante, sinFecha, listas };
+  }, [filteredTasks]);
 
   const toggle = async (t: Task) => {
     const status = t.status === "listo" ? "borrador" : "listo";
