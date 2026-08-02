@@ -97,7 +97,7 @@ function Dashboard() {
   const [allContacts, setAllContacts] = useState<{ id: string; name: string }[]>([]);
   const [monthProgress, setMonthProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
 
-  const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; hasChanges: boolean }>({ hasBrief: false, hasChanges: false });
+  const [briefStaleness, setBriefStaleness] = useState<{ hasBrief: boolean; changeCount: number }>({ hasBrief: false, changeCount: 0 });
   const fetchedBriefRef = useRef(false);
 
   const reloadMeetings = async () => {
@@ -198,8 +198,8 @@ function Dashboard() {
           supabase.from("meetings").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
           supabase.from("reminders").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
         ]);
-        const hasChanges = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0) > 0;
-        setBriefStaleness({ hasBrief: true, hasChanges });
+        const changeCount = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0);
+        setBriefStaleness({ hasBrief: true, changeCount });
       } else if (!fetchedBriefRef.current) {
         fetchedBriefRef.current = true;
         generateBrief();
@@ -233,10 +233,10 @@ function Dashboard() {
       }
       const todayStr = currentDateInTimeZone(userTimeZone);
       await supabase.from("daily_briefs").upsert(
-        { user_id: user.id, content: acc, date: todayStr } as any,
+        { user_id: user.id, content: acc, date: todayStr, generated_at: new Date().toISOString() } as any,
         { onConflict: "user_id,date" } as any,
       );
-      setBriefStaleness({ hasBrief: true, hasChanges: false });
+      setBriefStaleness({ hasBrief: true, changeCount: 0 });
     } catch {
       toast.error("No pude generar el resumen ahora.");
     } finally {
@@ -411,7 +411,7 @@ function Dashboard() {
               {assistant.name.toUpperCase()}
             </span>
           </div>
-          {(briefStaleness.hasChanges || !briefStaleness.hasBrief || briefLoading) && (
+          {(briefStaleness.changeCount > 0 || !briefStaleness.hasBrief || briefLoading) && (
             <button
               onClick={generateBrief}
               disabled={briefLoading}
@@ -431,7 +431,7 @@ function Dashboard() {
                 opacity: briefLoading ? 0.7 : 1,
               }}
             >
-              {briefLoading ? "…" : "Actualizar"}
+              {briefLoading ? "…" : briefStaleness.changeCount > 0 ? `Actualizar (${briefStaleness.changeCount})` : "Actualizar"}
               <IconRefresh
                 size={11}
                 stroke={2}
