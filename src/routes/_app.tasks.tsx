@@ -82,6 +82,7 @@ function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterDate, setFilterDate] = useState<FilterDate>("all");
   const [filterProject, setFilterProject] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [editing, setEditing] = useState<Task | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window === "undefined") return "cards";
