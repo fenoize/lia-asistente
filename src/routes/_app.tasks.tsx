@@ -16,6 +16,7 @@ import {
   IconChevronRight,
   IconArrowUp,
   IconArrowDown,
+  IconSearch,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
