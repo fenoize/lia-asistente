@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { streamText } from "ai";
 import { createClient } from "@supabase/supabase-js";
 import { createLovableAiGatewayProvider, DEFAULT_MODEL } from "@/lib/ai-gateway";
-import { buildContext } from "@/lib/ai/context-builder";
+import { buildBriefContext } from "@/lib/ai/context-builder";
 import { buildBriefSystemPrompt } from "@/lib/ai/prompts";
 import { USER_TZ } from "@/lib/timezone";
 
@@ -39,9 +39,9 @@ export const Route = createFileRoute("/api/daily-brief")({
         if (claimsErr || !claimsRes?.claims?.sub) return jsonError(401, "Sesión inválida.");
 
         try {
-          const timezone = request.headers.get("x-user-timezone") || USER_TZ;
-          const ctx = await buildContext(sb, timezone);
-          const gateway = createLovableAiGatewayProvider(apiKey);
+        const timezone = request.headers.get("x-user-timezone") || USER_TZ;
+        const ctx = await buildBriefContext(sb, timezone);
+        const gateway = createLovableAiGatewayProvider(apiKey);
           const result = streamText({
             model: gateway(DEFAULT_MODEL),
             system: buildBriefSystemPrompt(ctx),
