@@ -392,25 +392,74 @@ function TasksPage() {
         <KanbanView tasks={filteredTasks} onOpen={(t) => setEditing(t)} onPatch={patchInline} />
       ) : (
         <div className="space-y-3">
-          {(["urgent", "week", "later"] as const).map((g) => {
-            const list = groups[g];
+          {(
+            [
+              { key: "overdue", label: "VENCIDAS", color: "#ef4444", defaultOpen: true },
+              { key: "urgent", label: "URGENTE", color: "#f59e0b", defaultOpen: true },
+              { key: "week", label: "ESTA SEMANA", color: "#818cf8", defaultOpen: true },
+              { key: "adelante", label: "MÁS ADELANTE", color: "#555", defaultOpen: false },
+              { key: "sinFecha", label: "SIN FECHA", color: "#555", defaultOpen: false },
+              { key: "listas", label: "COMPLETADAS", color: "#34d399", defaultOpen: false },
+            ] as const
+          ).map(({ key, label, color }) => {
+            const list = groups[key];
             if (!list.length) return null;
-            const label =
-              g === "urgent" ? "URGENTE" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
+            const collapsed = collapsedGroups.has(key);
             return (
-              <section key={g}>
-                <div className="alfred-section-label">{label}</div>
-                <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {list.map((t: Task) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      onOpen={() => setEditing(t)}
-                      onToggle={() => toggle(t)}
-                      onRemove={() => remove(t.id)}
-                    />
-                  ))}
-                </ul>
+              <section key={key}>
+                <button
+                  onClick={() => toggleGroup(key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    width: "100%",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 0",
+                    marginBottom: collapsed ? 0 : 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#444",
+                      background: "#1a1a1a",
+                      borderRadius: 999,
+                      padding: "1px 7px",
+                    }}
+                  >
+                    {list.length}
+                  </span>
+                  <span style={{ marginLeft: "auto", color: "#444", fontSize: 11 }}>
+                    {collapsed ? "▶" : "▼"}
+                  </span>
+                </button>
+                {!collapsed && (
+                  <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {list.map((t: Task) => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        onOpen={() => setEditing(t)}
+                        onToggle={() => toggle(t)}
+                        onRemove={() => remove(t.id)}
+                      />
+                    ))}
+                  </ul>
+                )}
               </section>
             );
           })}
