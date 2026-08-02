@@ -194,6 +194,16 @@ function TasksPage() {
     return { overdue, urgent, week, adelante, sinFecha, listas };
   }, [filteredTasks]);
 
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(["adelante", "sinFecha", "listas"])
+  );
+  const toggleGroup = (g: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
+
   const toggle = async (t: Task) => {
     const status = t.status === "listo" ? "borrador" : "listo";
     setTasks((prev) => prev.map((x) => (x.id === t.id ? { ...x, status } : x)));
