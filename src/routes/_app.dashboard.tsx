@@ -198,8 +198,8 @@ function Dashboard() {
           supabase.from("meetings").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
           supabase.from("reminders").select("id", { head: true, count: "exact" }).eq("user_id", user.id).gt("created_at", since),
         ]);
-        const hasChanges = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0) > 0;
-        setBriefStaleness({ hasBrief: true, hasChanges });
+        const changeCount = (tNew.count ?? 0) + (tUpd.count ?? 0) + (mNew.count ?? 0) + (rNew.count ?? 0);
+        setBriefStaleness({ hasBrief: true, changeCount });
       } else if (!fetchedBriefRef.current) {
         fetchedBriefRef.current = true;
         generateBrief();
