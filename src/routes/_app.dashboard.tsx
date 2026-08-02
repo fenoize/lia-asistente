@@ -233,10 +233,10 @@ function Dashboard() {
       }
       const todayStr = currentDateInTimeZone(userTimeZone);
       await supabase.from("daily_briefs").upsert(
-        { user_id: user.id, content: acc, date: todayStr } as any,
+        { user_id: user.id, content: acc, date: todayStr, generated_at: new Date().toISOString() } as any,
         { onConflict: "user_id,date" } as any,
       );
-      setBriefStaleness({ hasBrief: true, hasChanges: false });
+      setBriefStaleness({ hasBrief: true, changeCount: 0 });
     } catch {
       toast.error("No pude generar el resumen ahora.");
     } finally {
