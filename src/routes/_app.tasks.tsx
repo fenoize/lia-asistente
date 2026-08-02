@@ -16,6 +16,7 @@ import {
   IconChevronRight,
   IconArrowUp,
   IconArrowDown,
+  IconSearch,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
@@ -81,6 +82,7 @@ function TasksPage() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [filterDate, setFilterDate] = useState<FilterDate>("all");
   const [filterProject, setFilterProject] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [editing, setEditing] = useState<Task | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window === "undefined") return "cards";
@@ -153,25 +155,54 @@ function TasksPage() {
         return true;
       });
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((t) => t.title.toLowerCase().includes(q));
+    }
     return filtered;
-  }, [tasks, filterStatus, filterProject, filterDate]);
+  }, [tasks, filterStatus, filterProject, filterDate, searchQuery]);
 
   const groups = useMemo(() => {
-    const endOfWeek = addDays(startOfDay(new Date()), 7);
-    const urgent: Task[] = [], week: Task[] = [], later: Task[] = [];
+    const today = startOfDay(new Date());
+    const endOfWeek = addDays(today, 7);
+    const overdue: Task[] = [];
+    const urgent: Task[] = [];
+    const week: Task[] = [];
+    const adelante: Task[] = [];
+    const sinFecha: Task[] = [];
+    const listas: Task[] = [];
+
     for (const t of filteredTasks) {
-      if (t.status === "listo" && filterStatus === "all") {
-        later.push(t);
+      if (t.status === "listo") {
+        listas.push(t);
         continue;
       }
-      if (t.priority === "high" || t.priority === "urgent") { urgent.push(t); continue; }
-      if (!t.due_date) { later.push(t); continue; }
+      if (t.due_date && new Date(t.due_date) < today) {
+        overdue.push(t);
+        continue;
+      }
+      if (!t.due_date) {
+        if (t.priority === "urgent" || t.priority === "high") urgent.push(t);
+        else sinFecha.push(t);
+        continue;
+      }
       const d = new Date(t.due_date);
+      if (t.priority === "urgent" || t.priority === "high") { urgent.push(t); continue; }
       if (d <= endOfWeek) week.push(t);
-      else later.push(t);
+      else adelante.push(t);
     }
-    return { urgent, week, later };
-  }, [filteredTasks, filterStatus]);
+    return { overdue, urgent, week, adelante, sinFecha, listas };
+  }, [filteredTasks]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(["adelante", "sinFecha", "listas"])
+  );
+  const toggleGroup = (g: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g); else next.add(g);
+      return next;
+    });
 
   const toggle = async (t: Task) => {
     const status = t.status === "listo" ? "borrador" : "listo";
@@ -278,6 +309,35 @@ function TasksPage() {
           />
         )}
 
+        <div style={{ position: "relative", flexShrink: 1, minWidth: 140, maxWidth: 260 }}>
+          <IconSearch
+            size={14}
+            style={{
+              position: "absolute",
+              left: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#555",
+              pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Buscar tarea…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              background: "#0d0d0d",
+              border: "1px solid #1e1e1e",
+              borderRadius: 8,
+              color: "#ccc",
+              fontSize: 12,
+              padding: "6px 10px 6px 30px",
+            }}
+          />
+        </div>
+
         <div className="ml-auto flex" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 100, padding: 2 }}>
           {(["cards", "kanban", "table", "gantt"] as const).map((v) => {
             const active = view === v;
@@ -332,25 +392,74 @@ function TasksPage() {
         <KanbanView tasks={filteredTasks} onOpen={(t) => setEditing(t)} onPatch={patchInline} />
       ) : (
         <div className="space-y-3">
-          {(["urgent", "week", "later"] as const).map((g) => {
-            const list = groups[g];
+          {(
+            [
+              { key: "overdue", label: "VENCIDAS", color: "#ef4444", defaultOpen: true },
+              { key: "urgent", label: "URGENTE", color: "#f59e0b", defaultOpen: true },
+              { key: "week", label: "ESTA SEMANA", color: "#818cf8", defaultOpen: true },
+              { key: "adelante", label: "MÁS ADELANTE", color: "#555", defaultOpen: false },
+              { key: "sinFecha", label: "SIN FECHA", color: "#555", defaultOpen: false },
+              { key: "listas", label: "COMPLETADAS", color: "#34d399", defaultOpen: false },
+            ] as const
+          ).map(({ key, label, color }) => {
+            const list = groups[key];
             if (!list.length) return null;
-            const label =
-              g === "urgent" ? "URGENTE" : g === "week" ? "ESTA SEMANA" : "MÁS ADELANTE";
+            const collapsed = collapsedGroups.has(key);
             return (
-              <section key={g}>
-                <div className="alfred-section-label">{label}</div>
-                <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {list.map((t: Task) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      onOpen={() => setEditing(t)}
-                      onToggle={() => toggle(t)}
-                      onRemove={() => remove(t.id)}
-                    />
-                  ))}
-                </ul>
+              <section key={key}>
+                <button
+                  onClick={() => toggleGroup(key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    width: "100%",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 0",
+                    marginBottom: collapsed ? 0 : 6,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      color,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#444",
+                      background: "#1a1a1a",
+                      borderRadius: 999,
+                      padding: "1px 7px",
+                    }}
+                  >
+                    {list.length}
+                  </span>
+                  <span style={{ marginLeft: "auto", color: "#444", fontSize: 11 }}>
+                    {collapsed ? "▶" : "▼"}
+                  </span>
+                </button>
+                {!collapsed && (
+                  <ul style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    {list.map((t: Task) => (
+                      <TaskRow
+                        key={t.id}
+                        task={t}
+                        onOpen={() => setEditing(t)}
+                        onToggle={() => toggle(t)}
+                        onRemove={() => remove(t.id)}
+                      />
+                    ))}
+                  </ul>
+                )}
               </section>
             );
           })}
