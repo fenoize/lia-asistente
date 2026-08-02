@@ -155,8 +155,12 @@ function TasksPage() {
         return true;
       });
     }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((t) => t.title.toLowerCase().includes(q));
+    }
     return filtered;
-  }, [tasks, filterStatus, filterProject, filterDate]);
+  }, [tasks, filterStatus, filterProject, filterDate, searchQuery]);
 
   const groups = useMemo(() => {
     const endOfWeek = addDays(startOfDay(new Date()), 7);
