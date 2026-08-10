@@ -290,7 +290,7 @@ export function QuickCapture() {
     }
   }
 
-  function queueSave() {
+  function queueSave(opts?: { keepOpen?: boolean }) {
     if (!text.trim() || !user) return;
     const snapshot: Snapshot = {
       text,
@@ -301,8 +301,13 @@ export function QuickCapture() {
       dtTouched,
     };
 
-    // Close modal immediately (optimistic)
-    close();
+    if (opts?.keepOpen) {
+      resetForm();
+      setTimeout(() => inputRef.current?.focus(), 30);
+    } else {
+      // Close modal immediately (optimistic)
+      close();
+    }
 
     // Replace any existing pending
     clearPendingTimers();
@@ -528,22 +533,40 @@ export function QuickCapture() {
               <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                 ↵ Guardar  ·  esc Cerrar
               </span>
-              <button
-                onClick={queueSave}
-                disabled={!text.trim()}
-                style={{
-                  fontSize: 12,
-                  padding: "6px 14px",
-                  borderRadius: "var(--radius-pill)",
-                  background: "var(--accent-color)",
-                  color: "white",
-                  border: "none",
-                  opacity: !text.trim() ? 0.5 : 1,
-                  cursor: !text.trim() ? "not-allowed" : "pointer",
-                }}
-              >
-                Guardar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => queueSave({ keepOpen: true })}
+                  disabled={!text.trim()}
+                  style={{
+                    fontSize: 12,
+                    padding: "6px 14px",
+                    borderRadius: "var(--radius-pill)",
+                    background: "transparent",
+                    color: "var(--accent-color)",
+                    border: "1px solid var(--accent-color)",
+                    opacity: !text.trim() ? 0.5 : 1,
+                    cursor: !text.trim() ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Guardar y abrir
+                </button>
+                <button
+                  onClick={() => queueSave()}
+                  disabled={!text.trim()}
+                  style={{
+                    fontSize: 12,
+                    padding: "6px 14px",
+                    borderRadius: "var(--radius-pill)",
+                    background: "var(--accent-color)",
+                    color: "white",
+                    border: "none",
+                    opacity: !text.trim() ? 0.5 : 1,
+                    cursor: !text.trim() ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Guardar
+                </button>
+              </div>
             </div>
           </div>
         </div>
