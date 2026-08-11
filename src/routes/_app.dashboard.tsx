@@ -487,6 +487,20 @@ function Dashboard() {
       {/* Ordered, toggleable blocks (excluding brief which is always at top) */}
       {order.map((key) => {
         if (!blocks[key]) return null;
+        if (key === "followup") {
+          if (!user) return null;
+          return (
+            <ProactiveFollowUpWidget
+              key="followup"
+              userId={user.id}
+              onOpenTask={(taskId) => {
+                const found = tasks.find((t) => t.id === taskId);
+                if (found) setEditingTask(found);
+                else navigate({ to: "/tasks", search: { open: taskId } as never });
+              }}
+            />
+          );
+        }
         if (key === "priority") {
           return (
             <PriorityActionsWidget
