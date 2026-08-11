@@ -494,10 +494,9 @@ function Dashboard() {
             <ProactiveFollowUpWidget
               key="followup"
               userId={user.id}
-              onOpenTask={(taskId) => {
+              onOpenTask={(taskId: string) => {
                 const found = tasks.find((t) => t.id === taskId);
                 if (found) setEditingTask(found);
-                else navigate({ to: "/tasks", search: { open: taskId } as never });
               }}
             />
           );
