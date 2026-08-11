@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PushNotificationsSettings } from "@/components/push-notifications-settings";
+import { FollowUpSettings } from "@/components/followup-settings";
 import { usePwaUpdate } from "@/hooks/use-pwa-update";
 import { useHideAmounts } from "@/hooks/use-hide-amounts";
 import { useDashboardBlocks, DASHBOARD_BLOCKS, type DashboardBlockKey } from "@/hooks/use-dashboard-blocks";
@@ -288,6 +289,8 @@ function SettingsPage() {
       </SettingsGroup>
 
       <PushNotificationsSettings />
+
+      <FollowUpSettings />
 
       <GoogleCalendarSection />
 
