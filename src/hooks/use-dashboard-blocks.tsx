@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export type DashboardBlockKey =
   | "brief"
+  | "followup"
   | "priority"
   | "attention"
   | "timeline"
@@ -14,6 +15,7 @@ export type DashboardBlockKey =
 
 export const DASHBOARD_BLOCKS: Record<DashboardBlockKey, { label: string; description: string }> = {
   brief: { label: "Resumen Diario", description: "Briefing generado por LIA cada día. Siempre arriba." },
+  followup: { label: "Necesita tu atención", description: "Intervenciones proactivas de LIA sobre tus tareas." },
   priority: { label: "Próximas acciones", description: "Acciones priorizadas para hoy." },
   attention: { label: "Requiere Atención", description: "Vencidas, próxima reunión y progreso." },
   timeline: { label: "Recordatorios y Eventos", description: "Línea de tiempo combinada del día." },
@@ -24,11 +26,11 @@ export const DASHBOARD_BLOCKS: Record<DashboardBlockKey, { label: string; descri
 };
 
 export const DEFAULT_ORDER: DashboardBlockKey[] = [
-  "priority", "attention", "timeline", "tasks", "projects", "weekly", "finance",
+  "followup", "priority", "attention", "timeline", "tasks", "projects", "weekly", "finance",
 ];
 
 export const DEFAULT_BLOCKS: Record<DashboardBlockKey, boolean> = {
-  brief: true, priority: true, attention: true, timeline: true,
+  brief: true, followup: true, priority: true, attention: true, timeline: true,
   tasks: true, projects: true, weekly: true, finance: true,
 };
 

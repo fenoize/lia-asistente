@@ -27,6 +27,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppContactsRouteImport } from './routes/_app.contacts'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
+import { Route as ApiPublicHooksTaskFollowupsRouteImport } from './routes/api/public/hooks/task-followups'
 import { Route as ApiPublicGoogleCallbackRouteImport } from './routes/api/public/google.callback'
 
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -118,6 +119,12 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiPublicHooksTaskFollowupsRoute =
+  ApiPublicHooksTaskFollowupsRouteImport.update({
+    id: '/api/public/hooks/task-followups',
+    path: '/api/public/hooks/task-followups',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicGoogleCallbackRoute = ApiPublicGoogleCallbackRouteImport.update({
   id: '/api/public/google/callback',
   path: '/api/public/google/callback',
@@ -143,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
   '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/hooks/task-followups': typeof ApiPublicHooksTaskFollowupsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -163,6 +171,7 @@ export interface FileRoutesByTo {
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
   '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/hooks/task-followups': typeof ApiPublicHooksTaskFollowupsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -185,6 +194,7 @@ export interface FileRoutesById {
   '/api/daily-brief': typeof ApiDailyBriefRoute
   '/api/quick-capture': typeof ApiQuickCaptureRoute
   '/api/public/google/callback': typeof ApiPublicGoogleCallbackRoute
+  '/api/public/hooks/task-followups': typeof ApiPublicHooksTaskFollowupsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/api/daily-brief'
     | '/api/quick-capture'
     | '/api/public/google/callback'
+    | '/api/public/hooks/task-followups'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/api/daily-brief'
     | '/api/quick-capture'
     | '/api/public/google/callback'
+    | '/api/public/hooks/task-followups'
   id:
     | '__root__'
     | '/'
@@ -248,6 +260,7 @@ export interface FileRouteTypes {
     | '/api/daily-brief'
     | '/api/quick-capture'
     | '/api/public/google/callback'
+    | '/api/public/hooks/task-followups'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -259,6 +272,7 @@ export interface RootRouteChildren {
   ApiDailyBriefRoute: typeof ApiDailyBriefRoute
   ApiQuickCaptureRoute: typeof ApiQuickCaptureRoute
   ApiPublicGoogleCallbackRoute: typeof ApiPublicGoogleCallbackRoute
+  ApiPublicHooksTaskFollowupsRoute: typeof ApiPublicHooksTaskFollowupsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -389,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/public/hooks/task-followups': {
+      id: '/api/public/hooks/task-followups'
+      path: '/api/public/hooks/task-followups'
+      fullPath: '/api/public/hooks/task-followups'
+      preLoaderRoute: typeof ApiPublicHooksTaskFollowupsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/google/callback': {
       id: '/api/public/google/callback'
       path: '/api/public/google/callback'
@@ -438,17 +459,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDailyBriefRoute: ApiDailyBriefRoute,
   ApiQuickCaptureRoute: ApiQuickCaptureRoute,
   ApiPublicGoogleCallbackRoute: ApiPublicGoogleCallbackRoute,
+  ApiPublicHooksTaskFollowupsRoute: ApiPublicHooksTaskFollowupsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -30,6 +30,7 @@ import {
   ActiveProjectsWidget,
   FinanceSnapshotWidget,
 } from "@/components/dashboard/intelligent-widgets";
+import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
 import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -477,7 +478,7 @@ function Dashboard() {
           >
             <IconCake size={14} stroke={1.75} color="#fbbf24" />
             <span style={{ fontSize: 13, color: "#e0e0e0", flex: 1 }}>{when}</span>
-            <Link to="/meetings" style={{ fontSize: 12, color: "#fbbf24", whiteSpace: "nowrap" }}>
+            <Link to="/meetings" search={{} as never} style={{ fontSize: 12, color: "#fbbf24", whiteSpace: "nowrap" }}>
               Agendar →
             </Link>
           </div>
@@ -487,6 +488,19 @@ function Dashboard() {
       {/* Ordered, toggleable blocks (excluding brief which is always at top) */}
       {order.map((key) => {
         if (!blocks[key]) return null;
+        if (key === "followup") {
+          if (!user) return null;
+          return (
+            <ProactiveFollowUpWidget
+              key="followup"
+              userId={user.id}
+              onOpenTask={(taskId: string) => {
+                const found = tasks.find((t) => t.id === taskId);
+                if (found) setEditingTask(found);
+              }}
+            />
+          );
+        }
         if (key === "priority") {
           return (
             <PriorityActionsWidget

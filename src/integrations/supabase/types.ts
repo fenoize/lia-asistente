@@ -665,6 +665,7 @@ export type Database = {
           dashboard_block_order: string[]
           dashboard_blocks: Json
           email: string | null
+          followup_prefs: Json
           goals: string | null
           id: string
           last_seen_at: string | null
@@ -688,6 +689,7 @@ export type Database = {
           dashboard_block_order?: string[]
           dashboard_blocks?: Json
           email?: string | null
+          followup_prefs?: Json
           goals?: string | null
           id: string
           last_seen_at?: string | null
@@ -711,6 +713,7 @@ export type Database = {
           dashboard_block_order?: string[]
           dashboard_blocks?: Json
           email?: string | null
+          followup_prefs?: Json
           goals?: string | null
           id?: string
           last_seen_at?: string | null
@@ -813,12 +816,78 @@ export type Database = {
           },
         ]
       }
+      task_followups: {
+        Row: {
+          blocked: boolean
+          blocked_reason: string | null
+          created_at: string
+          dismissed: boolean
+          id: string
+          last_intent: string | null
+          last_message: string | null
+          last_notification_at: string | null
+          last_state: string | null
+          notification_count: number
+          responded_at: string | null
+          snoozed_until: string | null
+          task_id: string
+          updated_at: string
+          user_id: string
+          user_response: string | null
+        }
+        Insert: {
+          blocked?: boolean
+          blocked_reason?: string | null
+          created_at?: string
+          dismissed?: boolean
+          id?: string
+          last_intent?: string | null
+          last_message?: string | null
+          last_notification_at?: string | null
+          last_state?: string | null
+          notification_count?: number
+          responded_at?: string | null
+          snoozed_until?: string | null
+          task_id: string
+          updated_at?: string
+          user_id: string
+          user_response?: string | null
+        }
+        Update: {
+          blocked?: boolean
+          blocked_reason?: string | null
+          created_at?: string
+          dismissed?: boolean
+          id?: string
+          last_intent?: string | null
+          last_message?: string | null
+          last_notification_at?: string | null
+          last_state?: string | null
+          notification_count?: number
+          responded_at?: string | null
+          snoozed_until?: string | null
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+          user_response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_followups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           ai_summary: string | null
           assigned_to: string | null
           created_at: string | null
           description: string | null
+          discarded_at: string | null
           due_date: string | null
           duration_minutes: number | null
           id: string
@@ -837,6 +906,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string | null
           description?: string | null
+          discarded_at?: string | null
           due_date?: string | null
           duration_minutes?: number | null
           id?: string
@@ -855,6 +925,7 @@ export type Database = {
           assigned_to?: string | null
           created_at?: string | null
           description?: string | null
+          discarded_at?: string | null
           due_date?: string | null
           duration_minutes?: number | null
           id?: string
