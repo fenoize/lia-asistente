@@ -30,6 +30,7 @@ import {
   ActiveProjectsWidget,
   FinanceSnapshotWidget,
 } from "@/components/dashboard/intelligent-widgets";
+import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
 import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
 
 export const Route = createFileRoute("/_app/dashboard")({
