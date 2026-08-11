@@ -477,7 +477,7 @@ function Dashboard() {
           >
             <IconCake size={14} stroke={1.75} color="#fbbf24" />
             <span style={{ fontSize: 13, color: "#e0e0e0", flex: 1 }}>{when}</span>
-            <Link to="/meetings" style={{ fontSize: 12, color: "#fbbf24", whiteSpace: "nowrap" }}>
+            <Link to="/meetings" search={{} as never} style={{ fontSize: 12, color: "#fbbf24", whiteSpace: "nowrap" }}>
               Agendar →
             </Link>
           </div>
