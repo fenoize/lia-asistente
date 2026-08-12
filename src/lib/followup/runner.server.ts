@@ -23,6 +23,63 @@ export type RunResult = {
 const TASK_FIELDS =
   "id, user_id, title, status, priority, due_date, start_date, created_at, updated_at, project_id, project, discarded_at";
 
+const ONESIGNAL_APP_ID = "9de4397a-f173-4215-a0e7-f89f49202f72";
+
+/** Hour of day (in the user's timezone) outside which we never push. */
+const PUSH_WINDOW = { start: 8, end: 21 };
+
+function localHour(now: Date, timezone?: string | null): number {
+  try {
+    return Number(
+      new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: timezone || "UTC",
+      }).format(now),
+    );
+  } catch {
+    return now.getUTCHours();
+  }
+}
+
+async function sendPush(
+  playerId: string,
+  title: string,
+  body: string,
+  url?: string,
+): Promise<string | null> {
+  const restKey = process.env["ONESIGNAL_REST_API_KEY"];
+  if (!restKey) {
+    console.warn("[followup] ONESIGNAL_REST_API_KEY missing, skipping push");
+    return null;
+  }
+  try {
+    const res = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `Basic ${restKey}`,
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_player_ids: [playerId],
+        headings: { en: title, es: title },
+        contents: { en: body, es: body },
+        ...(url ? { url } : {}),
+      }),
+    });
+    if (!res.ok) {
+      console.error("[followup] OneSignal error", res.status, await res.text());
+      return null;
+    }
+    const data = (await res.json().catch(() => null)) as { id?: string } | null;
+    return data?.id ?? null;
+  } catch (e) {
+    console.error("[followup] OneSignal request failed", e);
+    return null;
+  }
+}
+
 export async function runFollowUpsForUser(
   sb: SupabaseClient,
   userId: string,
@@ -30,7 +87,11 @@ export async function runFollowUpsForUser(
 ): Promise<RunResult> {
   const [{ data: profile }, { data: taskRows }, { data: memoryRows }, { data: projectRows }] =
     await Promise.all([
-      sb.from("profiles").select("followup_prefs").eq("id", userId).maybeSingle(),
+      sb
+        .from("profiles")
+        .select("followup_prefs, onesignal_player_id, timezone")
+        .eq("id", userId)
+        .maybeSingle(),
       sb
         .from("tasks")
         .select(TASK_FIELDS)
