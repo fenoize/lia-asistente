@@ -24,6 +24,7 @@ const TASK_FIELDS =
   "id, user_id, title, status, priority, due_date, start_date, created_at, updated_at, project_id, project, discarded_at";
 
 const ONESIGNAL_APP_ID = "9de4397a-f173-4215-a0e7-f89f49202f72";
+const APP_URL = "https://lia-asistente.lovable.app";
 
 /** Hour of day (in the user's timezone) outside which we never push. */
 const PUSH_WINDOW = { start: 8, end: 21 };
