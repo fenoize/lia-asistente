@@ -103,7 +103,15 @@ export async function runFollowUpsForUser(
       sb.from("projects").select("id, name").eq("user_id", userId),
     ]);
 
-  const prefs = normalizePrefs((profile as { followup_prefs?: unknown } | null)?.followup_prefs);
+  const prof = profile as {
+    followup_prefs?: unknown;
+    onesignal_player_id?: string | null;
+    timezone?: string | null;
+  } | null;
+  const prefs = normalizePrefs(prof?.followup_prefs);
+  const playerId = prof?.onesignal_player_id ?? null;
+  const hour = localHour(now, prof?.timezone);
+  const canPush = playerId && hour >= PUSH_WINDOW.start && hour < PUSH_WINDOW.end;
   const tasks = (taskRows ?? []) as unknown as FollowUpTask[];
   const memories = new Map<string, FollowUpMemory>(
     ((memoryRows ?? []) as unknown as FollowUpMemory[]).map((m) => [m.task_id, m]),
