@@ -23,6 +23,64 @@ export type RunResult = {
 const TASK_FIELDS =
   "id, user_id, title, status, priority, due_date, start_date, created_at, updated_at, project_id, project, discarded_at";
 
+const ONESIGNAL_APP_ID = "9de4397a-f173-4215-a0e7-f89f49202f72";
+const APP_URL = "https://lia-asistente.lovable.app";
+
+/** Hour of day (in the user's timezone) outside which we never push. */
+const PUSH_WINDOW = { start: 8, end: 21 };
+
+function localHour(now: Date, timezone?: string | null): number {
+  try {
+    return Number(
+      new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: timezone || "UTC",
+      }).format(now),
+    );
+  } catch {
+    return now.getUTCHours();
+  }
+}
+
+async function sendPush(
+  playerId: string,
+  title: string,
+  body: string,
+  url?: string,
+): Promise<string | null> {
+  const restKey = process.env["ONESIGNAL_REST_API_KEY"];
+  if (!restKey) {
+    console.warn("[followup] ONESIGNAL_REST_API_KEY missing, skipping push");
+    return null;
+  }
+  try {
+    const res = await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `Basic ${restKey}`,
+      },
+      body: JSON.stringify({
+        app_id: ONESIGNAL_APP_ID,
+        include_player_ids: [playerId],
+        headings: { en: title, es: title },
+        contents: { en: body, es: body },
+        ...(url ? { url } : {}),
+      }),
+    });
+    if (!res.ok) {
+      console.error("[followup] OneSignal error", res.status, await res.text());
+      return null;
+    }
+    const data = (await res.json().catch(() => null)) as { id?: string } | null;
+    return data?.id ?? null;
+  } catch (e) {
+    console.error("[followup] OneSignal request failed", e);
+    return null;
+  }
+}
+
 export async function runFollowUpsForUser(
   sb: SupabaseClient,
   userId: string,
@@ -30,7 +88,11 @@ export async function runFollowUpsForUser(
 ): Promise<RunResult> {
   const [{ data: profile }, { data: taskRows }, { data: memoryRows }, { data: projectRows }] =
     await Promise.all([
-      sb.from("profiles").select("followup_prefs").eq("id", userId).maybeSingle(),
+      sb
+        .from("profiles")
+        .select("followup_prefs, onesignal_player_id, timezone")
+        .eq("id", userId)
+        .maybeSingle(),
       sb
         .from("tasks")
         .select(TASK_FIELDS)
@@ -42,7 +104,15 @@ export async function runFollowUpsForUser(
       sb.from("projects").select("id, name").eq("user_id", userId),
     ]);
 
-  const prefs = normalizePrefs((profile as { followup_prefs?: unknown } | null)?.followup_prefs);
+  const prof = profile as {
+    followup_prefs?: unknown;
+    onesignal_player_id?: string | null;
+    timezone?: string | null;
+  } | null;
+  const prefs = normalizePrefs(prof?.followup_prefs);
+  const playerId = prof?.onesignal_player_id ?? null;
+  const hour = localHour(now, prof?.timezone);
+  const canPush = playerId && hour >= PUSH_WINDOW.start && hour < PUSH_WINDOW.end;
   const tasks = (taskRows ?? []) as unknown as FollowUpTask[];
   const memories = new Map<string, FollowUpMemory>(
     ((memoryRows ?? []) as unknown as FollowUpMemory[]).map((m) => [m.task_id, m]),
@@ -85,11 +155,12 @@ export async function runFollowUpsForUser(
     taskIds: string[],
     meta: { state: string; intent: string; message: string },
   ) => {
+    const scheduledFor = anchorToTimestamp(anchor, now);
     const { error } = await sb.from("notification_log").insert({
       user_id: userId,
       entity_type: "task",
       entity_id: entityId,
-      scheduled_for: anchorToTimestamp(anchor, now),
+      scheduled_for: scheduledFor,
       title,
       body,
     });
@@ -98,6 +169,21 @@ export async function runFollowUpsForUser(
       return;
     }
     created++;
+
+    // Actually deliver the push — otherwise the intervention only ever shows
+    // up in the in-app notification centre when the user opens the app.
+    if (canPush && playerId) {
+      const notifId = await sendPush(playerId, title, body, `${APP_URL}/tasks?task=${entityId}`);
+      if (notifId) {
+        await sb
+          .from("notification_log")
+          .update({ onesignal_notification_id: notifId })
+          .eq("user_id", userId)
+          .eq("entity_type", "task")
+          .eq("entity_id", entityId)
+          .eq("scheduled_for", scheduledFor);
+      }
+    }
     for (const taskId of taskIds) {
       const prev = memories.get(taskId);
       await sb.from("task_followups").upsert(
