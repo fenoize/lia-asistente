@@ -154,11 +154,12 @@ export async function runFollowUpsForUser(
     taskIds: string[],
     meta: { state: string; intent: string; message: string },
   ) => {
+    const scheduledFor = anchorToTimestamp(anchor, now);
     const { error } = await sb.from("notification_log").insert({
       user_id: userId,
       entity_type: "task",
       entity_id: entityId,
-      scheduled_for: anchorToTimestamp(anchor, now),
+      scheduled_for: scheduledFor,
       title,
       body,
     });
@@ -167,6 +168,21 @@ export async function runFollowUpsForUser(
       return;
     }
     created++;
+
+    // Actually deliver the push — otherwise the intervention only ever shows
+    // up in the in-app notification centre when the user opens the app.
+    if (canPush && playerId) {
+      const notifId = await sendPush(playerId, title, body, `${APP_URL}/tasks?task=${entityId}`);
+      if (notifId) {
+        await sb
+          .from("notification_log")
+          .update({ onesignal_notification_id: notifId })
+          .eq("user_id", userId)
+          .eq("entity_type", "task")
+          .eq("entity_id", entityId)
+          .eq("scheduled_for", scheduledFor);
+      }
+    }
     for (const taskId of taskIds) {
       const prev = memories.get(taskId);
       await sb.from("task_followups").upsert(
