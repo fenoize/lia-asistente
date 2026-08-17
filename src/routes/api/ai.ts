@@ -392,12 +392,22 @@ export const Route = createFileRoute("/api/ai")({
             system,
             messages: await convertToModelMessages(uiMessages),
             maxOutputTokens: 4000,
-            onFinish: async ({ usage }: any) => {
+          });
+
+          const originalResponse = result.toTextStreamResponse();
+
+          // onFinish no funciona en Cloudflare Workers porque el worker termina
+          // antes de que el callback async complete. En cambio, usamos un
+          // TransformStream: su flush() se llama ANTES de que el readable cierre,
+          // mientras el worker todavía está vivo procesando el stream.
+          const { readable, writable } = new TransformStream({
+            async flush() {
               try {
+                const usage = await result.usage;
                 if (!usage) return;
-                const prompt = usage.promptTokens ?? usage.inputTokens ?? 0;
-                const completion = usage.completionTokens ?? usage.outputTokens ?? 0;
-                const total = usage.totalTokens ?? prompt + completion;
+                const prompt = (usage as any).promptTokens ?? (usage as any).inputTokens ?? 0;
+                const completion = (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0;
+                const total = (usage as any).totalTokens ?? prompt + completion;
                 await sb.from("token_usage").insert({
                   user_id: authedUserId,
                   prompt_tokens: prompt,
@@ -410,7 +420,9 @@ export const Route = createFileRoute("/api/ai")({
               }
             },
           });
-          return result.toTextStreamResponse();
+
+          originalResponse.body!.pipeTo(writable);
+          return new Response(readable, { headers: originalResponse.headers });
         } catch (e: any) {
           const msg = String(e?.message ?? e);
           if (/429|rate/i.test(msg)) {
