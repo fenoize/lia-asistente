@@ -5,33 +5,29 @@ import { useAuth } from "@/hooks/use-auth";
 export type DashboardBlockKey =
   | "brief"
   | "followup"
-  | "priority"
-  | "attention"
+  | "actions"
   | "timeline"
-  | "tasks"
   | "projects"
   | "weekly"
   | "finance";
 
 export const DASHBOARD_BLOCKS: Record<DashboardBlockKey, { label: string; description: string }> = {
   brief: { label: "Resumen Diario", description: "Briefing generado por LIA cada día. Siempre arriba." },
-  followup: { label: "Necesita tu atención", description: "Intervenciones proactivas de LIA sobre tus tareas." },
-  priority: { label: "Próximas acciones", description: "Acciones priorizadas para hoy." },
-  attention: { label: "Requiere Atención", description: "Vencidas, próxima reunión y progreso." },
+  followup: { label: "LIA sugiere", description: "Intervenciones proactivas de LIA sobre tus tareas." },
+  actions: { label: "Acciones del día", description: "Tareas, recordatorios y reuniones priorizados por urgencia." },
   timeline: { label: "Recordatorios y Eventos", description: "Línea de tiempo combinada del día." },
-  tasks: { label: "Tareas del Día", description: "Lista de tareas pendientes y completadas hoy." },
   projects: { label: "Proyectos Activos", description: "Top 3 proyectos en movimiento." },
   weekly: { label: "Esta Semana", description: "Métricas de productividad semanal." },
   finance: { label: "Finanzas del Mes", description: "Ingresos, gastos y próximos vencimientos." },
 };
 
 export const DEFAULT_ORDER: DashboardBlockKey[] = [
-  "followup", "priority", "attention", "timeline", "tasks", "projects", "weekly", "finance",
+  "followup", "actions", "timeline", "projects", "weekly", "finance",
 ];
 
 export const DEFAULT_BLOCKS: Record<DashboardBlockKey, boolean> = {
-  brief: true, followup: true, priority: true, attention: true, timeline: true,
-  tasks: true, projects: true, weekly: true, finance: true,
+  brief: true, followup: true, actions: true, timeline: true,
+  projects: true, weekly: true, finance: true,
 };
 
 const CACHE_KEY = "dashboard:blocks:cache";
