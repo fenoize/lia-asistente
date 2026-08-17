@@ -293,7 +293,7 @@ export function ChatInterface() {
           .order("created_at", { ascending: false })
           .limit(PAGE_SIZE),
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
-        supabase.from("tasks").select("title,due_date,priority,status").in("status", ["borrador", "en_curso"]).limit(20),
+        supabase.from("tasks").select("title,due_date,priority,status,project").in("status", ["borrador", "en_curso"]).limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
       ]);
