@@ -501,57 +501,23 @@ function Dashboard() {
             />
           );
         }
-        if (key === "priority") {
+        if (key === "actions") {
           return (
-            <PriorityActionsWidget
-              key="priority"
+            <DayActionsBlock
+              key="actions"
               tasks={tasks}
               reminders={reminders}
               meetings={meetings}
               projectMap={projectMap}
+              contactMap={contactMap}
+              isOverdue={isOverdue}
+              isToday={isToday}
+              onToggleTask={toggleTask}
+              onOpenTask={(t) => setEditingTask(t)}
+              onToggleReminder={toggleReminder}
+              onOpenReminder={(r) => setEditingReminder(r)}
+              onOpenMeeting={(m) => setEditingMeeting(m)}
             />
-          );
-        }
-        if (key === "attention") {
-          return (
-            <Block key="attention" label="REQUIERE ATENCIÓN">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                <AttentionMiniCard
-                  to="/tasks"
-                  icon={<IconAlertCircle size={16} stroke={1.75} color="#f87171" />}
-                  label="Vencidas"
-                  valueNode={<span style={{ color: "#f87171" }}>{overdueCount}</span>}
-                  hint="tareas"
-                />
-                <AttentionMiniCard
-                  to="/meetings"
-                  icon={<IconCalendar size={16} stroke={1.75} color="#818cf8" />}
-                  label="Reunión"
-                  valueNode={
-                    nextMeeting ? (
-                      <span style={{ color: "#f2f2f2" }}>
-                        {formatTimeInTimeZone(nextMeeting.datetime, detectUserTimeZone())}
-                      </span>
-                    ) : (
-                      <span style={{ color: "#444" }}>—</span>
-                    )
-                  }
-                  hint={nextMeeting ? timeUntil(nextMeeting.datetime) : "sin próximas"}
-                />
-                <AttentionMiniCard
-                  to="/tasks"
-                  icon={<IconCheck size={16} stroke={2.5} color="#4ade80" />}
-                  label="Progreso"
-                  valueNode={
-                    <>
-                      <span style={{ color: "#f2f2f2" }}>{monthProgress.done}</span>
-                      <span style={{ color: "#444" }}>/{monthProgress.total}</span>
-                    </>
-                  }
-                  hint="este mes"
-                />
-              </div>
-            </Block>
           );
         }
         if (key === "timeline") {
