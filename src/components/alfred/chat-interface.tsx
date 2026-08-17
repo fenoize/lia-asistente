@@ -293,7 +293,7 @@ export function ChatInterface() {
           .order("created_at", { ascending: false })
           .limit(PAGE_SIZE),
         supabase.from("profiles").select("name").eq("id", user.id).maybeSingle(),
-        supabase.from("tasks").select("title,due_date,priority,status").in("status", ["borrador", "en_curso"]).limit(20),
+        supabase.from("tasks").select("title,due_date,priority,status,project").in("status", ["borrador", "en_curso"]).limit(20),
         supabase.from("meetings").select("title,datetime").gte("datetime", startOfDay.toISOString()).order("datetime").limit(15),
         supabase.from("reminders").select("title,datetime,done").eq("done", false).gte("datetime", startOfDay.toISOString()).limit(15),
       ]);
@@ -316,6 +316,55 @@ export function ChatInterface() {
       };
       loadedForUser.current = user.id;
       setInitialLoading(false);
+
+      // PM check-in: mensaje proactivo una vez por día, sin tokens de IA
+      const todayStr = new Date().toISOString().split("T")[0];
+      if (sessionStorage.getItem("lia_pm_checkin") !== todayStr) {
+        const twoDaysLater = new Date(startOfDay.getTime() + 2 * 24 * 60 * 60 * 1000 + 23 * 60 * 60 * 1000 + 59 * 60 * 1000);
+        const dueSoon = (t.data ?? []).filter(
+          (task: any) => task.due_date && new Date(task.due_date) <= twoDaysLater
+        ).sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+
+        if (dueSoon.length > 0) {
+          const OPENERS = [
+            "Che, ¿cómo vamos con estas tareas? 👀",
+            "Ojo que se acercan algunos deadlines 📌",
+            "Te recuerdo que tienes tareas próximas a vencer:",
+            "Un momento — antes de arrancar, hay tareas que merecen atención:",
+            "Quick check: estas tareas vencen pronto 🗓️",
+          ];
+          const CLOSERS = [
+            "¿Necesitas ayuda con alguna de estas?",
+            "¿Empezamos con alguna ahora?",
+            "Avísame si quieres priorizar o mover alguna.",
+            "Dime si necesitas apoyo con algo de esto.",
+          ];
+          const opener = OPENERS[Math.floor(Math.random() * OPENERS.length)];
+          const closer = CLOSERS[Math.floor(Math.random() * CLOSERS.length)];
+
+          const today = new Date(startOfDay);
+          const tomorrow = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+
+          const taskLines = dueSoon.map((task: any) => {
+            const due = new Date(task.due_date);
+            const label =
+              due <= today ? "vence hoy" :
+              due <= tomorrow ? "vence mañana" :
+              "vence en 2 días";
+            const mention = task.project
+              ? ` · @${task.project.toLowerCase().replace(/\s+/g, "")}`
+              : "";
+            return `📌 ${task.title}${mention} — ${label}`;
+          });
+
+          const content = `${opener}\n\n${taskLines.join("\n")}\n\n${closer}`;
+          setMessages(prev => [
+            ...prev,
+            { id: `pm-${Date.now()}`, role: "assistant" as const, content, createdAt: Date.now() }
+          ]);
+          sessionStorage.setItem("lia_pm_checkin", todayStr);
+        }
+      }
     })();
     return () => { cancelled = true; };
   }, [user?.id]);
