@@ -25,11 +25,11 @@ import {
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 import {
-  PriorityActionsWidget,
   WeeklyInsightsWidget,
   ActiveProjectsWidget,
   FinanceSnapshotWidget,
 } from "@/components/dashboard/intelligent-widgets";
+import { DayActionsBlock } from "@/components/dashboard/day-actions-block";
 import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
 import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
 
@@ -536,63 +536,6 @@ function Dashboard() {
                     />
                   ),
                 )}
-              </div>
-            </Block>
-          );
-        }
-        if (key === "tasks") {
-          if (pendingTodayTasks.length === 0 && doneTodayTasks.length === 0) return null;
-          return (
-            <Block key="tasks" label="TAREAS DEL DÍA">
-              <div
-                style={{
-                  background: "#111111",
-                  border: "1px solid #1e1e1e",
-                  borderRadius: 12,
-                  padding: 8,
-                }}
-              >
-                <LayoutGroup>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {visiblePending.map((t) => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        overdue={isOverdue(t.due_date)}
-                        projectName={t.project_id ? projectMap[t.project_id] : undefined}
-                        assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
-                        onToggle={() => toggleTask(t)}
-                        onOpen={() => setEditingTask(t)}
-                      />
-                    ))}
-                    {pendingTodayTasks.length > 4 && !showAllTasks && (
-                      <button
-                        onClick={() => setShowAllTasks(true)}
-                        style={{
-                          fontSize: 12,
-                          color: "var(--text-tertiary)",
-                          marginTop: 4,
-                          paddingLeft: 10,
-                          textAlign: "left",
-                        }}
-                        className="hover:text-foreground transition-colors"
-                      >
-                        + {pendingTodayTasks.length - 4} más
-                      </button>
-                    )}
-                    {doneTodayTasks.map((t) => (
-                      <TaskRow
-                        key={t.id}
-                        task={t}
-                        overdue={false}
-                        projectName={t.project_id ? projectMap[t.project_id] : undefined}
-                        assigneeName={t.assigned_to ? contactMap[t.assigned_to] : undefined}
-                        onToggle={() => toggleTask(t)}
-                        onOpen={() => setEditingTask(t)}
-                      />
-                    ))}
-                  </div>
-                </LayoutGroup>
               </div>
             </Block>
           );

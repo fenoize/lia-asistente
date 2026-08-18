@@ -5,14 +5,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { IconChevronRight, IconFlame } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconCalendar,
+  IconChevronRight,
+  IconClock,
+  IconFeather,
+} from "@tabler/icons-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { normalizePrefs } from "@/lib/followup/config";
 import { deriveTaskState, evaluateTaskForFollowUp, summarizeAttention } from "@/lib/followup/engine";
 import { generateTaskFollowUp } from "@/lib/followup/messages";
-import type { FollowUpMemory, FollowUpPrefs, FollowUpTask, SuggestedAction } from "@/lib/followup/types";
+import type { FollowUpMemory, FollowUpPrefs, FollowUpTask, SuggestedAction, TaskState } from "@/lib/followup/types";
 
 const ACTION_LABEL: Partial<Record<SuggestedAction, string>> = {
   today: "Hoy",
@@ -26,6 +32,26 @@ const ACTION_LABEL: Partial<Record<SuggestedAction, string>> = {
   open: "Ver tarea",
   pick_date: "Elegir fecha",
 };
+
+const ACTION_STYLE: Partial<Record<SuggestedAction, { color: string; border: string; background: string }>> = {
+  complete: { color: "#4ade80", border: "rgba(74,222,128,0.2)", background: "rgba(74,222,128,0.06)" },
+  today: { color: "#818cf8", border: "rgba(129,140,248,0.2)", background: "rgba(129,140,248,0.05)" },
+  tomorrow: { color: "#818cf8", border: "rgba(129,140,248,0.2)", background: "rgba(129,140,248,0.05)" },
+  this_week: { color: "#818cf8", border: "rgba(129,140,248,0.2)", background: "rgba(129,140,248,0.05)" },
+  pick_date: { color: "#818cf8", border: "rgba(129,140,248,0.2)", background: "rgba(129,140,248,0.05)" },
+  open: { color: "#94a3b8", border: "#252525", background: "#151515" },
+  discard: { color: "#f87171", border: "rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.05)" },
+};
+
+const DEFAULT_ACTION_STYLE = { color: "#94a3b8", border: "#252525", background: "#151515" };
+
+function stateIcon(state: TaskState) {
+  if (state === "overdue" || state === "due_today")
+    return { Icon: IconClock, color: "#f87171", background: "rgba(248,113,113,0.1)" };
+  if (state === "stale" || state === "blocked")
+    return { Icon: IconAlertTriangle, color: "#fbbf24", background: "rgba(251,191,36,0.08)" };
+  return { Icon: IconCalendar, color: "#818cf8", background: "rgba(99,102,241,0.1)" };
+}
 
 const STATE_CHIPS: { key: string; label: string; color: string }[] = [
   { key: "overdue", label: "atrasadas", color: "#f87171" },
@@ -183,9 +209,9 @@ export function ProactiveFollowUpWidget({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <IconFlame size={15} stroke={1.75} style={{ color: "#fb923c" }} />
-        <span style={{ fontSize: 10, letterSpacing: "0.12em", fontWeight: 700, color: "#fb923c" }}>
-          NECESITA TU ATENCIÓN
+        <IconFeather size={15} stroke={1.75} style={{ color: "#a78bfa" }} />
+        <span style={{ fontSize: 10, letterSpacing: "0.12em", fontWeight: 700, color: "#a78bfa" }}>
+          LIA SUGIERE
         </span>
       </div>
 
@@ -212,7 +238,9 @@ export function ProactiveFollowUpWidget({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {items.map(({ task, evaluation, message }) => (
+        {items.map(({ task, evaluation, message }) => {
+          const { Icon, color, background } = stateIcon(evaluation.task_state);
+          return (
           <div
             key={task.id}
             style={{
@@ -228,13 +256,28 @@ export function ProactiveFollowUpWidget({
               style={{
                 display: "flex",
                 alignItems: "flex-start",
-                gap: 8,
+                gap: 9,
                 textAlign: "left",
                 width: "100%",
                 cursor: "pointer",
                 background: "transparent",
               }}
             >
+              <span
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 999,
+                  background,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              >
+                <Icon size={12} stroke={1.9} style={{ color }} />
+              </span>
               <span style={{ fontSize: 13, color: "#e6e6e6", lineHeight: 1.45, flex: 1 }}>
                 {stripMentionSyntaxLoose(message)}
               </span>
@@ -242,27 +285,31 @@ export function ProactiveFollowUpWidget({
             </button>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 9 }}>
-              {evaluation.suggested_actions.map((action) => (
-                <button
-                  key={action}
-                  type="button"
-                  onClick={() => void runAction(task.id, action)}
-                  style={{
-                    fontSize: 11,
-                    color: action === "discard" ? "#f87171" : "#cbd5e1",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid #262626",
-                    borderRadius: 999,
-                    padding: "3px 10px",
-                    cursor: "pointer",
-                  }}
-                >
-                  {ACTION_LABEL[action] ?? action}
-                </button>
-              ))}
+              {evaluation.suggested_actions.map((action) => {
+                const s = ACTION_STYLE[action] ?? DEFAULT_ACTION_STYLE;
+                return (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={() => void runAction(task.id, action)}
+                    style={{
+                      fontSize: 11,
+                      color: s.color,
+                      background: s.background,
+                      border: `1px solid ${s.border}`,
+                      borderRadius: 999,
+                      padding: "4px 11px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {ACTION_LABEL[action] ?? action}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
