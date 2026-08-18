@@ -1,6 +1,7 @@
 // "Acciones del día" — tareas, recordatorios y reuniones del día combinados
 // en una sola lista ordenada por urgencia.
 
+import { useState } from "react";
 import { IconChecklist, IconFolder, IconUser } from "@tabler/icons-react";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
 
