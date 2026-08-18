@@ -1,6 +1,7 @@
 // "Acciones del día" — tareas, recordatorios y reuniones del día combinados
 // en una sola lista ordenada por urgencia.
 
+import { useState } from "react";
 import { IconChecklist, IconFolder, IconUser } from "@tabler/icons-react";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
 
@@ -159,7 +160,12 @@ export function DayActionsBlock({
   }
 
   rows.sort((a, b) => Number(a.done) - Number(b.done) || b.score - a.score);
-  if (rows.length === 0) return null;
+  const visibleRows = rows.filter((r) => !r.done);
+  if (visibleRows.length === 0) return null;
+
+  const [expanded, setExpanded] = useState(false);
+  const displayRows = expanded ? visibleRows : visibleRows.slice(0, 5);
+  const remaining = visibleRows.length - 5;
 
   return (
     <section>
@@ -181,7 +187,7 @@ export function DayActionsBlock({
           gap: 2,
         }}
       >
-        {rows.map((row) => (
+        {displayRows.map((row) => (
           <div
             key={row.key}
             style={{
@@ -206,15 +212,15 @@ export function DayActionsBlock({
             {row.onToggle ? (
               <button
                 type="button"
-                aria-label={row.done ? "Marcar como pendiente" : "Marcar como hecha"}
+                aria-label="Marcar como hecha"
                 onClick={row.onToggle}
                 style={{
                   width: 16,
                   height: 16,
                   marginTop: 2,
                   borderRadius: 5,
-                  border: `1px solid ${row.done ? "#4ade8055" : "#333"}`,
-                  background: row.done ? "rgba(74,222,128,0.12)" : "transparent",
+                  border: "1px solid #333",
+                  background: "transparent",
                   cursor: "pointer",
                   flexShrink: 0,
                 }}
@@ -229,8 +235,7 @@ export function DayActionsBlock({
                 onClick={row.onOpen}
                 style={{
                   fontSize: 13,
-                  color: row.done ? "#555" : "#e6e6e6",
-                  textDecoration: row.done ? "line-through" : "none",
+                  color: "#e6e6e6",
                   textAlign: "left",
                   background: "transparent",
                   cursor: "pointer",
@@ -287,6 +292,24 @@ export function DayActionsBlock({
             )}
           </div>
         ))}
+
+        {!expanded && remaining > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            style={{
+              fontSize: 12,
+              color: "#555",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              padding: "8px 10px",
+              textAlign: "left",
+            }}
+          >
+            Ver {remaining} más
+          </button>
+        )}
       </div>
     </section>
   );
