@@ -25,11 +25,11 @@ import {
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
 import {
-  PriorityActionsWidget,
   WeeklyInsightsWidget,
   ActiveProjectsWidget,
   FinanceSnapshotWidget,
 } from "@/components/dashboard/intelligent-widgets";
+import { DayActionsBlock } from "@/components/dashboard/day-actions-block";
 import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
 import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
 
