@@ -311,9 +311,6 @@ export function ProactiveFollowUpWidget({
           );
         })}
       </div>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
