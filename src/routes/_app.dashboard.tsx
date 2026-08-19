@@ -32,6 +32,7 @@ import {
 import { DayActionsBlock } from "@/components/dashboard/day-actions-block";
 import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
 import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
+import { WelcomeTutorial } from "@/components/onboarding/welcome-tutorial";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
