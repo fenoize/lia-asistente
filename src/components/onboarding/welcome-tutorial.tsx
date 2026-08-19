@@ -81,7 +81,7 @@ export function WelcomeTutorial({ userId }: { userId: string }) {
     } catch {
       /* noop */
     }
-    if (goToTasks) navigate({ to: "/tasks" });
+    if (goToTasks) navigate({ to: "/tasks", search: {} as never });
   }
 
   if (!open) return null;
