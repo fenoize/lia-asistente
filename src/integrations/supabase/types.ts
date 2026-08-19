@@ -677,6 +677,7 @@ export type Database = {
           preferred_model: string | null
           role: string | null
           timezone: string | null
+          tutorial_completed: boolean
           work_days: string[] | null
           work_end: string | null
           work_start: string | null
@@ -701,6 +702,7 @@ export type Database = {
           preferred_model?: string | null
           role?: string | null
           timezone?: string | null
+          tutorial_completed?: boolean
           work_days?: string[] | null
           work_end?: string | null
           work_start?: string | null
@@ -725,6 +727,7 @@ export type Database = {
           preferred_model?: string | null
           role?: string | null
           timezone?: string | null
+          tutorial_completed?: boolean
           work_days?: string[] | null
           work_end?: string | null
           work_start?: string | null
