@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -98,6 +99,7 @@ export function QuickCapture() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<MentionInputHandle>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const autoDetected = useMemo(() => detectType(text), [text]);
   const detected = manualType ?? autoDetected;
@@ -202,10 +204,11 @@ export function QuickCapture() {
     setPending(null);
   }
 
-  async function commit(snapshot: Snapshot) {
+  async function commit(snapshot: Snapshot, openAfter = false) {
     if (!user) return;
     setPending((p) => (p ? { ...p, status: "committing" } : p));
     try {
+      let createdId: string | null = null;
       const priorityMap = { urgent: "high", high: "high", medium: "medium", low: "low" } as const;
 
       let ai: {
@@ -240,49 +243,62 @@ export function QuickCapture() {
       const datetime = userOverrideDt || aiDt || fallbackDt;
 
       if (type === "task") {
-        const { error } = await supabase.from("tasks").insert({
+        const { data, error } = await supabase.from("tasks").insert({
           user_id: user.id,
           title,
           description,
           priority: ai?.priority ?? priorityMap[snapshot.priority],
           due_date: userOverrideDt || aiDt || null,
-        });
+        }).select("id").single();
         if (error) throw error;
+        createdId = data?.id ?? null;
       } else if (type === "meeting") {
-        const { error } = await supabase.from("meetings").insert({
+        const { data, error } = await supabase.from("meetings").insert({
           user_id: user.id,
           title,
           datetime,
           notes: description,
           duration_minutes: ai?.duration_minutes ?? 60,
-        });
+        }).select("id").single();
         if (error) throw error;
+        createdId = data?.id ?? null;
       } else if (type === "reminder") {
-        const { error } = await supabase.from("reminders").insert({
+        const { data, error } = await supabase.from("reminders").insert({
           user_id: user.id,
           title,
           datetime,
-        });
+        }).select("id").single();
         if (error) throw error;
+        createdId = data?.id ?? null;
       } else if (type === "project") {
-        const { error } = await supabase.from("projects").insert({
+        const { data, error } = await supabase.from("projects").insert({
           user_id: user.id,
           name: title,
           notes: description,
           due_date: userOverrideDt || aiDt || null,
-        });
+        }).select("id").single();
         if (error) throw error;
+        createdId = data?.id ?? null;
       } else {
-        const { error } = await supabase.from("notes").insert({
+        const { data, error } = await supabase.from("notes").insert({
           user_id: user.id,
           content: description || snapshot.text,
           type: type === "note" && (snapshot.noteKind === "idea" || snapshot.noteKind === "highlight") ? snapshot.noteKind : "note",
-        });
+        }).select("id").single();
         if (error) throw error;
+        createdId = data?.id ?? null;
       }
 
       toast.success("Guardado", { description: title });
       setPending(null);
+
+      if (openAfter) {
+        if (type === "task" && createdId) navigate({ to: "/tasks", search: { open: createdId } as any });
+        else if (type === "project" && createdId) navigate({ to: "/projects", search: { open: createdId } as any });
+        else if (type === "meeting" && createdId) navigate({ to: "/meetings", search: { open: createdId } as any });
+        else if (type === "reminder" && createdId) navigate({ to: "/reminders", search: { open: createdId } as any });
+        else navigate({ to: "/notes" });
+      }
     } catch (e: any) {
       setPending((p) =>
         p ? { ...p, status: "error", error: e?.message ?? "No se pudo guardar" } : p,
@@ -290,7 +306,7 @@ export function QuickCapture() {
     }
   }
 
-  function queueSave(opts?: { keepOpen?: boolean }) {
+  function queueSave(opts?: { openAfter?: boolean }) {
     if (!text.trim() || !user) return;
     const snapshot: Snapshot = {
       text,
@@ -301,17 +317,18 @@ export function QuickCapture() {
       dtTouched,
     };
 
-    if (opts?.keepOpen) {
-      resetForm();
-      setTimeout(() => inputRef.current?.focus(), 30);
-    } else {
-      // Close modal immediately (optimistic)
-      close();
-    }
+    close();
 
     // Replace any existing pending
     clearPendingTimers();
     const id = Date.now();
+
+    if (opts?.openAfter) {
+      setPending({ id, snapshot, status: "committing", countdown: 0 });
+      commit(snapshot, true);
+      return;
+    }
+
     const COUNTDOWN_SECS = 3;
     setPending({ id, snapshot, status: "queued", countdown: COUNTDOWN_SECS });
 
@@ -535,7 +552,7 @@ export function QuickCapture() {
               </span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => queueSave({ keepOpen: true })}
+                  onClick={() => queueSave({ openAfter: true })}
                   disabled={!text.trim()}
                   style={{
                     fontSize: 12,
