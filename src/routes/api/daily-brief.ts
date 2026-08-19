@@ -47,7 +47,29 @@ export const Route = createFileRoute("/api/daily-brief")({
             system: buildBriefSystemPrompt(ctx),
             prompt: "Genera el resumen del día siguiendo exactamente la estructura indicada.",
           });
-          return result.toTextStreamResponse();
+          const originalResponse = result.toTextStreamResponse();
+          const { readable, writable } = new TransformStream({
+            async flush() {
+              try {
+                const usage = await result.usage;
+                if (!usage) return;
+                const prompt = (usage as any).promptTokens ?? (usage as any).inputTokens ?? 0;
+                const completion = (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0;
+                const total = (usage as any).totalTokens ?? prompt + completion;
+                await sb.from("token_usage").insert({
+                  user_id: claimsRes.claims.sub,
+                  prompt_tokens: prompt,
+                  completion_tokens: completion,
+                  total_tokens: total,
+                  model: DEFAULT_MODEL,
+                });
+              } catch (err) {
+                console.error("token_usage insert failed (brief)", err);
+              }
+            },
+          });
+          originalResponse.body!.pipeTo(writable);
+          return new Response(readable, { headers: originalResponse.headers });
         } catch (e: any) {
           const msg = String(e?.message ?? e);
           if (/429|rate/i.test(msg)) {
