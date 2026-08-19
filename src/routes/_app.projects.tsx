@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
 import { useEffect, useMemo, useState } from "react";
 import { IconBriefcase, IconPlus, IconPencil, IconTrash, IconSearch, IconUser, IconCalendar, IconChevronDown } from "@tabler/icons-react";
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/projects")({
+  validateSearch: (s: Record<string, unknown>): { open?: string } =>
+    typeof s.open === "string" ? { open: s.open } : {},
   component: ProjectsPage,
 });
 
@@ -107,6 +109,17 @@ function ProjectsPage() {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  const navigate = useNavigate();
+  const { open: openId } = Route.useSearch();
+  useEffect(() => {
+    if (!openId || !user) return;
+    (async () => {
+      const { data } = await supabase.from("projects").select("*").eq("id", openId).maybeSingle();
+      if (data) setEditing(data as Project);
+      navigate({ to: "/projects", search: {} as any, replace: true });
+    })();
+  }, [openId, user, navigate]);
 
   const overdueByProject = useMemo(() => {
     const m: Record<string, number> = {};
