@@ -20,9 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/projects")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    open: typeof s.open === "string" ? s.open : undefined,
-  }),
+  validateSearch: (s: Record<string, unknown>): { open?: string } =>
+    typeof s.open === "string" ? { open: s.open } : {},
   component: ProjectsPage,
 });
 
