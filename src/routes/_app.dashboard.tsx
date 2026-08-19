@@ -355,6 +355,7 @@ function Dashboard() {
 
   return (
     <div>
+      {user?.id ? <WelcomeTutorial userId={user.id} /> : null}
       {/* Greeting */}
       <header style={{ marginBottom: 32 }}>
         <h1
