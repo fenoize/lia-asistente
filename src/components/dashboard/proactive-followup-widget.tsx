@@ -108,7 +108,16 @@ export function ProactiveFollowUpWidget({
 
   useEffect(() => {
     void load();
-  }, [load]);
+    const channel = supabase
+      .channel(`followup-tasks-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${userId}` }, () => {
+        void load();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [load, userId]);
 
   const counts = useMemo(() => summarizeAttention(tasks, memories), [tasks, memories]);
 
@@ -165,6 +174,8 @@ export function ProactiveFollowUpWidget({
       else navigate({ to: "/tasks", search: { open: taskId } as never });
       return;
     }
+
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
 
     if (action === "today" || action === "tomorrow" || action === "this_week") {
       const target = new Date(now);
@@ -278,7 +289,7 @@ export function ProactiveFollowUpWidget({
               >
                 <Icon size={12} stroke={1.9} style={{ color }} />
               </span>
-              <span style={{ fontSize: 13, color: "#e6e6e6", lineHeight: 1.45, flex: 1 }}>
+              <span style={{ fontSize: 13, color: "#e6e6e6", lineHeight: 1.45, flex: 1, wordBreak: "break-word" }}>
                 {stripMentionSyntaxLoose(message)}
               </span>
               <IconChevronRight size={14} stroke={1.75} style={{ color: "#555", marginTop: 3 }} />
