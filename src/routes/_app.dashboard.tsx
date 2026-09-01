@@ -4,7 +4,7 @@ import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup, Reorder } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { usePrefetchStore } from "@/hooks/use-prefetch-store";
@@ -21,6 +21,10 @@ import {
   IconSparkles,
   IconFolder,
   IconUser,
+  IconLayoutGrid,
+  IconGripVertical,
+  IconEye,
+  IconEyeOff,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
@@ -31,7 +35,7 @@ import {
 } from "@/components/dashboard/intelligent-widgets";
 import { DayActionsBlock } from "@/components/dashboard/day-actions-block";
 import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
-import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
+import { useDashboardBlocks, DASHBOARD_BLOCKS } from "@/hooks/use-dashboard-blocks";
 import { WelcomeTutorial } from "@/components/onboarding/welcome-tutorial";
 
 export const Route = createFileRoute("/_app/dashboard")({
