@@ -4,7 +4,7 @@ import { EditMeetingModal } from "@/components/meetings/edit-meeting-modal";
 import { EditTaskModal, type EditableTask } from "@/components/tasks/edit-task-modal";
 import { EditReminderModal } from "@/components/reminders/edit-reminder-modal";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup, Reorder } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useAssistant } from "@/hooks/use-assistant";
 import { usePrefetchStore } from "@/hooks/use-prefetch-store";
@@ -21,6 +21,10 @@ import {
   IconSparkles,
   IconFolder,
   IconUser,
+  IconLayoutGrid,
+  IconGripVertical,
+  IconEye,
+  IconEyeOff,
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { currentDateInTimeZone, detectUserTimeZone, formatTimeInTimeZone, getDayRangeUTC } from "@/lib/timezone";
@@ -31,7 +35,7 @@ import {
 } from "@/components/dashboard/intelligent-widgets";
 import { DayActionsBlock } from "@/components/dashboard/day-actions-block";
 import { ProactiveFollowUpWidget } from "@/components/dashboard/proactive-followup-widget";
-import { useDashboardBlocks } from "@/hooks/use-dashboard-blocks";
+import { useDashboardBlocks, DASHBOARD_BLOCKS } from "@/hooks/use-dashboard-blocks";
 import { WelcomeTutorial } from "@/components/onboarding/welcome-tutorial";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -83,7 +87,8 @@ function Dashboard() {
   const assistant = useAssistant();
   const userTimeZone = detectUserTimeZone();
   const prefetch = usePrefetchStore();
-  const { blocks, order, isReady } = useDashboardBlocks();
+  const { blocks, order, isReady, toggle, reorder } = useDashboardBlocks();
+  const [editMode, setEditMode] = useState(false);
   const [name, setName] = useState("");
   const [brief, setBrief] = useState("");
   const [briefLoading, setBriefLoading] = useState(false);
@@ -354,25 +359,116 @@ function Dashboard() {
     .toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })
     .replace(/^\w/, (c) => c.toUpperCase());
 
+  function renderBlock(key: typeof order[number]) {
+    if (key === "followup") {
+      if (!user) return null;
+      return (
+        <ProactiveFollowUpWidget
+          userId={user.id}
+          onOpenTask={(taskId: string) => {
+            const found = tasks.find((t) => t.id === taskId);
+            if (found) setEditingTask(found);
+          }}
+        />
+      );
+    }
+    if (key === "actions") {
+      return (
+        <DayActionsBlock
+          tasks={tasks}
+          reminders={reminders}
+          meetings={meetings}
+          projectMap={projectMap}
+          contactMap={contactMap}
+          isOverdue={isOverdue}
+          isToday={isToday}
+          onToggleTask={toggleTask}
+          onOpenTask={(t) => setEditingTask(t)}
+          onToggleReminder={toggleReminder}
+          onOpenReminder={(r) => setEditingReminder(r)}
+          onOpenMeeting={(m) => setEditingMeeting(m)}
+        />
+      );
+    }
+    if (key === "timeline") {
+      if (timeline.length === 0) return null;
+      return (
+        <Block label="RECORDATORIOS Y EVENTOS">
+          <div className="space-y-2">
+            {timeline.map((item) =>
+              item.kind === "reminder" ? (
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
+              ) : (
+                <MeetingRow
+                  key={`m-${item.id}`}
+                  meeting={item.data}
+                  onClick={() => setEditingMeeting(item.data)}
+                />
+              ),
+            )}
+          </div>
+        </Block>
+      );
+    }
+    if (key === "projects" && user) return <ActiveProjectsWidget userId={user.id} />;
+    if (key === "weekly" && user) return <WeeklyInsightsWidget userId={user.id} />;
+    if (key === "finance" && user) return <FinanceSnapshotWidget userId={user.id} />;
+    return null;
+  }
+
   return (
     <div>
+      <style>{`
+        @keyframes liaJiggle {
+          0%, 100% { transform: rotate(-0.8deg); }
+          50% { transform: rotate(0.8deg); }
+        }
+      `}</style>
       {user?.id ? <WelcomeTutorial userId={user.id} /> : null}
       {/* Greeting */}
-      <header style={{ marginBottom: 32 }}>
-        <h1
+      <header style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              letterSpacing: "-0.03em",
+              color: "#f2f2f2",
+              lineHeight: 1.15,
+            }}
+          >
+            {greeting}{name ? `, ${name}` : ""}.
+          </h1>
+          <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
+            {dateLabel}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditMode((v) => !v)}
           style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            color: "#f2f2f2",
-            lineHeight: 1.15,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 12,
+            color: editMode ? "#6366f1" : "#555",
+            background: "transparent",
+            border: "none",
+            padding: "4px 2px",
+            cursor: "pointer",
+            flexShrink: 0,
+            marginTop: 4,
           }}
         >
-          {greeting}{name ? `, ${name}` : ""}.
-        </h1>
-        <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
-          {dateLabel}
-        </p>
+          {editMode ? (
+            "Listo"
+          ) : (
+            <>
+              <IconLayoutGrid size={14} stroke={1.75} />
+              Editar
+            </>
+          )}
+        </button>
       </header>
 
       {!isReady && (
@@ -488,65 +584,69 @@ function Dashboard() {
       })}
 
       {/* Ordered, toggleable blocks (excluding brief which is always at top) */}
-      {order.map((key) => {
-        if (!blocks[key]) return null;
-        if (key === "followup") {
-          if (!user) return null;
-          return (
-            <ProactiveFollowUpWidget
-              key="followup"
-              userId={user.id}
-              onOpenTask={(taskId: string) => {
-                const found = tasks.find((t) => t.id === taskId);
-                if (found) setEditingTask(found);
-              }}
-            />
-          );
-        }
-        if (key === "actions") {
-          return (
-            <DayActionsBlock
-              key="actions"
-              tasks={tasks}
-              reminders={reminders}
-              meetings={meetings}
-              projectMap={projectMap}
-              contactMap={contactMap}
-              isOverdue={isOverdue}
-              isToday={isToday}
-              onToggleTask={toggleTask}
-              onOpenTask={(t) => setEditingTask(t)}
-              onToggleReminder={toggleReminder}
-              onOpenReminder={(r) => setEditingReminder(r)}
-              onOpenMeeting={(m) => setEditingMeeting(m)}
-            />
-          );
-        }
-        if (key === "timeline") {
-          if (timeline.length === 0) return null;
-          return (
-            <Block key="timeline" label="RECORDATORIOS Y EVENTOS">
-              <div className="space-y-2">
-                {timeline.map((item) =>
-                  item.kind === "reminder" ? (
-                    <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
-                  ) : (
-                    <MeetingRow
-                      key={`m-${item.id}`}
-                      meeting={item.data}
-                      onClick={() => setEditingMeeting(item.data)}
-                    />
-                  ),
-                )}
+      {editMode ? (
+        <Reorder.Group axis="y" values={order} onReorder={reorder} as="div">
+          {order.map((key) => (
+            <Reorder.Item key={key} value={key} as="div" style={{ listStyle: "none" }}>
+              <div
+                style={{
+                  position: "relative",
+                  opacity: blocks[key] ? 1 : 0.4,
+                  animation: "liaJiggle 0.22s ease-in-out infinite alternate",
+                  marginBottom: 24,
+                }}
+              >
+                {renderBlock(key)}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "0 16px",
+                    background: "rgba(0,0,0,0.55)",
+                    borderRadius: 12,
+                    cursor: "grab",
+                  }}
+                >
+                  <IconGripVertical size={16} stroke={1.75} style={{ color: "#444", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: "#ccc", flex: 1, minWidth: 0 }}>
+                    {DASHBOARD_BLOCKS[key].label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggle(key); }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 4,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                    aria-label={blocks[key] ? "Ocultar bloque" : "Mostrar bloque"}
+                  >
+                    {blocks[key] ? (
+                      <IconEye size={18} stroke={1.75} style={{ color: "#6366f1" }} />
+                    ) : (
+                      <IconEyeOff size={18} stroke={1.75} style={{ color: "#444" }} />
+                    )}
+                  </button>
+                </div>
               </div>
-            </Block>
-          );
-        }
-        if (key === "projects" && user) return <ActiveProjectsWidget key="projects" userId={user.id} />;
-        if (key === "weekly" && user) return <WeeklyInsightsWidget key="weekly" userId={user.id} />;
-        if (key === "finance" && user) return <FinanceSnapshotWidget key="finance" userId={user.id} />;
-        return null;
-      })}
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
+      ) : (
+        order.map((key) => {
+          if (!blocks[key]) return null;
+          return <div key={key}>{renderBlock(key)}</div>;
+        })
+      )}
 
       {/* Pendiente de resumen (kept, always shown when relevant) */}
       {pastMeetingsWithoutNotes.length > 0 && (
