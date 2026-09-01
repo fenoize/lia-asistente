@@ -363,21 +363,49 @@ function Dashboard() {
     <div>
       {user?.id ? <WelcomeTutorial userId={user.id} /> : null}
       {/* Greeting */}
-      <header style={{ marginBottom: 32 }}>
-        <h1
+      <header style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 600,
+              letterSpacing: "-0.03em",
+              color: "#f2f2f2",
+              lineHeight: 1.15,
+            }}
+          >
+            {greeting}{name ? `, ${name}` : ""}.
+          </h1>
+          <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
+            {dateLabel}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditMode((v) => !v)}
           style={{
-            fontSize: 28,
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            color: "#f2f2f2",
-            lineHeight: 1.15,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            fontSize: 12,
+            color: editMode ? "#6366f1" : "#555",
+            background: "transparent",
+            border: "none",
+            padding: "4px 2px",
+            cursor: "pointer",
+            flexShrink: 0,
+            marginTop: 4,
           }}
         >
-          {greeting}{name ? `, ${name}` : ""}.
-        </h1>
-        <p style={{ fontSize: 13, color: "#555", marginTop: 4 }}>
-          {dateLabel}
-        </p>
+          {editMode ? (
+            "Listo"
+          ) : (
+            <>
+              <IconLayoutGrid size={14} stroke={1.75} />
+              Editar
+            </>
+          )}
+        </button>
       </header>
 
       {!isReady && (
