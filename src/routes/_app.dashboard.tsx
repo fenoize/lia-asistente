@@ -418,6 +418,12 @@ function Dashboard() {
 
   return (
     <div>
+      <style>{`
+        @keyframes liaJiggle {
+          0%, 100% { transform: rotate(-0.8deg); }
+          50% { transform: rotate(0.8deg); }
+        }
+      `}</style>
       {user?.id ? <WelcomeTutorial userId={user.id} /> : null}
       {/* Greeting */}
       <header style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
