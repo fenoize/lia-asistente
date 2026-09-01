@@ -590,28 +590,33 @@ function Dashboard() {
             <Reorder.Item key={key} value={key} as="div" style={{ listStyle: "none" }}>
               <div
                 style={{
-                  position: "relative",
+                  display: "grid",
+                  gridTemplate: "1fr / 1fr",
                   opacity: blocks[key] ? 1 : 0.4,
-                  animation: "liaJiggle 0.22s ease-in-out infinite alternate",
+                  animation: "liaJiggle 0.26s ease-in-out infinite alternate",
                   marginBottom: 24,
                 }}
               >
-                {renderBlock(key)}
+                {/* Capa 1: contenido del bloque */}
+                <div style={{ gridArea: "1 / 1", minHeight: 56 }}>
+                  {renderBlock(key)}
+                </div>
+
+                {/* Capa 2: overlay — aparece encima por orden DOM */}
                 <div
                   style={{
-                    position: "absolute",
-                    inset: 0,
+                    gridArea: "1 / 1",
                     zIndex: 10,
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
                     padding: "0 16px",
-                    background: "rgba(0,0,0,0.55)",
+                    background: "rgba(0,0,0,0.6)",
                     borderRadius: 12,
                     cursor: "grab",
                   }}
                 >
-                  <IconGripVertical size={16} stroke={1.75} style={{ color: "#444", flexShrink: 0 }} />
+                  <IconGripVertical size={16} stroke={1.75} style={{ color: "#888", flexShrink: 0 }} />
                   <span style={{ fontSize: 13, color: "#ccc", flex: 1, minWidth: 0 }}>
                     {DASHBOARD_BLOCKS[key].label}
                   </span>
@@ -630,17 +635,16 @@ function Dashboard() {
                     }}
                     aria-label={blocks[key] ? "Ocultar bloque" : "Mostrar bloque"}
                   >
-                    {blocks[key] ? (
-                      <IconEye size={18} stroke={1.75} style={{ color: "#6366f1" }} />
-                    ) : (
-                      <IconEyeOff size={18} stroke={1.75} style={{ color: "#444" }} />
-                    )}
+                    {blocks[key]
+                      ? <IconEye size={18} stroke={1.75} style={{ color: "#6366f1" }} />
+                      : <IconEyeOff size={18} stroke={1.75} style={{ color: "#666" }} />}
                   </button>
                 </div>
               </div>
             </Reorder.Item>
           ))}
         </Reorder.Group>
+
       ) : (
         order.map((key) => {
           if (!blocks[key]) return null;
