@@ -521,65 +521,69 @@ function Dashboard() {
       })}
 
       {/* Ordered, toggleable blocks (excluding brief which is always at top) */}
-      {order.map((key) => {
-        if (!blocks[key]) return null;
-        if (key === "followup") {
-          if (!user) return null;
-          return (
-            <ProactiveFollowUpWidget
-              key="followup"
-              userId={user.id}
-              onOpenTask={(taskId: string) => {
-                const found = tasks.find((t) => t.id === taskId);
-                if (found) setEditingTask(found);
-              }}
-            />
-          );
-        }
-        if (key === "actions") {
-          return (
-            <DayActionsBlock
-              key="actions"
-              tasks={tasks}
-              reminders={reminders}
-              meetings={meetings}
-              projectMap={projectMap}
-              contactMap={contactMap}
-              isOverdue={isOverdue}
-              isToday={isToday}
-              onToggleTask={toggleTask}
-              onOpenTask={(t) => setEditingTask(t)}
-              onToggleReminder={toggleReminder}
-              onOpenReminder={(r) => setEditingReminder(r)}
-              onOpenMeeting={(m) => setEditingMeeting(m)}
-            />
-          );
-        }
-        if (key === "timeline") {
-          if (timeline.length === 0) return null;
-          return (
-            <Block key="timeline" label="RECORDATORIOS Y EVENTOS">
-              <div className="space-y-2">
-                {timeline.map((item) =>
-                  item.kind === "reminder" ? (
-                    <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
-                  ) : (
-                    <MeetingRow
-                      key={`m-${item.id}`}
-                      meeting={item.data}
-                      onClick={() => setEditingMeeting(item.data)}
-                    />
-                  ),
-                )}
+      {editMode ? (
+        <Reorder.Group axis="y" values={order} onReorder={reorder} as="div">
+          {order.map((key) => (
+            <Reorder.Item key={key} value={key} as="div" style={{ listStyle: "none" }}>
+              <div
+                style={{
+                  position: "relative",
+                  opacity: blocks[key] ? 1 : 0.4,
+                  animation: "liaJiggle 0.22s ease-in-out infinite alternate",
+                  marginBottom: 24,
+                }}
+              >
+                {renderBlock(key)}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "0 16px",
+                    background: "rgba(0,0,0,0.55)",
+                    borderRadius: 12,
+                    cursor: "grab",
+                  }}
+                >
+                  <IconGripVertical size={16} stroke={1.75} style={{ color: "#444", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: "#ccc", flex: 1, minWidth: 0 }}>
+                    {DASHBOARD_BLOCKS[key].label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggle(key); }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      padding: 4,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                    aria-label={blocks[key] ? "Ocultar bloque" : "Mostrar bloque"}
+                  >
+                    {blocks[key] ? (
+                      <IconEye size={18} stroke={1.75} style={{ color: "#6366f1" }} />
+                    ) : (
+                      <IconEyeOff size={18} stroke={1.75} style={{ color: "#444" }} />
+                    )}
+                  </button>
+                </div>
               </div>
-            </Block>
-          );
-        }
-        if (key === "projects" && user) return <ActiveProjectsWidget key="projects" userId={user.id} />;
-        if (key === "weekly" && user) return <WeeklyInsightsWidget key="weekly" userId={user.id} />;
-        if (key === "finance" && user) return <FinanceSnapshotWidget key="finance" userId={user.id} />;
-        return null;
-      })}
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
+      ) : (
+        order.map((key) => {
+          if (!blocks[key]) return null;
+          return <div key={key}>{renderBlock(key)}</div>;
+        })
+      )}
 
       {/* Pendiente de resumen (kept, always shown when relevant) */}
       {pastMeetingsWithoutNotes.length > 0 && (
