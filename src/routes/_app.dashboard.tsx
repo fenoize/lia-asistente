@@ -359,6 +359,63 @@ function Dashboard() {
     .toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" })
     .replace(/^\w/, (c) => c.toUpperCase());
 
+  function renderBlock(key: typeof order[number]) {
+    if (key === "followup") {
+      if (!user) return null;
+      return (
+        <ProactiveFollowUpWidget
+          userId={user.id}
+          onOpenTask={(taskId: string) => {
+            const found = tasks.find((t) => t.id === taskId);
+            if (found) setEditingTask(found);
+          }}
+        />
+      );
+    }
+    if (key === "actions") {
+      return (
+        <DayActionsBlock
+          tasks={tasks}
+          reminders={reminders}
+          meetings={meetings}
+          projectMap={projectMap}
+          contactMap={contactMap}
+          isOverdue={isOverdue}
+          isToday={isToday}
+          onToggleTask={toggleTask}
+          onOpenTask={(t) => setEditingTask(t)}
+          onToggleReminder={toggleReminder}
+          onOpenReminder={(r) => setEditingReminder(r)}
+          onOpenMeeting={(m) => setEditingMeeting(m)}
+        />
+      );
+    }
+    if (key === "timeline") {
+      if (timeline.length === 0) return null;
+      return (
+        <Block label="RECORDATORIOS Y EVENTOS">
+          <div className="space-y-2">
+            {timeline.map((item) =>
+              item.kind === "reminder" ? (
+                <ReminderPill key={`r-${item.id}`} reminder={item.data} onClick={() => setEditingReminder(item.data)} onComplete={() => toggleReminder(item.data)} />
+              ) : (
+                <MeetingRow
+                  key={`m-${item.id}`}
+                  meeting={item.data}
+                  onClick={() => setEditingMeeting(item.data)}
+                />
+              ),
+            )}
+          </div>
+        </Block>
+      );
+    }
+    if (key === "projects" && user) return <ActiveProjectsWidget userId={user.id} />;
+    if (key === "weekly" && user) return <WeeklyInsightsWidget userId={user.id} />;
+    if (key === "finance" && user) return <FinanceSnapshotWidget userId={user.id} />;
+    return null;
+  }
+
   return (
     <div>
       {user?.id ? <WelcomeTutorial userId={user.id} /> : null}
