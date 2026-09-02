@@ -320,26 +320,40 @@ export const Route = createFileRoute("/api/ai")({
         const { data: userRes, error: userErr } = await sb.auth.getUser();
         if (userErr || !userRes.user) return jsonError(401, "Sesión inválida.");
 
-        // ---- Token quota check ----
+        const authedUserId = userRes.user.id;
+
+        // ---- Token quota check (billing goes to owner if owner_id is set) ----
         const { data: profile } = await sb
           .from("profiles")
-          .select("plan, bonus_tokens, created_at")
-          .eq("id", userRes.user.id)
+          .select("plan, bonus_tokens, created_at, owner_id")
+          .eq("id", authedUserId)
           .maybeSingle();
 
-        const cycleStart = getCycleStart(profile?.created_at ?? userRes.user.created_at);
+        const billingUserId: string = (profile as any)?.owner_id ?? authedUserId;
+        const billingProfile =
+          billingUserId !== authedUserId
+            ? (
+                await sb
+                  .from("profiles")
+                  .select("plan, bonus_tokens, created_at")
+                  .eq("id", billingUserId)
+                  .maybeSingle()
+              ).data
+            : profile;
+
+        const cycleStart = getCycleStart(billingProfile?.created_at ?? userRes.user.created_at);
         const { data: usageData } = await sb
           .from("token_usage")
           .select("total_tokens")
-          .eq("user_id", userRes.user.id)
+          .eq("user_id", billingUserId)
           .gte("created_at", cycleStart);
 
         const tokensUsedThisCycle = (usageData ?? []).reduce(
           (sum: number, row: any) => sum + (row.total_tokens ?? 0),
           0,
         );
-        const planLimit = getPlanLimit(profile?.plan);
-        const bonusTokens = profile?.bonus_tokens ?? 0;
+        const planLimit = getPlanLimit(billingProfile?.plan);
+        const bonusTokens = billingProfile?.bonus_tokens ?? 0;
         const totalAllowed = planLimit + bonusTokens;
 
         if (tokensUsedThisCycle >= totalAllowed) {
@@ -348,12 +362,11 @@ export const Route = createFileRoute("/api/ai")({
               code: "QUOTA_EXCEEDED",
               used: tokensUsedThisCycle,
               limit: totalAllowed,
-              plan: profile?.plan ?? "free",
+              plan: billingProfile?.plan ?? "free",
             }),
             { status: 402, headers: { "Content-Type": "application/json" } },
           );
         }
-        const authedUserId = userRes.user.id;
 
 
         let body: { messages: { role: "user" | "assistant"; content: string }[]; timezone?: string };
