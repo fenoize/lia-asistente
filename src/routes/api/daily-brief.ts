@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/daily-brief")({
                 const completion = (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0;
                 const total = (usage as any).totalTokens ?? prompt + completion;
                 await sb.from("token_usage").insert({
-                  user_id: claimsRes.claims.sub,
+                  user_id: briefBillingUserId,
                   prompt_tokens: prompt,
                   completion_tokens: completion,
                   total_tokens: total,
