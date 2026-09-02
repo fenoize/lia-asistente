@@ -422,7 +422,7 @@ export const Route = createFileRoute("/api/ai")({
                 const completion = (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0;
                 const total = (usage as any).totalTokens ?? prompt + completion;
                 await sb.from("token_usage").insert({
-                  user_id: authedUserId,
+                  user_id: billingUserId,
                   prompt_tokens: prompt,
                   completion_tokens: completion,
                   total_tokens: total,
