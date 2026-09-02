@@ -673,6 +673,7 @@ export type Database = {
           name: string | null
           onboarding_completed: boolean | null
           onesignal_player_id: string | null
+          owner_id: string | null
           plan: string | null
           preferred_model: string | null
           role: string | null
@@ -698,6 +699,7 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean | null
           onesignal_player_id?: string | null
+          owner_id?: string | null
           plan?: string | null
           preferred_model?: string | null
           role?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           name?: string | null
           onboarding_completed?: boolean | null
           onesignal_player_id?: string | null
+          owner_id?: string | null
           plan?: string | null
           preferred_model?: string | null
           role?: string | null
@@ -732,7 +735,15 @@ export type Database = {
           work_end?: string | null
           work_start?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {

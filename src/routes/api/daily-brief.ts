@@ -38,6 +38,13 @@ export const Route = createFileRoute("/api/daily-brief")({
         const { data: claimsRes, error: claimsErr } = await sb.auth.getClaims(token);
         if (claimsErr || !claimsRes?.claims?.sub) return jsonError(401, "Sesión inválida.");
 
+        const { data: briefProfile } = await sb
+          .from("profiles")
+          .select("owner_id")
+          .eq("id", claimsRes.claims.sub)
+          .maybeSingle();
+        const briefBillingUserId: string = (briefProfile as any)?.owner_id ?? claimsRes.claims.sub;
+
         try {
         const timezone = request.headers.get("x-user-timezone") || USER_TZ;
         const ctx = await buildBriefContext(sb, timezone);
@@ -57,7 +64,7 @@ export const Route = createFileRoute("/api/daily-brief")({
                 const completion = (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0;
                 const total = (usage as any).totalTokens ?? prompt + completion;
                 await sb.from("token_usage").insert({
-                  user_id: claimsRes.claims.sub,
+                  user_id: briefBillingUserId,
                   prompt_tokens: prompt,
                   completion_tokens: completion,
                   total_tokens: total,
