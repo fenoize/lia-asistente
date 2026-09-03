@@ -27,10 +27,14 @@ const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 
 
 function isValidSingle(obj: any): obj is Action {
-  return obj && typeof obj === "object"
-    && typeof obj.type === "string"
-    && ["task", "meeting", "reminder", "note", "task_update"].includes(obj.type)
-    && typeof obj.title === "string";
+  if (!obj || typeof obj !== "object" || typeof obj.type !== "string") return false;
+  if (!["task", "meeting", "reminder", "note", "task_update", "contact"].includes(obj.type)) return false;
+  if (obj.type === "contact") {
+    if (typeof obj.name !== "string") return false;
+    obj.title = obj.name;
+    return true;
+  }
+  return typeof obj.title === "string";
 }
 
 function tryParseAction(raw: string): Action | null {
@@ -632,6 +636,22 @@ export function ChatInterface() {
         content,
         type: "note",
       });
+    } else if (action.type === "contact") {
+      const { error } = await supabase.from("contacts").insert({
+        user_id: user.id,
+        name: action.name ?? action.title ?? "Sin nombre",
+        type: action.relationship_type ?? "collaborator",
+        relationship_type: action.relationship_type ?? "collaborator",
+        email: action.email ?? null,
+        phone: action.phone ?? null,
+        company: action.company ?? null,
+        role: action.role ?? null,
+        address: action.address ?? null,
+        notes: action.notes ?? null,
+        custom_fields: {},
+        tags: [],
+      });
+      if (error) throw error;
     }
     return "created";
   };
@@ -996,6 +1016,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   note: { label: "Guardar nota", Icon: IconPencil },
   bulk: { label: "Crear varios", Icon: IconCircleCheck },
   task_update: { label: "Editar tarea", Icon: IconPencil },
+  contact: { label: "Contacto", Icon: IconUserPlus },
 };
 
 
