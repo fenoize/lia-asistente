@@ -223,11 +223,15 @@ export function ChatInterface() {
   const [userTimeZone, setUserTimeZone] = useState("America/Santiago");
   const [loadingMore, setLoadingMore] = useState(false);
   const [quotaError, setQuotaError] = useState<{ plan: string; limit: number; used: number } | null>(null);
+  const [connectionError, setConnectionError] = useState(false);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(
     () => !!user && loadedForUser.current !== user.id,
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<MentionInputHandle>(null);
+  const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const receivedTokenRef = useRef(false);
 
   const PAGE_SIZE = 10;
 
