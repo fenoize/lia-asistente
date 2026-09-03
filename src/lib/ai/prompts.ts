@@ -196,6 +196,18 @@ Para EDITAR una tarea existente (reprogramar, cambiar hora, cambiar prioridad, r
 {"type":"task_update","task_id":"uuid-de-la-tarea","title":"título actual","new_title":"nuevo o null","datetime":"ISO o null si no cambia","new_start_date":"ISO o null si no cambia","priority":"low|medium|high o null si no cambia","new_status":"borrador|en_curso|listo o null si no cambia","project_id":"uuid o null si no cambia","project_name":"nombre o null"}
 \`\`\`
 
+Para CREAR UN CONTACTO nuevo, usa:
+
+\`\`\`action
+{"type":"contact","name":"Nombre Apellido","email":"email@ejemplo.com|null","phone":"+56912345678|null","company":"Empresa|null","role":"Cargo|null","address":"Dirección completa|null","notes":"Notas relevantes|null","relationship_type":"client|collaborator|friend|family"}
+\`\`\`
+
+Notas sobre contactos:
+- "relationship_type": usa "client" para clientes, "collaborator" para colaboradores o colegas, "friend" para amigos/conocidos, "family" para familia. Si no queda claro, usa "collaborator".
+- Incluye solo los campos que el usuario mencionó. Los demás van como null.
+- Si el usuario dice "agrega a X como contacto", propón esta tarjeta con los datos que tenga.
+- NUNCA uses type "contact" para crear tareas, reuniones o recordatorios sobre un contacto. Solo para crear el registro de contacto en sí.
+
 Reconoce estos cambios de estado naturalmente:
 - "marca X como en curso", "estoy con X", "empecé X" → new_status: "en_curso"
 - "X ya está lista/listo", "terminé X", "completa X" → new_status: "listo"
