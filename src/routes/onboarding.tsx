@@ -257,6 +257,7 @@ function Onboarding() {
                 width: 120,
                 opacity: !canNext || busy ? 0.4 : 1,
                 transition: "opacity 0.15s",
+                whiteSpace: "nowrap",
               }}
             >
               {busy ? "Guardando…" : "Continuar →"}
