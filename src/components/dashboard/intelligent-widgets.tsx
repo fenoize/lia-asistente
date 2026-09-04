@@ -31,11 +31,8 @@ function Block({
 }) {
   return (
     <section style={{ marginBottom: 24 }}>
-      <div
-        className="flex items-center justify-between"
-        style={{ marginBottom: 10 }}
-      >
-        <div className="flex items-center gap-2 alfred-section-label" style={{ margin: 0 }}>
+      <div className="flex items-center justify-between alfred-section-label">
+        <div className="flex items-center gap-2">
           {icon}
           <span>{label}</span>
         </div>
