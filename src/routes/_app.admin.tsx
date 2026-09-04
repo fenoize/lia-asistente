@@ -300,7 +300,7 @@ function AdminPage() {
 
   async function handleDelete(profileId: string) {
     try {
-      await callAdminFn("delete", { user_id: profileId });
+      await callAdminFn("delete", { userId: profileId });
       setProfiles((prev) => prev.filter((p) => p.id !== profileId));
       toast.success("Usuario eliminado");
       setDeleteProfile(null);
