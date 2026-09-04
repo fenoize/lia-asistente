@@ -886,6 +886,58 @@ export function ChatInterface() {
               ))}
             </div>
           )}
+          {connectionError && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              margin: "0 0 8px",
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: 12,
+              color: "#f87171",
+              fontSize: 14,
+            }}>
+              <span style={{ flex: 1 }}>La conexión se interrumpió.</span>
+              <button
+                onClick={() => {
+                  setConnectionError(false);
+                  if (lastFailedMessage) {
+                    sendText(lastFailedMessage);
+                  }
+                }}
+                style={{
+                  background: "rgba(239,68,68,0.2)",
+                  border: "1px solid rgba(239,68,68,0.4)",
+                  color: "#f87171",
+                  borderRadius: 8,
+                  padding: "4px 12px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ¿Reintentar?
+              </button>
+            </div>
+          )}
+          {quotaError && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              margin: "0 0 8px",
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.2)",
+              borderRadius: 12,
+              color: "#f87171",
+              fontSize: 13,
+            }}>
+              Sin créditos disponibles. Recarga para seguir usando LIA.
+            </div>
+          )}
           <InputBar
             taRef={taRef}
             value={input}
