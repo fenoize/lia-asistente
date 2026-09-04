@@ -387,6 +387,19 @@ export function ChatInterface() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
+  // Detecta cuando la app vuelve a primer plano con un stream colgado
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && streaming && !receivedTokenRef.current) {
+        setConnectionError(true);
+        setStreaming(false);
+        if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [streaming]);
+
   // (auto-resize handled inside MentionInput)
 
   // Runs an assistant turn. `visibleUserMsg` is shown + persisted; `hiddenUserSignal` is
@@ -413,6 +426,18 @@ export function ChatInterface() {
         setMessages((m) => { resolve(m); return m; });
       });
     }
+
+    setConnectionError(false);
+    setLastFailedMessage(null);
+    receivedTokenRef.current = false;
+    const userText = opts.visibleUserMsg?.content ?? opts.hiddenUserSignal ?? "";
+    streamTimeoutRef.current = setTimeout(() => {
+      if (!receivedTokenRef.current) {
+        setConnectionError(true);
+        setLastFailedMessage(userText);
+        setStreaming(false);
+      }
+    }, 30000);
 
     setStreaming(true);
     const assistantId = crypto.randomUUID();
@@ -448,6 +473,7 @@ export function ChatInterface() {
               });
               setMessages((m) => m.filter((msg) => msg.id !== assistantId));
               setStreaming(false);
+              if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
               return;
             }
           } catch {}
@@ -463,6 +489,10 @@ export function ChatInterface() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!receivedTokenRef.current) {
+          receivedTokenRef.current = true;
+          if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+        }
         raw += decoder.decode(value, { stream: true });
         const display = stripPartialJsonForLive(raw);
         setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: display } : msg));
@@ -480,9 +510,14 @@ export function ChatInterface() {
         metadata: action ? { actionStatus: "pending" } : null,
       } as any).then(({ error }) => { if (error) console.error("save assistant msg", error); });
     } catch {
+      setConnectionError(true);
+      setLastFailedMessage(userText);
+      setStreaming(false);
+      if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
       toast.error(`${assistant.name} no pudo responder.`);
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
     } finally {
+      if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
       setStreaming(false);
     }
   };
@@ -849,6 +884,58 @@ export function ChatInterface() {
                   {s}
                 </button>
               ))}
+            </div>
+          )}
+          {connectionError && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              margin: "0 0 8px",
+              background: "rgba(239,68,68,0.1)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              borderRadius: 12,
+              color: "#f87171",
+              fontSize: 14,
+            }}>
+              <span style={{ flex: 1 }}>La conexión se interrumpió.</span>
+              <button
+                onClick={() => {
+                  setConnectionError(false);
+                  if (lastFailedMessage) {
+                    sendText(lastFailedMessage);
+                  }
+                }}
+                style={{
+                  background: "rgba(239,68,68,0.2)",
+                  border: "1px solid rgba(239,68,68,0.4)",
+                  color: "#f87171",
+                  borderRadius: 8,
+                  padding: "4px 12px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ¿Reintentar?
+              </button>
+            </div>
+          )}
+          {quotaError && (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 16px",
+              margin: "0 0 8px",
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.2)",
+              borderRadius: 12,
+              color: "#f87171",
+              fontSize: 13,
+            }}>
+              Sin créditos disponibles. Recarga para seguir usando LIA.
             </div>
           )}
           <InputBar
