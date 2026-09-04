@@ -387,6 +387,19 @@ export function ChatInterface() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, streaming]);
 
+  // Detecta cuando la app vuelve a primer plano con un stream colgado
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && streaming && !receivedTokenRef.current) {
+        setConnectionError(true);
+        setStreaming(false);
+        if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [streaming]);
+
   // (auto-resize handled inside MentionInput)
 
   // Runs an assistant turn. `visibleUserMsg` is shown + persisted; `hiddenUserSignal` is
