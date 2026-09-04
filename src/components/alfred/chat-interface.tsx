@@ -427,6 +427,18 @@ export function ChatInterface() {
       });
     }
 
+    setConnectionError(false);
+    setLastFailedMessage(null);
+    receivedTokenRef.current = false;
+    const userText = opts.visibleUserMsg?.content ?? opts.hiddenUserSignal ?? "";
+    streamTimeoutRef.current = setTimeout(() => {
+      if (!receivedTokenRef.current) {
+        setConnectionError(true);
+        setLastFailedMessage(userText);
+        setStreaming(false);
+      }
+    }, 30000);
+
     setStreaming(true);
     const assistantId = crypto.randomUUID();
     setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "", createdAt: Date.now() }]);
@@ -461,6 +473,7 @@ export function ChatInterface() {
               });
               setMessages((m) => m.filter((msg) => msg.id !== assistantId));
               setStreaming(false);
+              if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
               return;
             }
           } catch {}
@@ -476,6 +489,10 @@ export function ChatInterface() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!receivedTokenRef.current) {
+          receivedTokenRef.current = true;
+          if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+        }
         raw += decoder.decode(value, { stream: true });
         const display = stripPartialJsonForLive(raw);
         setMessages((m) => m.map((msg) => msg.id === assistantId ? { ...msg, content: display } : msg));
@@ -493,9 +510,14 @@ export function ChatInterface() {
         metadata: action ? { actionStatus: "pending" } : null,
       } as any).then(({ error }) => { if (error) console.error("save assistant msg", error); });
     } catch {
+      setConnectionError(true);
+      setLastFailedMessage(userText);
+      setStreaming(false);
+      if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
       toast.error(`${assistant.name} no pudo responder.`);
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
     } finally {
+      if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
       setStreaming(false);
     }
   };
