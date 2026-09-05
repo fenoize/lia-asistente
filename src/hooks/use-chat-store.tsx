@@ -1,7 +1,7 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from "react";
 
 export type ChatAction = {
-  type: "task" | "meeting" | "reminder" | "note" | "bulk" | "task_update" | "contact";
+  type: "task" | "meeting" | "reminder" | "note" | "bulk" | "task_update" | "contact" | "delete";
   title: string;
   description?: string | null;
   datetime?: string | null;
@@ -25,6 +25,8 @@ export type ChatAction = {
   address?: string | null;
   notes?: string | null;
   relationship_type?: string;
+  target_type?: string;
+  target_id?: string;
 };
 
 

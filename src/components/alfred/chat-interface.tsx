@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { stripMentionSyntaxLoose } from "@/lib/mentions";
-import { IconAlertCircle, IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil, IconUserPlus } from "@tabler/icons-react";
+import { IconAlertCircle, IconArrowUp, IconBell, IconCalendarEvent, IconCircleCheck, IconPencil, IconTrash, IconUserPlus } from "@tabler/icons-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,10 +28,15 @@ const TRAILING_JSON_RE = /(?:^|\n)\s*([{\[][\s\S]*[}\]])\s*$/;
 
 function isValidSingle(obj: any): obj is Action {
   if (!obj || typeof obj !== "object" || typeof obj.type !== "string") return false;
-  if (!["task", "meeting", "reminder", "note", "task_update", "contact"].includes(obj.type)) return false;
+  if (!["task", "meeting", "reminder", "note", "task_update", "contact", "delete"].includes(obj.type)) return false;
   if (obj.type === "contact") {
     if (typeof obj.name !== "string") return false;
     obj.title = obj.name;
+    return true;
+  }
+  if (obj.type === "delete") {
+    if (typeof obj.target_id !== "string" || typeof obj.target_type !== "string") return false;
+    if (!obj.title) obj.title = `Eliminar ${obj.target_type}`;
     return true;
   }
   return typeof obj.title === "string";
@@ -691,6 +696,22 @@ export function ChatInterface() {
         tags: [],
       });
       if (error) throw error;
+    } else if (action.type === "delete") {
+      const tableMap: Record<string, string> = {
+        task: "tasks",
+        meeting: "meetings",
+        reminder: "reminders",
+        contact: "contacts",
+        note: "notes",
+      };
+      const table = tableMap[action.target_type ?? ""];
+      if (!table) throw new Error(`Tipo desconocido para eliminar: "${action.target_type}".`);
+      const { error } = await (supabase.from(table) as any)
+        .delete()
+        .eq("id", action.target_id!)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return "deleted" as any;
     }
     return "created";
   };
@@ -714,16 +735,19 @@ export function ChatInterface() {
       } else {
         const r = await insertOne(action);
         setMessages((m) => m.map((x) => x.id === msgId ? { ...x, actionStatus: "accepted" } : x));
-        toast.success(r === "duplicate" ? "Ya existía." : r === "updated" ? "Actualizado." : "Listo.");
+        toast.success(r === "duplicate" ? "Ya existía." : r === "updated" ? "Actualizado." : (r as any) === "deleted" ? "Eliminado." : "Listo.");
       }
       // Continúa la cadena: si quedan más acciones pendientes de la última petición,
       // LIA enviará el siguiente mensaje con la siguiente tarjeta; si no, cierra.
       const justDone = action.type === "task_update"
         ? `tarea actualizada (id ${action.task_id})`
+        : action.type === "delete"
+        ? `${action.target_type ?? "elemento"} ELIMINADO permanentemente: "${action.title}" (id ${action.target_id}). Este registro ya NO existe en la base de datos — no lo recrear ni proponer de nuevo.`
         : `${action.type} "${action.title}"${action.datetime ? ` para ${action.datetime}` : ""}`;
-      void runAssistantTurn({
-        hiddenUserSignal: `__ACTION_CONFIRMED__ Acabo de confirmar y YA quedó guardado: ${justDone}. NO vuelvas a proponer esta misma acción ni una equivalente (mismo título y misma fecha/hora) — ya existe. Si queda OTRA acción distinta pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada distinto, cierra con un mensaje breve sin tarjeta.`,
-      });
+      const confirmSignal = action.type === "delete"
+        ? `__ACTION_CONFIRMED__ Se eliminó permanentemente: ${justDone}. NO recrees ni propongas de nuevo este elemento. Si queda OTRA acción pendiente de la petición original, propónla ahora (una sola, con tarjeta). Si no queda nada, cierra con mensaje breve sin tarjeta.`
+        : `__ACTION_CONFIRMED__ Acabo de confirmar y YA quedó guardado: ${justDone}. NO vuelvas a proponer esta misma acción ni una equivalente (mismo título y misma fecha/hora) — ya existe. Si queda OTRA acción distinta pendiente de mi última petición, propónla ahora (una sola, con tarjeta al final y sin preguntas). Si ya no queda nada distinto, cierra con un mensaje breve sin tarjeta.`;
+      void runAssistantTurn({ hiddenUserSignal: confirmSignal });
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -1108,6 +1132,7 @@ const TYPE_META: Record<Action["type"], { label: string; Icon: typeof IconCircle
   bulk: { label: "Crear varios", Icon: IconCircleCheck },
   task_update: { label: "Editar tarea", Icon: IconPencil },
   contact: { label: "Contacto", Icon: IconUserPlus },
+  delete: { label: "Eliminar", Icon: IconTrash },
 };
 
 

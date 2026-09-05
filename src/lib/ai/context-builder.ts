@@ -42,12 +42,12 @@ export async function buildContext(
       .order("due_date", { ascending: true, nullsFirst: false })
       .limit(80),
     supabase.from("meetings")
-      .select("title, datetime, duration_minutes, preparation_needed")
+      .select("id, title, datetime, duration_minutes, preparation_needed")
       .gte("datetime", todayRange.startIso)
       .lt("datetime", tomorrowRange.endExclusiveIso)
       .order("datetime", { ascending: true }),
     supabase.from("reminders")
-      .select("title, datetime")
+      .select("id, title, datetime")
       .eq("done", false)
       .gte("datetime", todayRange.startIso)
       .lt("datetime", todayRange.endExclusiveIso)
@@ -106,7 +106,7 @@ export async function buildContext(
   const fmtMeeting = (m: any) =>
     `- [${fmtTime(m.datetime, timezone)}] ${m.title} (${m.duration_minutes ?? 60}min)${
       m.preparation_needed ? " — requiere preparación" : ""
-    }`;
+    } [id: ${m.id}]`;
 
   const todayMeetings = meetings.filter(
     (m: any) => new Date(m.datetime).toISOString() < tomorrowRange.startIso,
