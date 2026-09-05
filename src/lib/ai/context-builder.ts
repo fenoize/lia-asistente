@@ -143,7 +143,7 @@ export async function buildContext(
     todayMeetingCount: todayMeetings.length,
     activeReminderCount: reminders.length,
     activeReminders: bullets(
-      reminders.map((r: any) => `- ${r.title} (${fmtDate(r.datetime, timezone)})`),
+      reminders.map((r: any) => `- ${r.title} (${fmtDate(r.datetime, timezone)}) [id: ${r.id}]`),
       "(ninguno)",
     ),
     activeClients: contacts.filter((c: any) => c.type === "client" && c.status === "active").length,
