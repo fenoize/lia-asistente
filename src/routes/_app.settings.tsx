@@ -200,93 +200,102 @@ function SettingsPage() {
         Personaliza tu experiencia.
       </p>
 
-      <SectionHeader label="Tu asistente" />
-      <SettingsGroup>
-        <SettingsRow
-          icon={<IconSparkles size={18} stroke={1.75} color="rgb(129,140,248)" />}
-          iconBg="rgba(99,102,241,0.12)"
-          label="Nombre"
-          value={name || "Lia"}
-          onClick={() => setOpenSheet("nombre")}
-        />
-        <SettingsRow
-          icon={<IconUserCircle size={18} stroke={1.75} color="rgb(192,132,252)" />}
-          iconBg="rgba(168,85,247,0.12)"
-          label="Personalidad"
-          value={gender === "feminine" ? "Femenina" : "Masculino"}
-          onClick={() => setOpenSheet("personalidad")}
-        />
-        <SettingsRow
-          icon={<IconMessageCircle size={18} stroke={1.75} color="rgb(45,212,191)" />}
-          iconBg="rgba(20,184,166,0.12)"
-          label="Tono"
-          value={TONE_OPTIONS.find((t) => t.id === tone)?.label}
-          onClick={() => setOpenSheet("tono")}
-        />
-      </SettingsGroup>
+      <FlatSection title="Tu asistente">
+        <FlatItem title="Nombre" description="Así se presentará tu IA.">
+          <DropdownPill value={name || "Lia"} onClick={() => setOpenSheet("nombre")} />
+        </FlatItem>
+        <FlatItem title="Personalidad" description="Cómo se expresa contigo.">
+          <DropdownPill value={gender === "feminine" ? "Femenina" : "Masculino"} onClick={() => setOpenSheet("personalidad")} />
+        </FlatItem>
+        <FlatItem title="Tono" description="Estilo de sus respuestas." last>
+          <DropdownPill value={TONE_OPTIONS.find((t) => t.id === tone)?.label ?? "Casual"} onClick={() => setOpenSheet("tono")} />
+        </FlatItem>
+      </FlatSection>
 
-      <SectionHeader label="Tu perfil" />
-      <SettingsGroup>
-        <SettingsRow
-          icon={<IconIdBadge size={18} stroke={1.75} color="rgb(251,191,36)" />}
-          iconBg="rgba(245,158,11,0.12)"
-          label="¿Cómo quieres que te llame?"
-          value={userName || "—"}
-          onClick={() => setOpenSheet("llamame")}
-        />
-        <SettingsRow
-          icon={<IconTarget size={18} stroke={1.75} color="rgb(52,211,153)" />}
-          iconBg="rgba(16,185,129,0.12)"
-          label="Objetivo principal"
-          value={GOAL_LABELS[goals] ?? (goals ? "Personalizado" : "Sin definir")}
-          onClick={() => setOpenSheet("objetivo")}
-        />
-        <SettingsRow
-          icon={<IconClock size={18} stroke={1.75} color="rgb(129,140,248)" />}
-          iconBg="rgba(99,102,241,0.12)"
-          label="Zona horaria"
-          value={timezone}
-          onClick={() => setOpenSheet("timezone")}
-        />
-        <SettingsRow
-          icon={<IconBriefcase size={18} stroke={1.75} color="rgb(244,114,182)" />}
-          iconBg="rgba(236,72,153,0.12)"
-          label="Horario laboral"
-          hint={workDays.length ? `${formatWorkDays(workDays)} · ${workStart}–${workEnd}` : "Sin configurar"}
-          onClick={() => setOpenSheet("horario")}
-        />
-      </SettingsGroup>
+      <FlatSection title="Tu perfil">
+        <FlatItem title="¿Cómo te llamo?" description="Se usa en saludos y resúmenes.">
+          <SmallButton value={userName || "—"} onClick={() => setOpenSheet("llamame")} />
+        </FlatItem>
+        <FlatItem title="Objetivo principal" description="Orienta las sugerencias de LIA.">
+          <SmallButton value={GOAL_LABELS[goals] ?? (goals ? "Personalizado" : "Sin definir")} onClick={() => setOpenSheet("objetivo")} />
+        </FlatItem>
+        <FlatItem title="Zona horaria" description="Base para fechas y recordatorios.">
+          <DropdownPill value={timezone} onClick={() => setOpenSheet("timezone")} />
+        </FlatItem>
+        <FlatItem title="Horario laboral" description="Ventana en la que puedes trabajar." last>
+          <SmallButton
+            value={workDays.length ? `${formatWorkDays(workDays)} · ${workStart}–${workEnd}` : "Sin configurar"}
+            onClick={() => setOpenSheet("horario")}
+          />
+        </FlatItem>
+      </FlatSection>
 
-      <SectionHeader label="Inicio" />
-      <SettingsGroup>
-        <SettingsRow
-          icon={<IconLayoutDashboard size={18} stroke={1.75} color="rgb(129,140,248)" />}
-          iconBg="rgba(99,102,241,0.12)"
-          label="Bloques visibles"
-          hint="Activa y reordena los bloques del dashboard"
-          onClick={() => setOpenSheet("bloques")}
-        />
-      </SettingsGroup>
+      <FlatSection title="Inicio">
+        <FlatItem title="Bloques visibles" description="Activa y reordena los bloques del escritorio." last>
+          <SmallButton value="Configurar" onClick={() => setOpenSheet("bloques")} />
+        </FlatItem>
+      </FlatSection>
 
-      <SectionHeader label="Privacidad" />
-      <SettingsGroup>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px" }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(148,163,184,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <IconEyeOff size={18} stroke={1.75} color="var(--text-tertiary)" />
+      <FlatSection title="Privacidad">
+        <FlatItem title="Ocultar montos" description="Reemplaza montos en Finanzas por puntos." last>
+          <SettingsToggle on={hideAmounts} onClick={() => setHideAmounts(!hideAmounts)} label="Ocultar montos" />
+        </FlatItem>
+      </FlatSection>
+
+      <FlatSection title="Plan y uso" badge="NUEVO">
+        <div style={{ padding: "14px 0" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                {plan === "pro" ? "Plan Pro" : plan === "beta" ? "Plan Beta" : "Plan gratuito"}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3 }}>
+                Renueva en {daysLeft} día{daysLeft !== 1 ? "s" : ""}
+              </div>
+            </div>
+            {plan !== "pro" && (
+              <button
+                onClick={() => toast("Pronto podrás mejorar tu plan desde aquí.")}
+                style={{ padding: "6px 14px", borderRadius: 8, background: "var(--accent-color)", color: "white", border: "none", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Mejorar a Pro
+              </button>
+            )}
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>Ocultar montos</div>
-            <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>Reemplaza montos en Finanzas por puntos</div>
+
+          <div style={{ padding: "12px 14px", borderRadius: 10, border: "0.5px solid var(--border)", background: "var(--bg-elevated)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Tokens del plan</span>
+              <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                {Math.min(tokensUsed, planLimitVal).toLocaleString("es-CL")} / {planLimitVal.toLocaleString("es-CL")}
+              </span>
+            </div>
+            <div style={{ height: 4, borderRadius: 100, background: "var(--border)", overflow: "hidden", marginBottom: 12 }}>
+              <div style={{ height: "100%", borderRadius: 100, background: "var(--accent-color)", width: `${planPct}%` }} />
+            </div>
+
+            {bonusTokens > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Tokens extra</span>
+                  <span style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
+                    {bonusUsed.toLocaleString("es-CL")} / {bonusTokens.toLocaleString("es-CL")}
+                  </span>
+                </div>
+                <div style={{ height: 4, borderRadius: 100, background: "var(--border)", overflow: "hidden", marginBottom: 12 }}>
+                  <div style={{ height: "100%", borderRadius: 100, background: "var(--accent-color)", opacity: 0.6, width: `${bonusPct}%` }} />
+                </div>
+              </>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 10, borderTop: "0.5px solid var(--border)" }}>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Uso del ciclo</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)" }}>{planPct}%</span>
+            </div>
           </div>
-          <button
-            onClick={() => setHideAmounts(!hideAmounts)}
-            aria-pressed={hideAmounts}
-            style={{ width: 44, height: 26, borderRadius: 100, background: hideAmounts ? "var(--accent-color)" : "var(--border)", position: "relative", transition: "background 0.2s", flexShrink: 0, border: "none", cursor: "pointer" }}
-          >
-            <span style={{ position: "absolute", top: 3, left: hideAmounts ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s" }} />
-          </button>
         </div>
-      </SettingsGroup>
+      </FlatSection>
+
 
       <PushNotificationsSettings />
 
