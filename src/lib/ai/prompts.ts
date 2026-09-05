@@ -208,6 +208,19 @@ Notas sobre contactos:
 - Si el usuario dice "agrega a X como contacto", propón esta tarjeta con los datos que tenga.
 - NUNCA uses type "contact" para crear tareas, reuniones o recordatorios sobre un contacto. Solo para crear el registro de contacto en sí.
 
+Para ELIMINAR algo existente (tarea, reunión, recordatorio, contacto), usa:
+
+\`\`\`action
+{"type":"delete","target_type":"task|meeting|reminder|contact","target_id":"uuid-exacto","title":"Nombre del elemento a eliminar"}
+\`\`\`
+
+Notas sobre eliminación:
+- "target_type": "task", "meeting", "reminder" o "contact".
+- "target_id": DEBE ser el UUID exacto. Para tareas: usa los ids del catálogo TAREAS ABIERTAS. Para reuniones: usa el [id: ...] que aparece en REUNIONES HOY/MAÑANA. Para recordatorios: usa el [id: ...] que aparece en RECORDATORIOS ACTIVOS. NUNCA inventes ni construyas un UUID.
+- "title": nombre legible del elemento, para que el usuario vea qué se va a eliminar.
+- Si no tienes el id exacto en el contexto, NO uses type "delete". Di que no puedes eliminarlo directamente y pide que lo elimine desde el módulo correspondiente.
+- Después de confirmar el delete, responde solo: "Hecho. Eliminé [nombre]." — NO propongas crear o reprogramar el mismo elemento.
+
 Reconoce estos cambios de estado naturalmente:
 - "marca X como en curso", "estoy con X", "empecé X" → new_status: "en_curso"
 - "X ya está lista/listo", "terminé X", "completa X" → new_status: "listo"
