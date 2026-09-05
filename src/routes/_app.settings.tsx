@@ -488,69 +488,98 @@ function SettingsPage() {
   );
 }
 
-function SectionHeader({ label }: { label: string }) {
+function FlatSection({ title, badge, children }: { title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600, padding: "20px 14px 8px" }}>
-      {label}
-    </div>
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, fontWeight: 500, color: "var(--text-primary)", margin: "28px 0 4px" }}>
+        {title}
+        {badge && (
+          <span style={{ fontSize: 10, fontWeight: 600, background: "var(--accent-subtle)", color: "var(--accent-color)", borderRadius: 5, padding: "2px 7px", letterSpacing: ".03em" }}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <div>{children}</div>
+    </>
   );
 }
 
-function SettingsGroup({ children }: { children: React.ReactNode }) {
-  const arr = React.Children.toArray(children);
-  return (
-    <div style={{ background: "var(--bg-elevated)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-      {arr.map((child, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <div style={{ height: 1, background: "var(--border-subtle)", marginLeft: 60 }} />}
-          {child}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-function SettingsRow({
-  icon, iconBg, label, hint, value, onClick, chevron = true,
+function FlatItem({
+  title, description, last, children,
 }: {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor?: string;
-  label: string;
-  hint?: string;
-  value?: string;
-  onClick?: () => void;
-  chevron?: boolean;
+  title: string;
+  description?: string;
+  last?: boolean;
+  children?: React.ReactNode;
 }) {
   return (
     <div
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onMouseEnter={(e) => { if (onClick) (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.02)"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-      style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", cursor: onClick ? "pointer" : "default", transition: "background 0.15s" }}
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 16,
+        padding: "14px 0",
+        borderBottom: last ? "none" : "0.5px solid var(--border)",
+      }}
     >
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        {icon}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>{title}</div>
+        {description && (
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.4 }}>{description}</div>
+        )}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</div>
-        {hint && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{hint}</div>}
-      </div>
-      {(value || chevron) && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          {value && (
-            <span style={{ fontSize: 13, color: "var(--text-tertiary)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {value}
-            </span>
-          )}
-          {chevron && <IconChevronRight size={16} stroke={1.75} color="var(--text-tertiary)" style={{ opacity: 0.6 }} />}
-        </div>
-      )}
+      <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
   );
 }
+
+function DropdownPill({ value, onClick }: { value: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
+        borderRadius: 8, border: "0.5px solid var(--border)", background: "var(--bg-elevated)",
+        fontSize: 13, color: "var(--text-primary)", cursor: "pointer", maxWidth: 200,
+      }}
+    >
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+      <IconChevronDown size={12} stroke={1.75} />
+    </button>
+  );
+}
+
+function SmallButton({ value, onClick }: { value: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "6px 14px", borderRadius: 8, border: "0.5px solid var(--border)",
+        background: "var(--bg-elevated)", fontSize: 13, color: "var(--text-primary)",
+        cursor: "pointer", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}
+    >
+      {value}
+    </button>
+  );
+}
+
+function SettingsToggle({ on, onClick, label }: { on: boolean; onClick: () => void; label?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      aria-label={label}
+      style={{ width: 44, height: 26, borderRadius: 100, background: on ? "var(--accent-color)" : "var(--border)", position: "relative", transition: "background 0.2s", flexShrink: 0, border: "none", cursor: "pointer" }}
+    >
+      <span style={{ position: "absolute", top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s" }} />
+    </button>
+  );
+}
+
 
 function BottomSheet({
   open, onClose, title, children,
