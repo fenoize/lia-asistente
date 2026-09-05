@@ -706,7 +706,7 @@ export function ChatInterface() {
       };
       const table = tableMap[action.target_type ?? ""];
       if (!table) throw new Error(`Tipo desconocido para eliminar: "${action.target_type}".`);
-      const { error } = await (supabase.from(table) as any)
+      const { error } = await ((supabase as any).from(table) as any)
         .delete()
         .eq("id", action.target_id!)
         .eq("user_id", user.id);
