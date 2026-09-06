@@ -108,15 +108,32 @@ function SettingsPage() {
   const [workEnd, setWorkEnd] = useState<string>("18:00");
   const [savingSchedule, setSavingSchedule] = useState(false);
 
+  const [plan, setPlan] = useState<string>("free");
+  const [tokensUsed, setTokensUsed] = useState(0);
+  const [planLimitVal, setPlanLimitVal] = useState(50_000);
+  const [daysLeft, setDaysLeft] = useState(30);
+  const [bonusTokens, setBonusTokens] = useState(0);
+
   const [openSheet, setOpenSheet] = useState<SheetKey>(null);
   const closeSheet = () => setOpenSheet(null);
+
+  function getCycleStart(createdAt: string): string {
+    const registered = new Date(createdAt).getTime();
+    const now = Date.now();
+    const dayMs = 86_400_000;
+    const daysElapsed = Math.floor((now - registered) / dayMs);
+    const cycleStartDay = Math.floor(daysElapsed / 30) * 30;
+    return new Date(registered + cycleStartDay * dayMs).toISOString();
+  }
+
+  const PLAN_LIMITS: Record<string, number> = { free: 50_000, beta: 300_000, pro: 1_000_000 };
 
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("name, assistant_name, assistant_gender, goals, lia_tone, timezone, work_days, work_start, work_end")
+        .select("name, assistant_name, assistant_gender, goals, lia_tone, timezone, work_days, work_start, work_end, plan, bonus_tokens")
         .eq("id", user.id)
         .maybeSingle();
       if (data) {
@@ -131,6 +148,29 @@ function SettingsPage() {
         if (days && days.length) setWorkDays(days);
         setWorkStart(((d.work_start as string | null) ?? "09:00:00").slice(0, 5));
         setWorkEnd(((d.work_end as string | null) ?? "18:00:00").slice(0, 5));
+
+        const planKey = (d.plan as string | null) ?? "free";
+        setPlan(planKey);
+        const limit = PLAN_LIMITS[planKey] ?? 50_000;
+        setPlanLimitVal(limit);
+        const bonus = (d.bonus_tokens as number | null) ?? 0;
+        setBonusTokens(bonus);
+
+        // Calcular ciclo y tokens usados
+        const createdAt = user.created_at;
+        const cycleStart = getCycleStart(createdAt);
+        const cycleStartDate = new Date(cycleStart);
+        const nextCycle = new Date(cycleStartDate.getTime() + 30 * 86_400_000);
+        const remaining = Math.max(0, Math.ceil((nextCycle.getTime() - Date.now()) / 86_400_000));
+        setDaysLeft(remaining);
+
+        const { data: usageRows } = await supabase
+          .from("token_usage")
+          .select("total_tokens")
+          .eq("user_id", user.id)
+          .gte("created_at", cycleStart);
+        const used = (usageRows ?? []).reduce((sum: number, r: any) => sum + (r.total_tokens ?? 0), 0);
+        setTokensUsed(used);
       }
       setLoading(false);
     })();
@@ -190,6 +230,10 @@ function SettingsPage() {
     gender === "feminine"
       ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy lista para ayudarte a organizar tu semana.`
       : `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy listo para ayudarte a organizar tu semana.`;
+
+  const planPct = Math.min(100, Math.round((tokensUsed / planLimitVal) * 100));
+  const bonusUsed = Math.max(0, tokensUsed - planLimitVal);
+  const bonusPct = bonusTokens > 0 ? Math.min(100, Math.round((bonusUsed / bonusTokens) * 100)) : 0;
 
   return (
     <div className="mx-auto" style={{ maxWidth: 480, padding: "40px 20px 80px" }}>
