@@ -231,6 +231,10 @@ function SettingsPage() {
       ? `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy lista para ayudarte a organizar tu semana.`
       : `Hola ${userName || "tú"}. Soy ${name.trim() || "Lia"} y estoy listo para ayudarte a organizar tu semana.`;
 
+  const planPct = Math.min(100, Math.round((tokensUsed / planLimitVal) * 100));
+  const bonusUsed = Math.max(0, tokensUsed - planLimitVal);
+  const bonusPct = bonusTokens > 0 ? Math.min(100, Math.round((bonusUsed / bonusTokens) * 100)) : 0;
+
   return (
     <div className="mx-auto" style={{ maxWidth: 480, padding: "40px 20px 80px" }}>
       <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)", marginBottom: 4 }}>
