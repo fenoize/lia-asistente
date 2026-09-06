@@ -4,7 +4,7 @@ import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, close
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IconGripVertical } from "@tabler/icons-react";
-import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconCalendar, IconLayoutDashboard, IconChevronRight, IconSparkles, IconUserCircle, IconMessageCircle, IconIdBadge, IconTarget, IconBriefcase, IconX } from "@tabler/icons-react";
+import { IconVenus, IconMars, IconRefresh, IconReload, IconEyeOff, IconChevronDown, IconCheck, IconUser, IconClock, IconLayoutDashboard, IconChevronRight, IconSparkles, IconUserCircle, IconMessageCircle, IconIdBadge, IconTarget, IconBriefcase, IconX } from "@tabler/icons-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -236,7 +236,7 @@ function SettingsPage() {
   const bonusPct = bonusTokens > 0 ? Math.min(100, Math.round((bonusUsed / bonusTokens) * 100)) : 0;
 
   return (
-    <div className="mx-auto" style={{ maxWidth: 480, padding: "40px 20px 80px" }}>
+    <div className="mx-auto" style={{ maxWidth: 700, padding: "40px 24px 80px" }}>
       <h1 style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", color: "var(--text-primary)", marginBottom: 4 }}>
         Ajustes
       </h1>
@@ -965,44 +965,64 @@ function GoogleCalendarSection() {
   };
 
   return (
-    <section
-      style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: 24,
-        marginTop: 24,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <IconCalendar size={14} color="var(--text-tertiary)" stroke={1.75} />
-        <div style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-tertiary)", fontWeight: 600 }}>
-          Integraciones
-        </div>
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 500, color: "var(--text-primary)", margin: "28px 0 4px" }}>
+        Integraciones
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-        <div
-          style={{
-            width: 40, height: 40, borderRadius: 10,
-            background: connected ? "rgba(34,197,94,0.12)" : "var(--bg-base)",
-            border: "1px solid var(--border-subtle)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <IconCalendar size={20} color={connected ? "#22c55e" : "var(--text-tertiary)"} stroke={1.5} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, padding: "14px 0" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
             Google Calendar
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: connected ? "#22c55e" : "var(--text-secondary)", marginTop: 3 }}>
             {connected === null
               ? "Comprobando estado…"
               : connected
               ? `Conectado${connectedAt ? ` · ${new Date(connectedAt).toLocaleDateString()}` : ""}`
-              : "Sincroniza reuniones en ambos sentidos."}
+              : "No conectado"}
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", flexShrink: 0 }}>
+          {connected ? (
+            <>
+              <button
+                onClick={handleSync}
+                disabled={syncing || busy}
+                style={{
+                  background: "var(--accent-color)", color: "white",
+                  borderRadius: "var(--radius-pill)", padding: "9px 22px",
+                  fontSize: 13, fontWeight: 500, opacity: syncing || busy ? 0.5 : 1, cursor: "pointer", border: "none", whiteSpace: "nowrap",
+                }}
+              >
+                {syncing ? "Sincronizando…" : "Sincronizar ahora"}
+              </button>
+              <button
+                onClick={handleDisconnect}
+                disabled={busy}
+                style={{
+                  background: "transparent", color: "var(--text-primary)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-pill)", padding: "9px 22px",
+                  fontSize: 13, opacity: busy ? 0.5 : 1, cursor: "pointer", whiteSpace: "nowrap",
+                }}
+              >
+                Desconectar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={connect}
+              disabled={busy || connected === null}
+              style={{
+                background: "var(--accent-color)", color: "white",
+                borderRadius: "var(--radius-pill)", padding: "9px 22px",
+                fontSize: 13, fontWeight: 500, opacity: busy ? 0.5 : 1, cursor: "pointer", border: "none", whiteSpace: "nowrap",
+              }}
+            >
+              {busy ? "Conectando…" : "Conectar Google Calendar"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1010,19 +1030,16 @@ function GoogleCalendarSection() {
         <div
           style={{
             background: "rgba(239,68,68,0.08)",
-            border: "1px solid rgba(239,68,68,0.25)",
-            borderRadius: 10,
-            padding: 14,
-            marginBottom: 16,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
+            borderLeft: "3px solid rgba(239,68,68,0.4)",
+            borderRadius: 6,
+            padding: 12,
+            margin: "8px 0",
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#fca5a5" }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#fca5a5", marginBottom: 6 }}>
             Se revocó el acceso a tu Google Calendar
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55, marginBottom: 10 }}>
             Google invalidó el permiso que diste a la app. Esto suele pasar cuando:
             <ul style={{ margin: "6px 0 0 18px", padding: 0, listStyle: "disc" }}>
               <li>Quitaste el acceso desde tu cuenta de Google (Seguridad → Apps con acceso).</li>
@@ -1040,7 +1057,7 @@ function GoogleCalendarSection() {
               style={{
                 background: "var(--accent-color)", color: "white",
                 borderRadius: "var(--radius-pill)", padding: "8px 18px",
-                fontSize: 12, fontWeight: 500, opacity: busy ? 0.5 : 1,
+                fontSize: 12, fontWeight: 500, opacity: busy ? 0.5 : 1, cursor: "pointer", border: "none",
               }}
             >
               {busy ? "Conectando…" : "Reconectar Google Calendar"}
@@ -1051,7 +1068,7 @@ function GoogleCalendarSection() {
                 background: "transparent", color: "var(--text-tertiary)",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-pill)", padding: "8px 18px",
-                fontSize: 12,
+                fontSize: 12, cursor: "pointer",
               }}
             >
               Cerrar
@@ -1059,48 +1076,7 @@ function GoogleCalendarSection() {
           </div>
         </div>
       )}
-
-
-      {connected ? (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button
-            onClick={handleSync}
-            disabled={syncing || busy}
-            style={{
-              background: "var(--accent-color)", color: "white",
-              borderRadius: "var(--radius-pill)", padding: "9px 22px",
-              fontSize: 13, fontWeight: 500, opacity: syncing || busy ? 0.5 : 1,
-            }}
-          >
-            {syncing ? "Sincronizando…" : "Sincronizar ahora"}
-          </button>
-          <button
-            onClick={handleDisconnect}
-            disabled={busy}
-            style={{
-              background: "transparent", color: "var(--text-primary)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-pill)", padding: "9px 22px",
-              fontSize: 13, opacity: busy ? 0.5 : 1,
-            }}
-          >
-            Desconectar
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={connect}
-          disabled={busy || connected === null}
-          style={{
-            background: "var(--accent-color)", color: "white",
-            borderRadius: "var(--radius-pill)", padding: "9px 22px",
-            fontSize: 13, fontWeight: 500, opacity: busy ? 0.5 : 1,
-          }}
-        >
-          {busy ? "Conectando…" : "Conectar Google Calendar"}
-        </button>
-      )}
-    </section>
+    </div>
   );
 }
 

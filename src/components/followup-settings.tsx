@@ -1,7 +1,6 @@
 // Control centre for LIA's proactive follow-up engine.
 
 import { useEffect, useState } from "react";
-import { IconRadar } from "@tabler/icons-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,18 +13,6 @@ const FREQUENCIES: { value: FollowUpPrefs["frequency"]; label: string }[] = [
   { value: "high", label: "Alta" },
 ];
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "10px 0" }}>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: "#e6e6e6" }}>{label}</div>
-        {hint && <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{hint}</div>}
-      </div>
-      <div style={{ flexShrink: 0 }}>{children}</div>
-    </div>
-  );
-}
-
 function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -37,11 +24,12 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
         width: 44,
         height: 24,
         borderRadius: 999,
-        background: value ? "#6366f1" : "#2a2a2a",
-        border: "1px solid #333",
+        background: value ? "var(--accent-color)" : "var(--border)",
+        border: "none",
         position: "relative",
         cursor: "pointer",
         transition: "background 160ms ease",
+        flexShrink: 0,
       }}
     >
       <span
@@ -57,6 +45,71 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
         }}
       />
     </button>
+  );
+}
+
+function FlatRow({
+  label,
+  hint,
+  last,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  last?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 16,
+        padding: "14px 0",
+        borderBottom: last ? "none" : "0.5px solid var(--border)",
+      }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>{label}</div>
+        {hint && (
+          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.4 }}>{hint}</div>
+        )}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function Dropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: number;
+  options: { value: number; label: string }[];
+  onChange: (v: number) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      style={{
+        background: "var(--bg-elevated)",
+        border: "0.5px solid var(--border)",
+        borderRadius: 8,
+        color: "var(--text-primary)",
+        fontSize: 13,
+        padding: "6px 10px",
+        cursor: "pointer",
+      }}
+    >
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -87,28 +140,16 @@ export function FollowUpSettings() {
   if (!loaded) return null;
 
   return (
-    <section
-      style={{
-        background: "var(--bg-elevated)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: 24,
-        marginTop: 24,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <IconRadar size={17} stroke={1.75} style={{ color: "#a78bfa" }} />
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: "#f2f2f2" }}>Seguimiento proactivo</h2>
+    <div>
+      <div style={{ fontSize: 18, fontWeight: 500, color: "var(--text-primary)", margin: "28px 0 4px" }}>
+        Seguimiento proactivo
       </div>
-      <p style={{ fontSize: 13, color: "#777", marginBottom: 8 }}>
-        Define cuándo LIA puede intervenir por su cuenta con tus tareas.
-      </p>
 
-      <Row label="Intervenciones proactivas" hint="LIA detecta qué necesita atención y te escribe.">
+      <FlatRow label="Intervenciones proactivas" hint="LIA detecta qué necesita atención y te escribe.">
         <Toggle value={prefs.enabled} onChange={(v) => void save({ ...prefs, enabled: v })} />
-      </Row>
+      </FlatRow>
 
-      <Row label="Frecuencia" hint="Cuánta insistencia toleras.">
+      <FlatRow label="Frecuencia" hint="Cuánta insistencia toleras.">
         <div style={{ display: "flex", gap: 6 }}>
           {FREQUENCIES.map((f) => (
             <button
@@ -120,66 +161,47 @@ export function FollowUpSettings() {
                 padding: "5px 12px",
                 borderRadius: 999,
                 cursor: "pointer",
-                color: prefs.frequency === f.value ? "#fff" : "#999",
-                background: prefs.frequency === f.value ? "rgba(99,102,241,0.25)" : "transparent",
-                border: `1px solid ${prefs.frequency === f.value ? "rgba(99,102,241,0.5)" : "#2a2a2a"}`,
+                color: prefs.frequency === f.value ? "#fff" : "var(--text-secondary)",
+                background: prefs.frequency === f.value ? "var(--accent-subtle)" : "transparent",
+                border: `1px solid ${prefs.frequency === f.value ? "var(--accent-color)" : "var(--border)"}`,
               }}
             >
               {f.label}
             </button>
           ))}
         </div>
-      </Row>
+      </FlatRow>
 
-      <Row label="Hora preferida" hint="Momento del día para las intervenciones.">
-        <select
+      <FlatRow label="Hora preferida" hint="Momento del día para las intervenciones.">
+        <Dropdown
           value={prefs.preferred_hour}
-          onChange={(e) => void save({ ...prefs, preferred_hour: Number(e.target.value) })}
-          style={{
-            background: "#161616",
-            border: "1px solid #2a2a2a",
-            borderRadius: 8,
-            color: "#e6e6e6",
-            fontSize: 13,
-            padding: "6px 10px",
-          }}
-        >
-          {Array.from({ length: 24 }, (_, h) => (
-            <option key={h} value={h}>
-              {String(h).padStart(2, "0")}:00
-            </option>
-          ))}
-        </select>
-      </Row>
+          options={Array.from({ length: 24 }, (_, h) => ({
+            value: h,
+            label: `${String(h).padStart(2, "0")}:00`,
+          }))}
+          onChange={(v) => void save({ ...prefs, preferred_hour: v })}
+        />
+      </FlatRow>
 
-      <Row label="Máximo de intervenciones por día" hint="Presupuesto diario de atención.">
-        <select
+      <FlatRow label="Máximo de intervenciones por día" hint="Presupuesto diario de atención.">
+        <Dropdown
           value={prefs.daily_budget}
-          onChange={(e) => void save({ ...prefs, daily_budget: Number(e.target.value) })}
-          style={{
-            background: "#161616",
-            border: "1px solid #2a2a2a",
-            borderRadius: 8,
-            color: "#e6e6e6",
-            fontSize: 13,
-            padding: "6px 10px",
-          }}
-        >
-          {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      </Row>
+          options={[1, 2, 3, 4, 5, 6, 8, 10].map((n) => ({ value: n, label: String(n) }))}
+          onChange={(v) => void save({ ...prefs, daily_budget: v })}
+        />
+      </FlatRow>
 
-      <Row label="Sugerencias para tareas sin fecha" hint='"¿Cuándo hacemos la cotización de Italfrenos?"'>
+      <FlatRow label="Sugerencias para tareas sin fecha" hint='"¿Cuándo hacemos la cotización de Italfrenos?"'>
         <Toggle value={prefs.undated} onChange={(v) => void save({ ...prefs, undated: v })} />
-      </Row>
+      </FlatRow>
 
-      <Row label="Limpieza de tareas antiguas" hint='"¿La hacemos, la agendamos o la descartamos?"'>
+      <FlatRow
+        label="Limpieza de tareas antiguas"
+        hint='"¿La hacemos, la agendamos o la descartamos?"'
+        last
+      >
         <Toggle value={prefs.stale_cleanup} onChange={(v) => void save({ ...prefs, stale_cleanup: v })} />
-      </Row>
-    </section>
+      </FlatRow>
+    </div>
   );
 }
