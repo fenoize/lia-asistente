@@ -899,6 +899,7 @@ export type Database = {
         Row: {
           ai_summary: string | null
           assigned_to: string | null
+          contact_ids: string[]
           created_at: string | null
           description: string | null
           discarded_at: string | null
@@ -918,6 +919,7 @@ export type Database = {
         Insert: {
           ai_summary?: string | null
           assigned_to?: string | null
+          contact_ids?: string[]
           created_at?: string | null
           description?: string | null
           discarded_at?: string | null
@@ -937,6 +939,7 @@ export type Database = {
         Update: {
           ai_summary?: string | null
           assigned_to?: string | null
+          contact_ids?: string[]
           created_at?: string | null
           description?: string | null
           discarded_at?: string | null
